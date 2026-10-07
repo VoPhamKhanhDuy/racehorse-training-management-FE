@@ -88,7 +88,15 @@ Khi thêm entity mới (HealthRecord, Injury, Supply...), thêm file mới trong
   - `"club_manager"` — Club Manager / Quản lý CLB
 
 ## Git / GitHub
-- Nhánh `main`: chỉ chứa code chạy ổn định, không push thẳng
-- Mỗi thành viên tạo nhánh riêng: `feature/<ten-chuc-nang>` (vd `feature/login`, `feature/trainer-dashboard`)
-- Tạo Pull Request để merge vào `main`, không tự merge khi chưa có người review
+- Nhánh `main`: chỉ chứa bản ổn định để demo/nộp bài, KHÔNG push thẳng, KHÔNG merge feature trực tiếp vào đây
+- Nhánh `dev`: nhánh làm việc chung của cả nhóm, mọi feature branch đều tách ra từ đây
+- Mỗi thành viên checkout từ `dev` để tạo nhánh riêng, đặt tên theo mẫu `feature/<ten-nguoi>-<chuc-nang>` (bắt buộc có tên người làm để dễ truy ai đang làm gì, tránh 2 người trùng tên nhánh):
+  ```bash
+  git checkout dev
+  git pull origin dev
+  git checkout -b feature/duy-login
+  ```
+  Ví dụ khác: `feature/an-trainer-dashboard`, `feature/binh-vet-pages`, `feature/chi-owner-pages`
+- Code xong → tạo Pull Request merge vào `dev` (không phải `main`), có người khác review rồi mới merge
+- Khi cả nhóm đã test ổn trên `dev`, tạo 1 PR từ `dev` → `main` để chốt bản demo/nộp bài
 - Commit message ngắn gọn, tiền tố rõ ràng: `feat:`, `fix:`, `style:`, `docs:`
