@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import FormField from "../../components/FormField";
-import useAuth from "../../hooks/useAuth";
 import users from "../../data/users";
 import roles from "../../data/roles";
 import { isValidEmail } from "../../utils/validators";
@@ -13,7 +11,6 @@ const staffRoles = roles.filter((role) => STAFF_ROLE_IDS.includes(role.id));
 const initialForm = { fullName: "", email: "", roleId: "" };
 
 export default function CreateStaffAccount() {
-  const { user, logout } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [createdAccount, setCreatedAccount] = useState(null);
@@ -58,104 +55,82 @@ export default function CreateStaffAccount() {
     : "";
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#232328]">
-      <header className="border-b border-gray-100 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link to="/" className="text-2xl font-bold tracking-tight">
-            Equi<span className="text-[#F2A71B]">Track</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-[#6E6E76] sm:inline">
-              Quản lý CLB · <span className="font-semibold text-[#232328]">{user.fullName}</span>
-            </span>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition hover:bg-gray-50 sm:px-4"
-            >
-              Đăng xuất
-            </button>
-          </div>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="text-3xl font-bold">Tạo tài khoản nhân sự</h1>
+      <p className="mt-2 text-[#6E6E76]">
+        Cấp tài khoản cho HLV trưởng, bác sĩ thú y và nhân viên chăm sóc của câu lạc bộ.
+      </p>
+
+      {createdAccount && (
+        <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Đã tạo tài khoản <span className="font-semibold">{createdRoleName}</span> cho{" "}
+          <span className="font-semibold">{createdAccount.fullName}</span> ({createdAccount.email}).
         </div>
-      </header>
+      )}
 
-      <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-bold">Tạo tài khoản nhân sự</h1>
-        <p className="mt-2 text-[#6E6E76]">
-          Cấp tài khoản cho HLV trưởng, bác sĩ thú y và nhân viên chăm sóc của câu lạc bộ.
-        </p>
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="mt-6 space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8"
+      >
+        <FormField
+          label="Họ và tên"
+          id="fullName"
+          name="fullName"
+          placeholder="Họ và tên đầy đủ"
+          value={form.fullName}
+          onChange={handleChange}
+          error={errors.fullName}
+        />
+        <FormField
+          label="Email"
+          id="email"
+          name="email"
+          type="email"
+          placeholder="Địa chỉ email"
+          value={form.email}
+          onChange={handleChange}
+          error={errors.email}
+        />
 
-        {createdAccount && (
-          <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Đã tạo tài khoản <span className="font-semibold">{createdRoleName}</span> cho{" "}
-            <span className="font-semibold">{createdAccount.fullName}</span> ({createdAccount.email}).
+        <fieldset>
+          <legend className="mb-1.5 block text-sm font-medium text-gray-600">Vai trò</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {staffRoles.map((role) => {
+              const selected = form.roleId === role.id;
+              return (
+                <label
+                  key={role.id}
+                  className={`cursor-pointer rounded-xl border px-3 py-2.5 transition ${
+                    selected
+                      ? "border-[#F2A71B] bg-[#F2A71B]/10 ring-2 ring-[#F2A71B]/20"
+                      : "border-gray-200 hover:border-[#F2A71B]/60"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="roleId"
+                    value={role.id}
+                    checked={selected}
+                    onChange={handleChange}
+                    className="sr-only"
+                  />
+                  <span className="block text-sm font-semibold">{role.name}</span>
+                  <span className="block text-xs text-[#6E6E76]">{role.description}</span>
+                </label>
+              );
+            })}
           </div>
-        )}
+          {errors.roleId && <p className="mt-1.5 text-sm text-red-500">{errors.roleId}</p>}
+        </fieldset>
 
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="mt-6 space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8"
+        <button
+          type="submit"
+          className="w-full rounded-xl bg-orange-500 py-3 font-semibold text-white shadow-md cursor-pointer transition-colors hover:bg-orange-600"
         >
-          <FormField
-            label="Họ và tên"
-            id="fullName"
-            name="fullName"
-            placeholder="Nguyễn Văn A"
-            value={form.fullName}
-            onChange={handleChange}
-            error={errors.fullName}
-          />
-          <FormField
-            label="Email"
-            id="email"
-            name="email"
-            type="email"
-            placeholder="nhanvien@racehorse.vn"
-            value={form.email}
-            onChange={handleChange}
-            error={errors.email}
-          />
-
-          <fieldset>
-            <legend className="mb-1.5 block text-sm font-semibold">Vai trò</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {staffRoles.map((role) => {
-                const selected = form.roleId === role.id;
-                return (
-                  <label
-                    key={role.id}
-                    className={`cursor-pointer rounded-lg border px-3 py-2.5 transition ${
-                      selected
-                        ? "border-[#F2A71B] bg-[#F2A71B]/10 ring-2 ring-[#F2A71B]/20"
-                        : "border-gray-200 hover:border-[#F2A71B]/60"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="roleId"
-                      value={role.id}
-                      checked={selected}
-                      onChange={handleChange}
-                      className="sr-only"
-                    />
-                    <span className="block text-sm font-semibold">{role.name}</span>
-                    <span className="block text-xs text-[#6E6E76]">{role.description}</span>
-                  </label>
-                );
-              })}
-            </div>
-            {errors.roleId && <p className="mt-1.5 text-sm text-red-500">{errors.roleId}</p>}
-          </fieldset>
-
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-[#F2A71B] py-3 font-semibold text-[#232328] shadow-sm transition hover:bg-[#e0961a]"
-          >
-            Tạo tài khoản
-          </button>
-        </form>
-      </main>
+          Tạo tài khoản
+        </button>
+      </form>
     </div>
   );
 }

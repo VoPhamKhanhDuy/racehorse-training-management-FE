@@ -6,6 +6,8 @@ const users = [
   { id: "U003", fullName: "Lê Văn Groom", email: "groom@equitrack.vn", password: "123456", roleId: "groom" },
   { id: "U004", fullName: "Phạm Thị Owner", email: "owner@equitrack.vn", password: "123456", roleId: "horse_owner" },
   { id: "U005", fullName: "Hoàng Văn Manager", email: "manager@equitrack.vn", password: "123456", roleId: "club_manager" },
+  { id: "U006", fullName: "Đặng Minh Khoa", email: "owner2@equitrack.vn", password: "123456", roleId: "horse_owner" },
+  { id: "U007", fullName: "Vũ Thu Hà", email: "owner3@equitrack.vn", password: "123456", roleId: "horse_owner" },
 ];
 
 export default users;

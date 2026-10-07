@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+/* Design token — dùng ở Layout + Quản lý hồ sơ ngựa (tông cam EquiTrack gốc) */
+@theme {
+  --color-parchment: #fafafa; /* nền trang */
+  --color-brass: #f2a71b; /* cam EquiTrack: nút chính, vạch chọn, focus, icon Sửa */
+  --color-brass-deep: #c65d18; /* cam đậm: chữ nổi bật, chữ trên nền cam nhạt, gạch dưới header bảng */
+  --color-ink: #232328; /* chữ chính */
+  --color-stone: #6e6e76; /* chữ phụ, nhãn, đường kẻ */
+  --color-alert: #c0392b; /* xóa, cảnh báo */
+
+  /* Font serif cho tiêu đề (Source Serif 4 nạp trong index.html, weight 500/600), phần còn lại giữ font sans mặc định */
+  --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
+}

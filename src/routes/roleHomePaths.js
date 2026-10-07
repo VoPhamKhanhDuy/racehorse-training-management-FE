@@ -1,11 +1,11 @@
-// Trang đích sau khi đăng nhập, theo roleId
-// TODO: đổi sang dashboard của từng role khi các trang đó được tạo
+// Trang chủ của từng role — dùng để điều hướng sau khi đăng nhập
+// và khi user vào nhầm khu vực của role khác
 const roleHomePaths = {
-  head_trainer: "/",
-  veterinarian: "/",
-  groom: "/",
-  horse_owner: "/",
-  club_manager: "/manager/staff/new",
+  head_trainer: "/trainer",
+  veterinarian: "/vet",
+  groom: "/groom",
+  horse_owner: "/owner",
+  club_manager: "/manager",
 };
 
 export default roleHomePaths;
