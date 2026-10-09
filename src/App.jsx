@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Layout from "./components/Layout";
 import PlaceholderPage from "./components/PlaceholderPage";
@@ -6,9 +6,16 @@ import Welcome from "./pages/Welcome";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import PendingApproval from "./pages/auth/PendingApproval";
+import ChangePassword from "./pages/auth/ChangePassword";
+import AccountApprovals from "./pages/manager/AccountApprovals";
 import CreateStaffAccount from "./pages/manager/CreateStaffAccount";
 import HorseManagement from "./pages/manager/HorseManagement";
 import HorseForm from "./pages/manager/HorseForm";
+import StaffManagement from "./pages/manager/StaffManagement";
+import SupplyManagement from "./pages/manager/SupplyManagement";
+import SupplyForm from "./pages/manager/SupplyForm";
+import Reports from "./pages/manager/Reports";
+import AuditLog from "./pages/manager/AuditLog";
 import TrainingPlans from "./pages/trainer/TrainingPlans";
 import Schedule from "./pages/trainer/Schedule";
 import Dashboard from "./pages/trainer/Dashboard";
@@ -22,6 +29,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/pending-approval" element={<PendingApproval />} />
+      {/* Đổi mật khẩu lần đầu: trang tự kiểm tra đăng nhập + cờ mustChangePassword */}
+      <Route path="/change-password" element={<ChangePassword />} />
 
       {/* Head Trainer */}
       <Route
@@ -87,20 +96,15 @@ function App() {
         <Route path="/manager/horses" element={<HorseManagement />} />
         <Route path="/manager/horses/new" element={<HorseForm />} />
         <Route path="/manager/horses/:id/edit" element={<HorseForm />} />
+        <Route path="/manager/approvals" element={<AccountApprovals />} />
+        <Route path="/manager/staff" element={<StaffManagement />} />
         <Route path="/manager/staff/new" element={<CreateStaffAccount />} />
-        <Route
-          path="/manager/staff"
-          element={
-            <PlaceholderPage>
-              <Link
-                to="/manager/staff/new"
-                className="inline-block rounded-xl bg-orange-500 px-6 py-3 font-semibold text-white shadow-md transition-colors hover:bg-orange-600"
-              >
-                Tạo tài khoản nhân sự
-              </Link>
-            </PlaceholderPage>
-          }
-        />
+        <Route path="/manager/staff/:id/edit" element={<CreateStaffAccount />} />
+        <Route path="/manager/supplies" element={<SupplyManagement />} />
+        <Route path="/manager/supplies/new" element={<SupplyForm />} />
+        <Route path="/manager/supplies/:id/edit" element={<SupplyForm />} />
+        <Route path="/manager/reports" element={<Reports />} />
+        <Route path="/manager/audit-log" element={<AuditLog />} />
         <Route path="/manager/*" element={<PlaceholderPage />} />
       </Route>
     </Routes>

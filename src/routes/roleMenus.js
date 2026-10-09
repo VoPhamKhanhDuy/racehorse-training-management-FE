@@ -45,13 +45,14 @@ const roleMenus = {
     { label: "Sức khỏe & thành tích", path: "/owner/health", icon: HeartPulse },
     { label: "Báo cáo chi phí/doanh thu", path: "/owner/reports", icon: ChartColumn },
   ],
+  // Sắp theo mức ưu tiên công việc: việc cốt lõi/cần xử lý nhanh lên trên, xem định kỳ/audit xuống dưới
   club_manager: [
     { label: "Quản lý hồ sơ ngựa", path: "/manager/horses", icon: FolderOpen },
+    { label: "Duyệt tài khoản", path: "/manager/approvals", icon: UserCheck },
     { label: "Quản lý nhân sự", path: "/manager/staff", icon: Users },
     { label: "Quản lý vật tư", path: "/manager/supplies", icon: Package },
     { label: "Báo cáo hiệu suất & tài chính", path: "/manager/reports", icon: ChartColumn },
     { label: "Nhật ký thao tác", path: "/manager/audit-log", icon: History },
-    { label: "Duyệt tài khoản", path: "/manager/approvals", icon: UserCheck },
   ],
 };
 

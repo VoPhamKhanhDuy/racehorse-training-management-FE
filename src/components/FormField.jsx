@@ -23,6 +23,16 @@ const variantStyles = {
     iconBox: "w-7 text-stone",
     error: "text-alert",
   },
+  // "outline": viền đủ 4 cạnh, bo nhẹ, focus viền cam — đồng bộ với ô tìm kiếm ở các trang danh sách (dùng trong card form)
+  outline: {
+    label: "mb-1.5 block font-serif text-sm font-semibold text-stone",
+    input:
+      "w-full rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors placeholder:text-stone/50 focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 disabled:text-stone",
+    inputState: (error) => (error ? "border-alert focus:ring-alert/20" : "border-stone/25 focus:border-brass"),
+    iconPadding: "pl-10",
+    iconBox: "w-10 text-stone",
+    error: "text-alert",
+  },
 };
 
 // Ô nhập liệu có nhãn + thông báo lỗi. type="password" sẽ có nút ẩn/hiện mật khẩu.

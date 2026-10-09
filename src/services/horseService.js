@@ -3,7 +3,7 @@
 // Dữ liệu giữ trong bộ nhớ của module nên còn nguyên khi chuyển trang, mất khi tải lại trang.
 import horses from "../data/horses";
 import healthStatuses from "../data/healthStatuses";
-import users from "../data/users";
+import { getUsers } from "./accountService";
 import { toUserID } from "../utils/userId";
 
 const NETWORK_DELAY_MS = 400;
@@ -69,10 +69,10 @@ export async function getHealthStatuses() {
   return healthStore.map((h) => ({ ...h }));
 }
 
-// Chủ ngựa (USER có roleId "horse_owner") theo field ERD, không kèm mật khẩu
+// Chủ ngựa đã được duyệt (USER có roleId "horse_owner") theo field ERD, không kèm mật khẩu
 export async function getHorseOwners() {
-  await delay();
+  const users = await getUsers();
   return users
-    .filter((u) => u.roleId === "horse_owner")
+    .filter((u) => u.roleId === "horse_owner" && u.status === "approved")
     .map((u) => ({ UserID: toUserID(u.id), HoTen: u.fullName, Email: u.email }));
 }

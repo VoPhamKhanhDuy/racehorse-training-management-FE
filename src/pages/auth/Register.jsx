@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../../components/AuthLayout";
 import FormField from "../../components/FormField";
-import users from "../../data/users";
+import { addUser, isEmailTaken } from "../../services/accountService";
 import { isValidEmail, isValidPassword, MIN_PASSWORD_LENGTH } from "../../utils/validators";
 
 // Trang đăng ký công khai chỉ dành cho Chủ ngựa.
@@ -43,8 +43,7 @@ export default function Register() {
     if (!form.fullName.trim()) newErrors.fullName = "Vui lòng nhập họ và tên";
     if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
     else if (!isValidEmail(form.email)) newErrors.email = "Email không hợp lệ";
-    else if (users.some((u) => u.email.toLowerCase() === form.email.trim().toLowerCase()))
-      newErrors.email = "Email này đã được đăng ký";
+    else if (isEmailTaken(form.email)) newErrors.email = "Email này đã được đăng ký";
     if (!isValidPassword(form.password))
       newErrors.password = `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự`;
     if (!form.confirmPassword) newErrors.confirmPassword = "Vui lòng nhập lại mật khẩu";
@@ -61,12 +60,15 @@ export default function Register() {
       return;
     }
     // TODO: thay bằng gọi API thật khi BE xong
-    const newUser = {
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
+    // Chủ ngựa tự đăng ký phải chờ Quản lý CLB duyệt (/manager/approvals) mới đăng nhập được
+    const newUser = addUser({
+      fullName: form.fullName,
+      email: form.email,
+      password: form.password,
       roleId: REGISTER_ROLE_ID,
-    };
-    navigate("/pending-approval", { state: newUser });
+      status: "pending",
+    });
+    navigate("/pending-approval", { state: { fullName: newUser.fullName, email: newUser.email } });
   };
 
   return (

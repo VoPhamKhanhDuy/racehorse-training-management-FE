@@ -23,3 +23,53 @@ export function formatDate(isoDate) {
   const [year, month, day] = isoDate.split("-");
   return `${day}/${month}/${year}`;
 }
+
+// Số ngày từ ngày "YYYY-MM-DD" tới hôm nay (theo lịch, không tính giờ)
+export function daysSince(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const then = new Date(year, month - 1, day);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((today - then) / 86400000);
+}
+
+// "2026-10-04" → "5 ngày trước" / "hôm nay"
+export function formatDaysAgo(isoDate) {
+  const days = daysSince(isoDate);
+  return days <= 0 ? "hôm nay" : `${days} ngày trước`;
+}
+
+// Đổi Date → "YYYY-MM-DDTHH:mm" theo giờ địa phương (dạng thời điểm trong nhật ký thao tác)
+export function toISODateTime(date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${toISODate(date)}T${hours}:${minutes}`;
+}
+
+// Thời điểm cách hiện tại n giờ (n âm = quá khứ), dạng "YYYY-MM-DDTHH:mm"
+export function hoursFromNow(n) {
+  return toISODateTime(new Date(Date.now() + n * 3600000));
+}
+
+// Thời điểm lúc "HH:mm" của ngày cách hôm nay n ngày, dạng "YYYY-MM-DDTHH:mm"
+export function dateTimeFromToday(n, time) {
+  return `${daysFromToday(n)}T${time}`;
+}
+
+// "YYYY-MM-DDTHH:mm" → Date theo giờ địa phương
+export function parseISODateTime(isoDateTime) {
+  const [datePart, timePart = "00:00"] = isoDateTime.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes);
+}
+
+// Trong vòng 1 ngày: "vừa xong" / "15 phút trước" / "2 giờ trước"; cũ hơn: "09/10/2026 18:30"
+export function formatRelativeTime(isoDateTime) {
+  const minutes = Math.floor((Date.now() - parseISODateTime(isoDateTime).getTime()) / 60000);
+  if (minutes < 1) return "vừa xong";
+  if (minutes < 60) return `${minutes} phút trước`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} giờ trước`;
+  const [datePart, timePart] = isoDateTime.split("T");
+  return `${formatDate(datePart)} ${timePart}`;
+}
