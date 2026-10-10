@@ -54,7 +54,11 @@ export async function updateHorse(horseId, data) {
   await delay();
   const index = horseStore.findIndex((h) => h.HorseID === Number(horseId));
   if (index === -1) throw new Error("Không tìm thấy ngựa");
-  horseStore[index] = { HorseID: horseStore[index].HorseID, ...toHorseRecord(data) };
+  const current = horseStore[index];
+  const record = toHorseRecord(data);
+  // Vị trí cắt ảnh chỉ đúng với ảnh cũ — đổi ảnh thì bỏ, quay về mặc định
+  const photoPosition = record.photo === current.photo ? current.photoPosition : undefined;
+  horseStore[index] = { HorseID: current.HorseID, ...record, ...(photoPosition && { photoPosition }) };
   return { ...horseStore[index] };
 }
 
