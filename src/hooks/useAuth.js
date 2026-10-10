@@ -6,6 +6,6 @@ export default function useAuth() {
   if (!context) {
     throw new Error("useAuth phải được dùng bên trong <AuthProvider>");
   }
-  const { user, login, logout, mockLogin } = context;
-  return { user, login, logout, mockLogin };
+  const { user, login, logout, mockLogin, changePassword } = context;
+  return { user, login, logout, mockLogin, changePassword };
 }

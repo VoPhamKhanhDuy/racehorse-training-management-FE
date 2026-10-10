@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../../components/AuthLayout";
 import FormField from "../../components/FormField";
 import useAuth from "../../hooks/useAuth";
-import users from "../../data/users";
 import roleHomePaths from "../../routes/roleHomePaths";
 import { isValidEmail } from "../../utils/validators";
 
@@ -33,15 +32,18 @@ export default function Login() {
       return;
     }
 
-    if (!login(form.email, form.password)) {
-      setErrors({ form: "Email hoặc mật khẩu không đúng" });
+    const result = login(form.email, form.password);
+    if (result.error) {
+      setErrors({ form: result.error });
+      return;
+    }
+    // Nhân sự mới đăng nhập bằng mật khẩu mặc định → bắt buộc đổi mật khẩu trước
+    if (result.user.mustChangePassword) {
+      navigate("/change-password", { replace: true });
       return;
     }
     // Quay lại trang bị chặn nếu có, không thì về trang chủ của role
-    const { roleId } = users.find(
-      (u) => u.email.toLowerCase() === form.email.trim().toLowerCase()
-    );
-    navigate(blockedPath || roleHomePaths[roleId] || "/", { replace: true });
+    navigate(blockedPath || roleHomePaths[result.user.roleId] || "/", { replace: true });
   };
 
   return (

@@ -1,5 +1,5 @@
 import { createContext, useState } from "react";
-import users from "../data/users";
+import { changePassword as changePasswordApi, findUserByEmail, findUserByRole } from "../services/accountService";
 
 export const AuthContext = createContext(null);
 
@@ -10,17 +10,27 @@ function toSessionUser({ password: _password, ...userWithoutPassword }) {
 
 export function AuthProvider({ children }) {
   // null = chưa đăng nhập
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(findUserByRole("head_trainer"));
 
   // TODO: thay bằng gọi API thật khi BE xong
-  // Trả về true nếu đăng nhập thành công, false nếu sai email/mật khẩu
+  // Thành công → { user }, thất bại → { error } (sai email/mật khẩu, tài khoản chưa được duyệt hoặc đã bị khóa)
   const login = (email, password) => {
-    const foundUser = users.find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-    );
-    if (!foundUser) return false;
-    setUser(toSessionUser(foundUser));
-    return true;
+    const foundUser = findUserByEmail(email);
+    if (!foundUser || foundUser.password !== password) {
+      return { error: "Email hoặc mật khẩu không đúng" };
+    }
+    if (foundUser.status === "pending") {
+      return { error: "Tài khoản đang chờ duyệt, vui lòng quay lại sau." };
+    }
+    if (foundUser.status === "rejected") {
+      return { error: "Tài khoản đã bị từ chối, vui lòng liên hệ Quản lý CLB." };
+    }
+    if (foundUser.isActive === false) {
+      return { error: "Tài khoản đã bị khóa, liên hệ Quản lý CLB." };
+    }
+    const sessionUser = toSessionUser(foundUser);
+    setUser(sessionUser);
+    return { user: sessionUser };
   };
 
   const logout = () => {
@@ -28,9 +38,17 @@ export function AuthProvider({ children }) {
   };
 
   // TODO: thay bằng gọi API thật khi BE xong
+  // Đổi mật khẩu cho user đang đăng nhập (màn hình đổi mật khẩu lần đầu) — cập nhật luôn session để gỡ cờ mustChangePassword
+  const changePassword = async (newPassword) => {
+    const updated = await changePasswordApi(user.id, newPassword);
+    setUser(updated);
+    return updated;
+  };
+
+  // TODO: thay bằng gọi API thật khi BE xong
   // Đăng nhập giả theo roleId để test UI: "head_trainer", "veterinarian", "groom", "horse_owner", "club_manager"
   const mockLogin = (roleId) => {
-    const mockUser = users.find((u) => u.roleId === roleId);
+    const mockUser = findUserByRole(roleId);
     if (!mockUser) {
       console.warn(`mockLogin: roleId không hợp lệ "${roleId}"`);
       return;
@@ -39,7 +57,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, mockLogin }}>
+    <AuthContext.Provider value={{ user, login, logout, mockLogin, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
