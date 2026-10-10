@@ -1,6 +1,7 @@
 // Màu pastel theo HEALTHSTATUS.TrangThai — dùng chung cho badge trạng thái (thẻ ngựa, modal, trang HLV)
 // và nền ảnh placeholder. Không dùng đỏ gắt --color-alert (dành cho nút Xóa/cảnh báo).
 const healthStatusStyles = {
+  "Tốt": { badge: "bg-green-100 text-green-700", tint: "bg-green-50 text-green-700/35" },
   "Đủ điều kiện": { badge: "bg-green-100 text-green-700", tint: "bg-green-50 text-green-700/35" },
   "Cần theo dõi": { badge: "bg-yellow-100 text-yellow-800", tint: "bg-yellow-50 text-yellow-700/35" },
   "Chấn thương": { badge: "bg-red-100 text-rose-700", tint: "bg-red-50 text-rose-700/35" },

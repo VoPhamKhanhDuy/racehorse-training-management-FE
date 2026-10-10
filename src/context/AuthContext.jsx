@@ -10,7 +10,7 @@ function toSessionUser({ password: _password, ...userWithoutPassword }) {
 
 export function AuthProvider({ children }) {
   // null = chưa đăng nhập
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(findUserByRole("head_trainer"));
 
   // TODO: thay bằng gọi API thật khi BE xong
   // Thành công → { user }, thất bại → { error } (sai email/mật khẩu, tài khoản chưa được duyệt hoặc đã bị khóa)

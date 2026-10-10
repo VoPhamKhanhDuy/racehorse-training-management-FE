@@ -9,6 +9,13 @@
   --color-stone: #6e6e76; /* chữ phụ, nhãn, đường kẻ */
   --color-alert: #c0392b; /* xóa, cảnh báo */
 
+  /* Tông dữ liệu cho trang Kết quả buổi tập (biểu đồ, sparkline, thanh dữ liệu) */
+  --color-bark: #4a2f1b; /* mực nâu: đường vận tốc, số liệu chính */
+  --color-moss: #5f6f3a; /* olive: đường nhịp tim, chênh lệch, nhãn "cao nhất" */
+  --color-gridline: #e6dfd2; /* vạch lưới biểu đồ */
+  --color-sand: #d9c3a0; /* be: cột mini các buổi cũ */
+  --color-track: #efe9dd; /* nền thanh dữ liệu */
+
   /* Font serif cho tiêu đề (Source Serif 4 nạp trong index.html, weight 500/600), phần còn lại giữ font sans mặc định */
   --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
 }

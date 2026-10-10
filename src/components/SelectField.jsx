@@ -17,7 +17,7 @@ const variantStyles = {
   outline: {
     label: "mb-1.5 block font-serif text-sm font-semibold text-stone",
     select:
-      "w-full cursor-pointer rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors focus:ring-2 focus:ring-brass/20",
+      "w-full cursor-pointer rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 disabled:text-stone",
     selectState: (error) => (error ? "border-alert focus:ring-alert/20" : "border-stone/25 focus:border-brass"),
     error: "text-alert",
   },

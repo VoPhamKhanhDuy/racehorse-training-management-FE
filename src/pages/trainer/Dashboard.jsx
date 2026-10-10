@@ -33,8 +33,8 @@ export default function Dashboard() {
 
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
   const userNames = Object.fromEntries(users.map((u) => [u.UserID, u.HoTen]));
-  const readyCount = healthStatuses.filter((h) => h.TrangThai === "Đủ điều kiện").length;
-  const attentionList = healthStatuses.filter((h) => h.TrangThai !== "Đủ điều kiện");
+  const readyCount = healthStatuses.filter((h) => h.TrangThai === "Tốt").length;
+  const attentionList = healthStatuses.filter((h) => h.TrangThai !== "Tốt");
 
   const stats = [
     { label: "Ngựa đủ điều kiện tập", value: readyCount, hint: `trên tổng ${horses.length} ngựa` },

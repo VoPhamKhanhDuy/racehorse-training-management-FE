@@ -17,9 +17,12 @@ import SupplyForm from "./pages/manager/SupplyForm";
 import Reports from "./pages/manager/Reports";
 import AuditLog from "./pages/manager/AuditLog";
 import TrainingPlans from "./pages/trainer/TrainingPlans";
+import TrainingPlanForm from "./pages/trainer/TrainingPlanForm";
 import Schedule from "./pages/trainer/Schedule";
-import Dashboard from "./pages/trainer/Dashboard";
-import Performance from "./pages/trainer/Performance";
+import ScheduleForm from "./pages/trainer/ScheduleForm";
+import TrainingSessions from "./pages/trainer/TrainingSessions";
+import TrainingSessionForm from "./pages/trainer/TrainingSessionForm";
+import Races from "./pages/trainer/Races";
 
 function App() {
   return (
@@ -42,9 +45,16 @@ function App() {
       >
         <Route path="/trainer" element={<Navigate to="/trainer/plans" replace />} />
         <Route path="/trainer/plans" element={<TrainingPlans />} />
+        <Route path="/trainer/plans/new" element={<TrainingPlanForm />} />
+        <Route path="/trainer/plans/:id/edit" element={<TrainingPlanForm />} />
         <Route path="/trainer/schedule" element={<Schedule />} />
-        <Route path="/trainer/dashboard" element={<Dashboard />} />
-        <Route path="/trainer/performance" element={<Performance />} />
+        <Route path="/trainer/schedule/new" element={<ScheduleForm />} />
+        <Route path="/trainer/schedule/:id/edit" element={<ScheduleForm />} />
+        <Route path="/trainer/sessions" element={<TrainingSessions />} />
+        <Route path="/trainer/sessions/new" element={<TrainingSessionForm />} />
+        <Route path="/trainer/sessions/:id/edit" element={<TrainingSessionForm />} />
+        <Route path="/trainer/races" element={<Races />} />
+        {/* Hồ sơ ngựa (chỉ xem): tạm placeholder */}
         <Route path="/trainer/*" element={<PlaceholderPage />} />
       </Route>
 

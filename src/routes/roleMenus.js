@@ -1,5 +1,4 @@
 import {
-  Activity,
   Bandage,
   CalendarDays,
   ChartColumn,
@@ -15,6 +14,7 @@ import {
   Syringe,
   TrendingUp,
   TriangleAlert,
+  Trophy,
   UserCheck,
   Users,
   Wheat,
@@ -23,10 +23,11 @@ import {
 // Menu sidebar của từng role (roleId → danh sách mục). icon: component từ lucide-react
 const roleMenus = {
   head_trainer: [
-    { label: "Giáo án huấn luyện", path: "/trainer/plans", icon: ClipboardList },
+    { label: "Giáo án tập luyện", path: "/trainer/plans", icon: ClipboardList },
     { label: "Lịch tập", path: "/trainer/schedule", icon: CalendarDays },
-    { label: "Dashboard thể lực", path: "/trainer/dashboard", icon: Activity },
-    { label: "Đánh giá phong độ", path: "/trainer/performance", icon: TrendingUp },
+    { label: "Kết quả buổi tập", path: "/trainer/sessions", icon: TrendingUp },
+    { label: "Đăng ký thi đấu", path: "/trainer/races", icon: Trophy },
+    { label: "Hồ sơ ngựa", path: "/trainer/horses", icon: FolderOpen },
   ],
   veterinarian: [
     { label: "Hồ sơ khám bệnh", path: "/vet/records", icon: Stethoscope },

@@ -37,7 +37,8 @@ const variantStyles = {
 
 // Ô nhập liệu có nhãn + thông báo lỗi. type="password" sẽ có nút ẩn/hiện mật khẩu.
 // leadingIcon: icon hiển thị bên trái ô (vd kính lúp cho ô tìm kiếm)
-export default function FormField({ label, id, type = "text", error, leadingIcon, variant = "filled", ...inputProps }) {
+// suffix: chữ đơn vị nằm bên phải TRONG ô (vd "m", "km/tuần")
+export default function FormField({ label, id, type = "text", error, leadingIcon, suffix, variant = "filled", ...inputProps }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
   const styles = variantStyles[variant] ?? variantStyles.filled;
@@ -57,9 +58,14 @@ export default function FormField({ label, id, type = "text", error, leadingIcon
           id={id}
           type={isPassword && showPassword ? "text" : type}
           aria-invalid={Boolean(error)}
-          className={`${styles.input} ${isPassword ? "pr-12" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
+          className={`${styles.input} ${isPassword ? "pr-12" : ""} ${suffix ? "pr-20" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
           {...inputProps}
         />
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-sm text-stone">
+            {suffix}
+          </span>
+        )}
         {isPassword && (
           <button
             type="button"

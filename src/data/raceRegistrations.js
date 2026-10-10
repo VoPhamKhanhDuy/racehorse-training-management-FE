@@ -1,14 +1,15 @@
-// Mock data — bảng RACEREGISTRATION (đăng ký thi đấu) trong ERD
-// TODO: đối chiếu tên cột với ERD của nhóm (CLAUDE.md chưa định nghĩa RACEREGISTRATION)
-// ThuHang: thứ hạng về đích; null = giải chưa diễn ra
+import { daysFromToday } from "../utils/date";
+
+// Mock data — bảng RACEREGISTRATION (đăng ký thi đấu) trong ERD: HorseID, RaceID, NgayDangKy
+// Khóa chính ghép HorseID + RaceID (1 ngựa không đăng ký trùng 1 giải).
+// Demo: giải đã qua có 2 ngựa; giải +6 có Blaze + Lightning; giải +15 có Storm (đăng ký trước khi bị khóa tập);
+// 2 giải còn lại để trống.
 const raceRegistrations = [
-  { RegistrationID: 1, RaceID: 1, HorseID: 1, ThuHang: 2 },
-  { RegistrationID: 2, RaceID: 1, HorseID: 4, ThuHang: 5 },
-  { RegistrationID: 3, RaceID: 2, HorseID: 1, ThuHang: 1 },
-  { RegistrationID: 4, RaceID: 2, HorseID: 2, ThuHang: 3 },
-  { RegistrationID: 5, RaceID: 2, HorseID: 6, ThuHang: 2 },
-  { RegistrationID: 6, RaceID: 3, HorseID: 1, ThuHang: null },
-  { RegistrationID: 7, RaceID: 3, HorseID: 3, ThuHang: null },
+  { HorseID: 1, RaceID: 1, NgayDangKy: daysFromToday(-30) },
+  { HorseID: 6, RaceID: 1, NgayDangKy: daysFromToday(-28) },
+  { HorseID: 4, RaceID: 2, NgayDangKy: daysFromToday(-12) },
+  { HorseID: 2, RaceID: 2, NgayDangKy: daysFromToday(-8) },
+  { HorseID: 3, RaceID: 3, NgayDangKy: daysFromToday(-6) },
 ];
 
 export default raceRegistrations;

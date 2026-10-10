@@ -73,3 +73,38 @@ export function formatRelativeTime(isoDateTime) {
   const [datePart, timePart] = isoDateTime.split("T");
   return `${formatDate(datePart)} ${timePart}`;
 }
+
+// Cộng n ngày vào "YYYY-MM-DD"
+export function addDays(isoDate, n) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return toISODate(new Date(year, month - 1, day + n));
+}
+
+// Thứ Hai của tuần chứa ngày "YYYY-MM-DD" (tuần tính Thứ Hai → Chủ nhật)
+export function startOfWeek(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const weekday = new Date(year, month - 1, day).getDay(); // 0 = Chủ nhật
+  return addDays(isoDate, weekday === 0 ? -6 : 1 - weekday);
+}
+
+const WEEKDAY_NAMES = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
+// "2026-10-10" → "Thứ Bảy"
+export function weekdayName(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return WEEKDAY_NAMES[new Date(year, month - 1, day).getDay()];
+}
+
+// "2026-10-10" → "10/10"
+export function formatDayMonth(isoDate) {
+  const [, month, day] = isoDate.split("-");
+  return `${day}/${month}`;
+}
+
+const SHORT_WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+// "2026-10-10" → "T7"
+export function shortWeekdayName(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return SHORT_WEEKDAYS[new Date(year, month - 1, day).getDay()];
+}

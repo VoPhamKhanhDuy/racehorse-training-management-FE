@@ -9,7 +9,7 @@ import { daysFromToday } from "../utils/date";
 const users = [
   { id: "U001", fullName: "Trần Văn Trưởng", email: "trainer@equitrack.vn", password: "123456", roleId: "head_trainer", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-01" },
   { id: "U002", fullName: "Nguyễn Thị Vet", email: "vet@equitrack.vn", password: "123456", roleId: "veterinarian", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-01" },
-  { id: "U003", fullName: "Lê Văn Groom", email: "groom@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-01" },
+  { id: "U003", fullName: "Lê Văn Nam", email: "groom@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-01" },
   { id: "U004", fullName: "Phạm Thị Owner", email: "owner@equitrack.vn", password: "123456", roleId: "horse_owner", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-05" },
   { id: "U005", fullName: "Hoàng Văn Manager", email: "manager@equitrack.vn", password: "123456", roleId: "club_manager", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-01" },
   { id: "U006", fullName: "Đặng Minh Khoa", email: "owner2@equitrack.vn", password: "123456", roleId: "horse_owner", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-12" },
@@ -21,6 +21,9 @@ const users = [
   { id: "U011", fullName: "Lý Thanh Tùng", email: "rejected@equitrack.vn", password: "123456", roleId: "horse_owner", status: "rejected", isActive: true, mustChangePassword: false, createdAt: daysFromToday(-9) },
   // Demo trang Quản lý nhân sự: 1 tài khoản đã bị khóa
   { id: "U012", fullName: "Phan Văn Tài", email: "groom2@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: false, mustChangePassword: false, createdAt: "2026-08-15" },
+  // Thêm 2 nhân viên chăm sóc đang hoạt động — Lịch tập chia đều cho 3 người (U003, U013, U014)
+  { id: "U013", fullName: "Đỗ Văn Hải", email: "groom3@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-20" },
+  { id: "U014", fullName: "Trương Thị Mai", email: "groom4@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-09-02" },
 ];
 
 export default users;
