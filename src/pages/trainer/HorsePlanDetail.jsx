@@ -25,7 +25,7 @@ export default function HorsePlanDetail({ horse, plans, healthStatus, lock, lock
         {firstMissingPhase ? (
           <Link
             to={newPlanLink(horse.HorseID, firstMissingPhase)}
-            className="rounded-sm bg-brass px-3.5 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-brass/85"
+            className="btn-primary"
           >
             + Lập giáo án
           </Link>

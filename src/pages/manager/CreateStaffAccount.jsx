@@ -201,13 +201,15 @@ export default function CreateStaffAccount() {
           </FormSection>
 
           <div className="border-t border-stone/20 pt-6">
+            <div className="flex justify-end">
             <button
               type="submit"
               disabled={submitting}
-              className="w-full cursor-pointer rounded-sm bg-brass py-3 font-semibold text-ink transition-colors hover:bg-brass/85 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary"
             >
               {submitting ? "Đang lưu..." : isEdit ? "Lưu thay đổi" : "Tạo tài khoản"}
             </button>
+            </div>
             {/* Chỉ khi tạo mới: mật khẩu mặc định do accountService gán, nhân sự bị bắt đổi ở lần đăng nhập đầu */}
             {!isEdit && (
               <p className="mt-3 text-center text-sm text-stone">

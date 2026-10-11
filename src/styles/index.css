@@ -18,6 +18,14 @@
   --color-taupe: #7a6857; /* xám nâu: chữ trạng thái "Đang điều trị" */
   --color-rust: #a3563f; /* nâu đỏ nhạt: thông báo lỗi dưới ô nhập (form hồ sơ ngựa) */
 
+  /* Loại sự cố (trang Báo cáo sự cố của nhân viên chăm sóc) */
+  --color-incident-animal: #c0262d; /* đỏ: sự cố liên quan ngựa (chữ + vạch trái hàng) */
+  --color-incident-facility: #6b5b3e; /* nâu olive: chuồng/thiết bị, khác */
+
+  /* Nút hành động chính (.btn-primary): nền = --color-brass-deep */
+  --color-primary-hover: #a8480a;
+  --color-primary-disabled: #e5cdb8;
+
   /* Ngăn trượt từ phải (components/Drawer.jsx) */
   --animate-drawer-in: drawer-in 200ms ease-out;
   --animate-fade-in: fade-in 200ms ease-out;
@@ -40,4 +48,42 @@
 
   /* Font serif cho tiêu đề (Source Serif 4 nạp trong index.html, weight 500/600), phần còn lại giữ font sans mặc định */
   --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
+}
+
+/* Nút hành động chính dùng chung mọi role: nút "+ ..." đầu trang, nút gửi/lưu của form, nút xác nhận của hộp thoại.
+   Nền cam đậm chữ trắng, cao 40px, không full-width. KHÔNG dùng cho nút trên từng hàng, nút Hủy/Quay lại, chip lọc.
+   Đặt trong layer components để class tiện ích (ml-auto, gap-2...) vẫn ghi đè được. */
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    height: 2.5rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-brass-deep);
+    padding-inline: 1.25rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: 600;
+    white-space: nowrap;
+    color: #fff;
+    outline: none;
+    transition: background-color 150ms ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+  .btn-primary:focus-visible {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px color-mix(in oklab, var(--color-brass) 60%, transparent);
+  }
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    background-color: var(--color-primary-disabled);
+    color: rgb(255 255 255 / 0.85);
+  }
 }

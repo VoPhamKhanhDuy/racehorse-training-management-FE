@@ -91,7 +91,7 @@ export default function StockAdjustModal({ supply, mode, onSubmit, onClose }) {
           <button
             type="submit"
             disabled={submitting}
-            className="cursor-pointer rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-primary"
           >
             {submitting ? "Đang xử lý..." : config.confirmLabel}
           </button>

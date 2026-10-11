@@ -2,7 +2,7 @@ import { dateTimeFromToday, hoursFromNow } from "../utils/date";
 
 // Mock data — bảng AUDITLOG (nhật ký thao tác) trong ERD
 // UserID: người thực hiện (số, tham chiếu USER — xem utils/userId.js)
-// TargetTable + TargetID: bản ghi bị tác động (USER, HORSE, SUPPLY, TRAININGPLAN, TRAININGSESSION, HEALTHSTATUS, TRAININGLOCK, VACCINATIONSCHEDULE)
+// TargetTable + TargetID: bản ghi bị tác động (USER, HORSE, SUPPLY, TRAININGPLAN, TRAININGSESSION, HEALTHSTATUS, TRAININGLOCK, VACCINATIONSCHEDULE, CARETASK, INCIDENTREPORT)
 //   HEALTHSTATUS khóa theo HorseID nên TargetID là HorseID
 // ThoiGian: "YYYY-MM-DDTHH:mm", tính tương đối theo lúc tải trang để demo luôn có hoạt động "vài giờ trước"
 const auditLog = [

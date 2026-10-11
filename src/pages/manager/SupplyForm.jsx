@@ -212,11 +212,11 @@ export default function SupplyForm() {
           </SelectField>
         </div>
 
-        <div className="border-t border-stone/20 pt-6">
+        <div className="flex justify-end border-t border-stone/20 pt-6">
           <button
             type="submit"
             disabled={submitting}
-            className="w-full cursor-pointer rounded-sm bg-brass py-3 font-semibold text-ink transition-colors hover:bg-brass/85 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-primary"
           >
             {submitting ? "Đang lưu..." : isEdit ? "Lưu thay đổi" : "Thêm vật tư"}
           </button>

@@ -283,7 +283,7 @@ export default function Vaccinations() {
             />
             <Link
               to={`/vet/vaccinations/new${horseFilter ? `?horse=${horseFilter}` : ""}`}
-              className="ml-auto rounded-sm border border-brass px-4 py-2 text-sm font-semibold whitespace-nowrap text-brass-deep transition-colors hover:bg-brass/10"
+              className="btn-primary ml-auto"
             >
               + Thêm lịch
             </Link>

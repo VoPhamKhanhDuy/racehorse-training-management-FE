@@ -37,7 +37,7 @@ export default function ReleaseLockDialog({ horseName, loading, onConfirm, onCan
           type="button"
           onClick={() => onConfirm(status)}
           disabled={!status || loading}
-          className="cursor-pointer rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-primary"
         >
           {loading ? "Đang xử lý..." : "Gỡ khóa"}
         </button>
