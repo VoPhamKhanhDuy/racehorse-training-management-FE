@@ -40,9 +40,9 @@ const roleMenus = {
     { label: "Vật tư", path: "/groom/supplies", icon: Package },
   ],
   horse_owner: [
-    { label: "Hồ sơ ngựa", path: "/owner/horses", icon: FolderOpen },
-    { label: "Sức khỏe & thành tích", path: "/owner/health", icon: HeartPulse },
-    { label: "Báo cáo chi phí/doanh thu", path: "/owner/reports", icon: ChartColumn },
+    { label: "Ngựa của tôi", path: "/owner/horses", icon: FolderOpen },
+    { label: "Sức khỏe", path: "/owner/health", icon: HeartPulse },
+    { label: "Lịch trình", path: "/owner/schedule", icon: CalendarDays },
   ],
   // Sắp theo mức ưu tiên công việc: việc cốt lõi/cần xử lý nhanh lên trên, xem định kỳ/audit xuống dưới
   club_manager: [

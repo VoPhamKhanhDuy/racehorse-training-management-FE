@@ -1,3 +1,4 @@
+import AccountStatusText from "../../components/AccountStatusText";
 import { daysSince, formatDate, formatDaysAgo } from "../../utils/date";
 
 const PROCESSED_LABELS = { approved: "Đã duyệt", rejected: "Đã từ chối" };
@@ -67,7 +68,7 @@ export default function ApprovalRow({ account, roleName, onApprove, onReject }) 
             </button>
           </div>
         ) : (
-          <span className="text-xs text-stone">{PROCESSED_LABELS[account.status]}</span>
+          <AccountStatusText status={PROCESSED_LABELS[account.status]} className="text-sm" />
         )}
       </td>
     </tr>

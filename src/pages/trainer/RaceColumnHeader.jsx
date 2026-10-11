@@ -10,8 +10,8 @@ function countdownText(daysLeft) {
 }
 
 // Tiêu đề 1 cột giải (3 dòng): ngày lớn + "thg 10 · T6" | đếm ngược căn phải; tên giải (tối đa 2 dòng); địa điểm (1 dòng).
-// Giải trong vòng 7 ngày: vạch cam 3px ở mép trên. Giải đã diễn ra: chữ mờ.
-export default function RaceColumnHeader({ race, isFirst }) {
+// Giải trong vòng 7 ngày: vạch cam 3px ở mép trên. Giải đã diễn ra: chữ mờ + dòng "Đã nhập N/M" (resultCount: { done, total }).
+export default function RaceColumnHeader({ race, isFirst, resultCount }) {
   const daysLeft = -daysSince(race.Ngay);
   const isPast = daysLeft < 0;
   const isSoon = daysLeft >= 0 && daysLeft <= 7;
@@ -43,6 +43,11 @@ export default function RaceColumnHeader({ race, isFirst }) {
           </span>
         </p>
       </div>
+      {isPast && resultCount?.total > 0 && (
+        <p className="mt-1.5 text-xs text-stone tabular-nums">
+          Đã nhập {resultCount.done}/{resultCount.total}
+        </p>
+      )}
     </th>
   );
 }

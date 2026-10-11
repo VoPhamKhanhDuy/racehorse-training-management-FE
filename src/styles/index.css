@@ -22,6 +22,11 @@
   --color-incident-animal: #c0262d; /* đỏ: sự cố liên quan ngựa (chữ + vạch trái hàng) */
   --color-incident-facility: #6b5b3e; /* nâu olive: chuồng/thiết bị, khác */
 
+  /* Trạng thái tài khoản USER (components/AccountStatusText.jsx) */
+  --color-account-pending: #d97706; /* Chờ duyệt */
+  --color-account-active: #2f7d4f; /* Đã duyệt / Đang hoạt động */
+  --color-account-blocked: #c0262d; /* Từ chối / Bị khóa */
+
   /* Nút hành động chính (.btn-primary): nền = --color-brass-deep */
   --color-primary-hover: #a8480a;
   --color-primary-disabled: #e5cdb8;

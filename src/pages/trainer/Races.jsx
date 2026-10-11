@@ -1,10 +1,12 @@
 import TrainingLockNotice from "../../components/TrainingLockNotice";
 import { LOCK_CONFLICT_RACE } from "../../utils/trainingLock";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
+import useAuth from "../../hooks/useAuth";
 import RaceMatrix from "./RaceMatrix";
+import RaceResultPopover from "./RaceResultPopover";
 import {
   BLOCKING_HEALTH_STATUS,
   cancelRaceRegistration,
@@ -15,8 +17,15 @@ import {
   getRaces,
   getTrainingSessions,
   registerHorseForRace,
+  updateRaceResult,
 } from "../../services/trainerService";
+import { addAuditLog } from "../../services/auditService";
 import { addDays, formatDayMonth, todayISO } from "../../utils/date";
+import { NO_RANK, hasResult } from "../../utils/raceResult";
+import { toUserID } from "../../utils/userId";
+
+// Nhãn kết quả trong toast / nhật ký: "hạng 2" | "không xếp hạng" | "chưa có kết quả"
+const resultText = (rank) => (rank === null ? "chưa có kết quả" : rank === NO_RANK ? "không xếp hạng" : `hạng ${rank}`);
 
 const VIEW_TABS = [
   { value: "upcoming", label: "Sắp tới" },
@@ -27,8 +36,11 @@ const TOAST_MS = 3500;
 
 // Đăng ký thi đấu: ma trận ngựa × giải (RACE chỉ đọc). Bấm "+" để đăng ký, bấm chip "Đã đăng ký" để hủy (RACEREGISTRATION).
 // Chặn: ngựa đang khóa tập (TRAININGLOCK) hoặc HEALTHSTATUS "Đang điều trị"; sức khỏe khác "Tốt" thì hỏi xác nhận.
+// Giải đã diễn ra: bấm ô ngựa đã đăng ký để nhập/sửa thứ hạng (RACEREGISTRATION.ThuHang) qua popover; sửa kết quả đã có thì hỏi lại.
 export default function Races() {
   const today = todayISO();
+  const { user } = useAuth();
+  const trainerId = toUserID(user.id);
   const [races, setRaces] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [horses, setHorses] = useState([]);
@@ -43,6 +55,9 @@ export default function Races() {
   const [cancelTarget, setCancelTarget] = useState(null); // { horse, race }
   const [cancelling, setCancelling] = useState(false);
   const [toast, setToast] = useState(null); // { text, error }
+  const [resultTarget, setResultTarget] = useState(null); // { horse, race, anchor } — popover nhập hạng đang mở
+  const [resultConfirm, setResultConfirm] = useState(null); // { horse, race, rank } — chờ xác nhận sửa kết quả đã nhập
+  const [savingResult, setSavingResult] = useState(false);
 
   // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
   useEffect(() => {
@@ -146,6 +161,46 @@ export default function Races() {
     setCancelTarget(null);
   };
 
+  const closeResultPopover = useCallback(() => setResultTarget(null), []);
+
+  const doSaveResult = async (horse, race, rank) => {
+    setSavingResult(true);
+    try {
+      const saved = await updateRaceResult(race.RaceID, horse.HorseID, rank);
+      setRegistrations((prev) => prev.map((r) => (r.RaceID === saved.RaceID && r.HorseID === saved.HorseID ? saved : r)));
+      addAuditLog({
+        UserID: trainerId,
+        HanhDong: `Cập nhật kết quả thi đấu: ${race.TenGiai} – ${horse.Ten} ${resultText(rank)}`,
+        TargetTable: "RACEREGISTRATION",
+        TargetID: race.RaceID,
+        targetLabel: horse.Ten,
+      });
+      setToast({ text: `Đã lưu kết quả: ${horse.Ten} – ${resultText(rank)}` });
+      setResultTarget(null);
+    } catch (err) {
+      setToast({ text: err.message, error: true });
+    }
+    setSavingResult(false);
+  };
+
+  // Không đổi gì thì chỉ đóng; sửa kết quả đã nhập thì hỏi xác nhận trước
+  const handleSaveResult = (rank) => {
+    const { horse, race } = resultTarget;
+    const registration = registrationByKey[`${horse.HorseID}|${race.RaceID}`];
+    if (rank === registration.ThuHang) setResultTarget(null);
+    else if (hasResult(registration)) {
+      setResultTarget(null);
+      setResultConfirm({ horse, race, rank });
+    } else doSaveResult(horse, race, rank);
+  };
+
+  const resultRegistration = resultTarget && registrationByKey[`${resultTarget.horse.HorseID}|${resultTarget.race.RaceID}`];
+  const resultEntries = resultTarget
+    ? registrations
+        .filter((r) => r.RaceID === resultTarget.race.RaceID)
+        .map((r) => ({ ...r, horseName: horses.find((h) => h.HorseID === r.HorseID)?.Ten ?? `Ngựa #${r.HorseID}` }))
+    : [];
+
   return (
     <div>
       <h1 className="mb-5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Đăng ký thi đấu</h1>
@@ -199,7 +254,11 @@ export default function Races() {
               ))}
             </div>
           )}
-          <p className="mt-3 mb-4 text-xs text-stone">Viền cam: đã đăng ký · Bấm + để đăng ký · Bấm ô đã đăng ký để hủy</p>
+          <p className="mt-3 mb-4 text-xs text-stone">
+            {tab === "upcoming"
+              ? "Viền cam: đã đăng ký · Bấm + để đăng ký · Bấm ô đã đăng ký để hủy"
+              : "Bấm ô ngựa đã đăng ký để nhập hoặc sửa thứ hạng"}
+          </p>
 
           {visibleRaces.length === 0 ? (
             <p className="rounded-lg border border-gridline bg-white px-4 py-12 text-center text-sm text-stone">
@@ -215,6 +274,7 @@ export default function Races() {
               emptyText="Không tìm thấy ngựa nào khớp."
               onRegister={handleRegister}
               onCancel={(horse, race) => setCancelTarget({ horse, race })}
+              onOpenResult={(horse, race, anchor) => setResultTarget({ horse, race, anchor })}
             />
           )}
         </>
@@ -235,6 +295,34 @@ export default function Races() {
         </div>
       )}
 
+      {resultTarget && resultRegistration && (
+        <RaceResultPopover
+          key={`${resultTarget.horse.HorseID}|${resultTarget.race.RaceID}`}
+          horse={resultTarget.horse}
+          race={resultTarget.race}
+          registration={resultRegistration}
+          entries={resultEntries}
+          anchor={resultTarget.anchor}
+          saving={savingResult}
+          onSave={handleSaveResult}
+          onClose={closeResultPopover}
+        />
+      )}
+      <ConfirmDialog
+        open={Boolean(resultConfirm)}
+        title="Sửa kết quả thi đấu"
+        message="Kết quả này đã được nhập. Bạn có chắc muốn thay đổi?"
+        confirmLabel="Lưu thay đổi"
+        cancelLabel="Không"
+        danger={false}
+        loading={savingResult}
+        onConfirm={async () => {
+          const { horse, race, rank } = resultConfirm;
+          await doSaveResult(horse, race, rank);
+          setResultConfirm(null);
+        }}
+        onCancel={() => setResultConfirm(null)}
+      />
       <ConfirmDialog
         open={Boolean(healthConfirm)}
         title="Cảnh báo sức khỏe"

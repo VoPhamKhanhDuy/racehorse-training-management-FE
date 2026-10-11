@@ -4,12 +4,14 @@ import { SearchX } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import Pagination from "../../components/Pagination";
-import HorseCard from "./HorseCard";
+import HorseCard from "../../components/HorseCard";
 import HorseDetailModal from "./HorseDetailModal";
 import HorseFilters from "./HorseFilters";
 import useAuth from "../../hooks/useAuth";
 import { getHealthStatuses, getHorseOwners, getHorses } from "../../services/horseService";
 import { deleteHorseIfUnused, getHorseIdsWithRelatedData } from "../../services/horseUsageService";
+import { getRaceRegistrations, getRaces } from "../../services/trainerService";
+import { getHorseAchievements } from "../../utils/horseAchievements";
 import { addAuditLog } from "../../services/auditService";
 import { toUserID } from "../../utils/userId";
 import { getHorseAge } from "../../utils/date";
@@ -26,6 +28,8 @@ export default function HorseManagement() {
   const [owners, setOwners] = useState([]);
   const [healthStatuses, setHealthStatuses] = useState([]);
   const [usedHorseIds, setUsedHorseIds] = useState(new Set()); // ngựa đã có dữ liệu liên quan → không cho xóa
+  const [races, setRaces] = useState([]);
+  const [registrations, setRegistrations] = useState([]); // RACEREGISTRATION — cho khối "Thành tích thi đấu"
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(initialFilters);
   const [sort, setSort] = useState({ key: "Ten", direction: "asc" });
@@ -39,13 +43,15 @@ export default function HorseManagement() {
   // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock horseService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getHorses(), getHorseOwners(), getHealthStatuses(), getHorseIdsWithRelatedData()]).then(
-      ([horseList, ownerList, healthList, usedIds]) => {
+    Promise.all([getHorses(), getHorseOwners(), getHealthStatuses(), getHorseIdsWithRelatedData(), getRaces(), getRaceRegistrations()]).then(
+      ([horseList, ownerList, healthList, usedIds, raceList, registrationList]) => {
         if (ignore) return;
         setHorses(horseList);
         setOwners(ownerList);
         setHealthStatuses(healthList);
         setUsedHorseIds(usedIds);
+        setRaces(raceList);
+        setRegistrations(registrationList);
         setLoading(false);
       }
     );
@@ -56,6 +62,8 @@ export default function HorseManagement() {
 
   const ownerById = Object.fromEntries(owners.map((o) => [o.UserID, o]));
   const healthByHorse = Object.fromEntries(healthStatuses.map((h) => [h.HorseID, h]));
+  // Thành tích thi đấu của ngựa đang xem (util dùng chung với trang Ngựa của tôi)
+  const selectedAchievements = selectedHorse ? getHorseAchievements(selectedHorse.HorseID, races, registrations) : null;
   const breeds = [...new Set(horses.map((h) => h.Giong).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi"));
 
   // Số liệu tổng quan — tính trên toàn bộ danh sách, không phụ thuộc bộ lọc
@@ -203,7 +211,7 @@ export default function HorseManagement() {
                 <HorseCard
                   key={horse.HorseID}
                   horse={horse}
-                  ownerName={ownerById[horse.OwnerID]?.HoTen}
+                  meta={`Chủ ngựa: ${ownerById[horse.OwnerID]?.HoTen ?? "Chưa rõ"}`}
                   healthStatus={healthByHorse[horse.HorseID]?.TrangThai}
                   onClick={setSelectedHorse}
                 />
@@ -225,6 +233,7 @@ export default function HorseManagement() {
         horse={selectedHorse}
         owner={selectedHorse ? ownerById[selectedHorse.OwnerID] : null}
         healthRecord={selectedHorse ? healthByHorse[selectedHorse.HorseID] : null}
+        achievements={selectedAchievements}
         canDelete={selectedHorse ? !usedHorseIds.has(selectedHorse.HorseID) : false}
         onClose={() => setSelectedHorse(null)}
         onDelete={handleRequestDelete}

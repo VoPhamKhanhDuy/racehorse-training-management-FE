@@ -4,6 +4,9 @@
 // isActive: false = tài khoản bị Quản lý CLB khóa, không đăng nhập được (khác status: status là bước duyệt đăng ký)
 // mustChangePassword: true = tài khoản nhân sự mới đang dùng mật khẩu mặc định, phải đổi ở lần đăng nhập đầu
 // createdAt: ngày đăng ký/tạo tài khoản ("YYYY-MM-DD")
+// SEED — id CỐ ĐỊNH (U001…U016), không bao giờ ghi vào localStorage; HORSE.OwnerID tham chiếu đúng các id này
+// (chủ ngựa demo owner@equitrack.vn = U004 ↔ OwnerID 4). Tài khoản tạo khi dùng app có id từ U1000 (data/seedVersion.js).
+// Sửa seed (id, email, OwnerID...) thì tăng SEED_VERSION để dữ liệu đã lưu trên trình duyệt được làm mới.
 import { daysFromToday } from "../utils/date";
 
 const users = [
@@ -24,6 +27,9 @@ const users = [
   // Thêm 2 nhân viên chăm sóc đang hoạt động — Lịch tập chia đều cho 3 người (U003, U013, U014)
   { id: "U013", fullName: "Đỗ Văn Hải", email: "groom3@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-08-20" },
   { id: "U014", fullName: "Trương Thị Mai", email: "groom4@equitrack.vn", password: "123456", roleId: "groom", status: "approved", isActive: true, mustChangePassword: false, createdAt: "2026-09-02" },
+  // Demo luồng đăng nhập theo trạng thái: đăng nhập đúng mật khẩu → màn trạng thái "Chờ duyệt" / "Từ chối"
+  { id: "U015", fullName: "Lâm Gia Phúc", email: "owner.pending@equitrack.vn", password: "123456", roleId: "horse_owner", status: "pending", isActive: true, mustChangePassword: false, createdAt: daysFromToday(-1) },
+  { id: "U016", fullName: "Hồ Ngọc Trâm", email: "owner.rejected@equitrack.vn", password: "123456", roleId: "horse_owner", status: "rejected", isActive: true, mustChangePassword: false, createdAt: daysFromToday(-7) },
 ];
 
 export default users;
