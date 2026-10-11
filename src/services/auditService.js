@@ -18,6 +18,8 @@ export const AUDIT_CATEGORIES = {
   TRAININGSESSION: "Buổi tập",
   TRAININGLOCK: "Khóa huấn luyện",
   VACCINATIONSCHEDULE: "Tiêm phòng",
+  CARETASK: "Chăm sóc",
+  INCIDENTREPORT: "Sự cố",
   SUPPLY: "Vật tư",
 };
 
@@ -60,6 +62,9 @@ export async function getAuditLogs() {
         return { prefix: "của", name: session && horseName(session.HorseID) };
       }
       // Lệnh khóa / lịch tiêm: tên ngựa lấy từ targetLabel lúc ghi log
+      case "CARETASK":
+        return { prefix: "của" };
+      case "INCIDENTREPORT":
       case "VACCINATIONSCHEDULE":
       case "TRAININGLOCK":
         return { prefix: "cho" };

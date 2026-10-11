@@ -53,7 +53,7 @@ export default function MarkVaccinatedDialog({ item, horseName, loading, error, 
           type="button"
           onClick={handleConfirm}
           disabled={loading}
-          className="cursor-pointer rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primary"
         >
           {loading ? "Đang xử lý..." : "Xác nhận đã tiêm"}
         </button>

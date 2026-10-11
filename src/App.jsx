@@ -28,6 +28,11 @@ import HorseProfile from "./pages/trainer/HorseProfile";
 import MedicalExams from "./pages/vet/MedicalExams";
 import MedicalExamForm from "./pages/vet/MedicalExamForm";
 import HealthOverview from "./pages/vet/HealthOverview";
+import GroomTasks from "./pages/groom/GroomTasks";
+import StableMap from "./pages/groom/StableMap";
+import IncidentReports from "./pages/groom/IncidentReports";
+import IncidentReportForm from "./pages/groom/IncidentReportForm";
+import GroomSupplies from "./pages/groom/GroomSupplies";
 import TrainingLocks from "./pages/vet/TrainingLocks";
 import TrainingLockForm from "./pages/vet/TrainingLockForm";
 import Vaccinations from "./pages/vet/Vaccinations";
@@ -99,7 +104,13 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/groom" element={<Navigate to="/groom/stable-map" replace />} />
+        {/* Trang đích của nhân viên chăm sóc sau khi đăng nhập */}
+        <Route path="/groom" element={<Navigate to="/groom/tasks" replace />} />
+        <Route path="/groom/tasks" element={<GroomTasks />} />
+        <Route path="/groom/stable" element={<StableMap />} />
+        <Route path="/groom/incidents" element={<IncidentReports />} />
+        <Route path="/groom/incidents/new" element={<IncidentReportForm />} />
+        <Route path="/groom/supplies" element={<GroomSupplies />} />
         <Route path="/groom/*" element={<PlaceholderPage />} />
       </Route>
 

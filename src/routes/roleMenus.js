@@ -16,7 +16,6 @@ import {
   Trophy,
   UserCheck,
   Users,
-  Wheat,
 } from "lucide-react";
 
 // Menu sidebar của từng role (roleId → danh sách mục). icon: component từ lucide-react
@@ -35,10 +34,10 @@ const roleMenus = {
     { label: "Lịch tiêm phòng", path: "/vet/vaccinations", icon: Syringe },
   ],
   groom: [
-    { label: "Sơ đồ chuồng trại", path: "/groom/stable-map", icon: LayoutGrid },
-    { label: "Khẩu phần ăn", path: "/groom/feed", icon: Wheat },
-    { label: "Công việc hằng ngày", path: "/groom/tasks", icon: ListChecks },
+    { label: "Công việc hôm nay", path: "/groom/tasks", icon: ListChecks },
+    { label: "Chuồng trại", path: "/groom/stable", icon: LayoutGrid },
     { label: "Báo cáo sự cố", path: "/groom/incidents", icon: TriangleAlert },
+    { label: "Vật tư", path: "/groom/supplies", icon: Package },
   ],
   horse_owner: [
     { label: "Hồ sơ ngựa", path: "/owner/horses", icon: FolderOpen },

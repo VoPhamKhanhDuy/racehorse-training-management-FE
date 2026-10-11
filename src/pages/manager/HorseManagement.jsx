@@ -141,7 +141,7 @@ export default function HorseManagement() {
         </div>
         <Link
           to="/manager/horses/new"
-          className="rounded-sm bg-brass px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-brass/85"
+          className="btn-primary"
         >
           + Thêm ngựa mới
         </Link>

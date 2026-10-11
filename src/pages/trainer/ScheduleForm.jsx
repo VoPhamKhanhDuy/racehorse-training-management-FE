@@ -289,7 +289,7 @@ export default function ScheduleForm() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="cursor-pointer rounded-sm bg-brass px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-brass/85 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary"
               >
                 {submitting ? "Đang lưu..." : isEdit ? "Lưu thay đổi" : "Xếp lịch"}
               </button>

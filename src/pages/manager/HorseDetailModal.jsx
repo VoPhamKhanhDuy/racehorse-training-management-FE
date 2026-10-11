@@ -72,7 +72,7 @@ export default function HorseDetailModal({ horse, owner, healthRecord, canDelete
             </button>
             <Link
               to={`/manager/horses/${horse.HorseID}/edit`}
-              className="inline-flex items-center gap-2 rounded-sm bg-brass px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-brass/85"
+              className="btn-primary"
             >
               <Pencil className="h-4 w-4" />
               Sửa hồ sơ

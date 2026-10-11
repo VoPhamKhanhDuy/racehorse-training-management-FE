@@ -32,9 +32,12 @@ export default function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           disabled={loading}
-          className={`cursor-pointer rounded-xl px-5 py-2.5 font-semibold text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-            danger ? "bg-alert hover:bg-alert/90" : "bg-orange-500 hover:bg-orange-600"
-          }`}
+          // Xác nhận thường dùng nút chính chung (.btn-primary); xác nhận nguy hiểm (xóa, khóa...) giữ nền đỏ cảnh báo
+          className={
+            danger
+              ? "cursor-pointer rounded-xl bg-alert px-5 py-2.5 font-semibold text-white shadow-md transition-colors hover:bg-alert/90 disabled:cursor-not-allowed disabled:opacity-60"
+              : "btn-primary"
+          }
         >
           {loading ? "Đang xử lý..." : confirmLabel}
         </button>
