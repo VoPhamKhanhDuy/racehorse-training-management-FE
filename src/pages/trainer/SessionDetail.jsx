@@ -4,6 +4,7 @@ import HorseIcon from "../../components/HorseIcon";
 import SessionCharts from "./SessionCharts";
 import SessionLog from "./SessionLog";
 import { SESSION_UNITS } from "../../data/trainingSessionOptions";
+import { formatHorseAge } from "../../utils/date";
 
 const WINDOW = 7; // số buổi gần nhất để tính trung bình
 const BAR_COUNT = 8; // số cột mini trong khối chỉ số tập
@@ -41,7 +42,7 @@ export default function SessionDetail({ horse, sessions, isLocked }) {
       ]
     : [];
   // Dòng phụ: chỉ hiện trường HORSE có dữ liệu
-  const facts = [horse.Giong, horse.Tuoi && `${horse.Tuoi} tuổi`, horse.CanNang && `${horse.CanNang.toLocaleString("vi-VN")} kg`].filter(Boolean);
+  const facts = [horse.Giong, formatHorseAge(horse.NgaySinh), horse.CanNang && `${horse.CanNang.toLocaleString("vi-VN")} kg`].filter(Boolean);
 
   return (
     <section aria-label={`Kết quả buổi tập của ${horse.Ten}`}>

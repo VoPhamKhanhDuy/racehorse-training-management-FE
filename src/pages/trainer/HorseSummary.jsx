@@ -1,10 +1,11 @@
+import { formatHorseAge } from "../../utils/date";
 import HorseIcon from "../../components/HorseIcon";
 
 // Thông tin ngắn của 1 ngựa: ảnh, tên, giống + hàng "Tuổi | Cân nặng | Sức khỏe".
 // Dùng ở chi tiết giáo án và cột ngữ cảnh của form giáo án. Mục nào chưa có dữ liệu thì ẩn, không hiện "N/A".
 export default function HorseSummary({ horse, healthStatus }) {
   const facts = [
-    horse.Tuoi && `${horse.Tuoi} tuổi`,
+    formatHorseAge(horse.NgaySinh),
     horse.CanNang && `${horse.CanNang.toLocaleString("vi-VN")} kg`,
     healthStatus && `Sức khỏe: ${healthStatus}`,
   ].filter(Boolean);

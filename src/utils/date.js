@@ -17,6 +17,35 @@ export function daysFromToday(n) {
   return toISODate(date);
 }
 
+// Ngày cách hôm nay n tháng (n âm = quá khứ), dạng "YYYY-MM-DD".
+// Tháng đích ngắn hơn thì lùi về ngày cuối tháng (vd 31/03 − 1 tháng → 28/02 hoặc 29/02)
+export function monthsFromToday(n) {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + n + 1, 0).getDate();
+  return toISODate(new Date(now.getFullYear(), now.getMonth() + n, Math.min(now.getDate(), lastDay)));
+}
+
+// Tuổi tròn của ngựa tính đến hôm nay từ NgaySinh "YYYY-MM-DD" (chưa tới sinh nhật năm nay thì trừ 1).
+// Không có ngày sinh → null. Tuổi KHÔNG lưu trong HORSE, luôn tính từ NgaySinh.
+export function getHorseAge(ngaySinh) {
+  if (!ngaySinh) return null;
+  const [year, month, day] = ngaySinh.split("-").map(Number);
+  const now = new Date();
+  const hadBirthday = now.getMonth() + 1 > month || (now.getMonth() + 1 === month && now.getDate() >= day);
+  return now.getFullYear() - year - (hadBirthday ? 0 : 1);
+}
+
+// NgaySinh → "6 tuổi" (không có ngày sinh → "")
+export function formatHorseAge(ngaySinh) {
+  const age = getHorseAge(ngaySinh);
+  return age === null ? "" : `${age} tuổi`;
+}
+
+// NgaySinh → "12/07/2020 (6 tuổi)" (không có ngày sinh → "")
+export function formatBirthDateWithAge(ngaySinh) {
+  return ngaySinh ? `${formatDate(ngaySinh)} (${formatHorseAge(ngaySinh)})` : "";
+}
+
 // "2026-10-07" → "07/10/2026"
 export function formatDate(isoDate) {
   if (!isoDate) return "";

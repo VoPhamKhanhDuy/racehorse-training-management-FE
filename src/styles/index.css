@@ -16,6 +16,7 @@
   --color-sand: #d9c3a0; /* be: cột mini các buổi cũ */
   --color-track: #efe9dd; /* nền thanh dữ liệu */
   --color-taupe: #7a6857; /* xám nâu: chữ trạng thái "Đang điều trị" */
+  --color-rust: #a3563f; /* nâu đỏ nhạt: thông báo lỗi dưới ô nhập (form hồ sơ ngựa) */
 
   /* Font serif cho tiêu đề (Source Serif 4 nạp trong index.html, weight 500/600), phần còn lại giữ font sans mặc định */
   --font-serif: "Source Serif 4", ui-serif, Georgia, serif;

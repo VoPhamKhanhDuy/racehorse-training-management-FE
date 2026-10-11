@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import HorseIcon from "../../components/HorseIcon";
 import { getHealthLabel, getHealthStyle } from "../../utils/healthStatusStyles";
+import { formatHorseAge } from "../../utils/date";
 
 // Vị trí cắt mặc định khi ảnh vào khung vuông: ưu tiên thân ngựa; ngựa nào cần lệch khung thì khai photoPosition trong data/horses.js
 const DEFAULT_PHOTO_POSITION = "center 30%";
@@ -14,7 +15,7 @@ const DEFAULT_PHOTO_POSITION = "center 30%";
 export default function HorseProfileRow({ horse, healthStatus, ownerName, locked, latestIndex }) {
   const facts = [
     horse.Giong,
-    horse.Tuoi && `${horse.Tuoi} tuổi`,
+    formatHorseAge(horse.NgaySinh),
     horse.CanNang && `${horse.CanNang.toLocaleString("vi-VN")} kg`,
   ].filter(Boolean);
 

@@ -1,7 +1,6 @@
 import HorseIcon from "../../components/HorseIcon";
 import TrainingLockNotice from "./TrainingLockNotice";
-import { formatDate } from "../../utils/date";
-import { getHealthLabel, getHealthStyle } from "../../utils/healthStatusStyles";
+import { formatBirthDateWithAge } from "../../utils/date";
 
 // HorseID → mã hồ sơ hiển thị: 1 → "NG-001"
 const toProfileCode = (horseId) => `NG-${String(horseId).padStart(3, "0")}`;
@@ -16,9 +15,9 @@ function Fact({ label, className = "", children }) {
   );
 }
 
-// Khối "Lý lịch" đầu hồ sơ ngựa: ảnh 200px + tên lớn + lưới nhãn–giá trị 2 cột (tên không lặp lại trong lưới).
-// health: bản ghi HEALTHSTATUS (có thể undefined); lock: TRAININGLOCK đang hiệu lực (có thể undefined).
-export default function HorseProfileIdentity({ horse, ownerName, health, lock, lockedByName }) {
+// Khối "Lý lịch" đầu hồ sơ ngựa: ảnh 200px + tên lớn + lưới nhãn–giá trị 2 cột.
+// lock: TRAININGLOCK đang hiệu lực (có thể undefined).
+export default function HorseProfileIdentity({ horse, ownerName, lock, lockedByName }) {
   return (
     <section aria-labelledby="horse-profile-name">
       <h2 className="font-serif text-xl font-semibold text-ink">Lý lịch</h2>
@@ -36,28 +35,23 @@ export default function HorseProfileIdentity({ horse, ownerName, health, lock, l
           <h1 id="horse-profile-name" className="mb-3 font-serif text-[40px] leading-tight font-semibold tracking-tight break-words text-bark">
             {horse.Ten}
           </h1>
+          {/* 8 ô, 2 cột: Mã hồ sơ | Giống; Giới tính | Ngày sinh; Màu lông | Cân nặng; Dòng dõi | Chủ ngựa.
+              Tên chỉ hiện 1 lần ở tiêu đề lớn phía trên; sức khỏe nằm ở mục "Sức khỏe" bên dưới */}
           <dl className="grid grid-cols-2 gap-x-6 sm:gap-x-8">
             <Fact label="Mã hồ sơ">
               <span className="tabular-nums">{toProfileCode(horse.HorseID)}</span>
             </Fact>
             <Fact label="Giống">{horse.Giong || "—"}</Fact>
-            <Fact label="Tuổi">{horse.Tuoi ? `${horse.Tuoi} tuổi` : "—"}</Fact>
+            <Fact label="Giới tính">{horse.GioiTinh || "—"}</Fact>
+            <Fact label="Ngày sinh">
+              <span className="tabular-nums">{formatBirthDateWithAge(horse.NgaySinh) || "—"}</span>
+            </Fact>
+            <Fact label="Màu lông">{horse.MauLong || "—"}</Fact>
             <Fact label="Cân nặng">{horse.CanNang ? `${horse.CanNang.toLocaleString("vi-VN")} kg` : "—"}</Fact>
             <Fact label="Dòng dõi">
               {horse.DongDoi ? <span className="font-serif italic">{horse.DongDoi}</span> : "—"}
             </Fact>
             <Fact label="Chủ ngựa">{ownerName ?? "—"}</Fact>
-            <Fact label="Cập nhật sức khỏe gần nhất" className="col-span-2">
-              {health ? (
-                <>
-                  <span className="tabular-nums">{formatDate(health.NgayCapNhat)}</span>
-                  <span className="text-stone"> · </span>
-                  <span className={getHealthStyle(health.TrangThai).text}>{health.TrangThai}</span>
-                </>
-              ) : (
-                <span className="text-stone">{getHealthLabel()}</span>
-              )}
-            </Fact>
           </dl>
         </div>
       </div>

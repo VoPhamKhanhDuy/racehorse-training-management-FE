@@ -105,7 +105,6 @@ export default function HorseProfile() {
         <HorseProfileIdentity
           horse={horse}
           ownerName={profile.ownerName}
-          health={profile.health}
           lock={profile.lock}
           lockedByName={profile.lockedByName}
         />

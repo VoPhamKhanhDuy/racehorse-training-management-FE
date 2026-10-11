@@ -7,6 +7,7 @@ import { getHorses } from "./horseService";
 import { getSupplies } from "./supplyService";
 import { getTrainingPlans, getTrainingSessions } from "./trainerService";
 import { toUserID } from "../utils/userId";
+import { toISODateTime } from "../utils/date";
 
 // Nhóm hành động theo bảng bị tác động — dùng cho pill lọc và icon trên timeline
 export const AUDIT_CATEGORIES = {
@@ -17,6 +18,16 @@ export const AUDIT_CATEGORIES = {
   TRAININGSESSION: "Buổi tập",
   SUPPLY: "Vật tư",
 };
+
+// Bản sao trong bộ nhớ để ghi thêm log mới (mất khi tải lại trang, giống chưa có DB)
+const logStore = auditLog.map((log) => ({ ...log }));
+
+// Ghi 1 dòng nhật ký. targetLabel (chỉ phía FE, không thuộc ERD): tên đối tượng lúc ghi —
+// dùng khi bản ghi đã bị xóa (vd Xóa hồ sơ ngựa) để timeline vẫn hiện tên thay vì "#ID".
+export function addAuditLog({ UserID, HanhDong, TargetTable, TargetID, targetLabel }) {
+  const LogID = logStore.reduce((max, log) => Math.max(max, log.LogID), 0) + 1;
+  logStore.push({ LogID, UserID, HanhDong, TargetTable, TargetID, ThoiGian: toISODateTime(new Date()), targetLabel });
+}
 
 export async function getAuditLogs() {
   const [users, horses, supplies, plans, sessions] = await Promise.all([
@@ -53,7 +64,7 @@ export async function getAuditLogs() {
     }
   };
 
-  return auditLog
+  return logStore
     .map((log) => {
       const target = resolveTarget(log);
       return {
@@ -61,7 +72,7 @@ export async function getAuditLogs() {
         actorName: userById[log.UserID]?.fullName ?? `Người dùng #${log.UserID}`,
         actorRoleId: userById[log.UserID]?.roleId,
         targetPrefix: target.prefix ?? "",
-        targetName: target.name ?? `#${log.TargetID}`,
+        targetName: target.name ?? log.targetLabel ?? `#${log.TargetID}`,
         category: AUDIT_CATEGORIES[log.TargetTable] ?? "Khác",
       };
     })
