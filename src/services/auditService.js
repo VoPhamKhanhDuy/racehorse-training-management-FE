@@ -16,6 +16,8 @@ export const AUDIT_CATEGORIES = {
   HEALTHSTATUS: "Sức khỏe",
   TRAININGPLAN: "Giáo án",
   TRAININGSESSION: "Buổi tập",
+  TRAININGLOCK: "Khóa huấn luyện",
+  VACCINATIONSCHEDULE: "Tiêm phòng",
   SUPPLY: "Vật tư",
 };
 
@@ -57,6 +59,10 @@ export async function getAuditLogs() {
         const session = sessions.find((s) => s.SessionID === TargetID);
         return { prefix: "của", name: session && horseName(session.HorseID) };
       }
+      // Lệnh khóa / lịch tiêm: tên ngựa lấy từ targetLabel lúc ghi log
+      case "VACCINATIONSCHEDULE":
+      case "TRAININGLOCK":
+        return { prefix: "cho" };
       case "HEALTHSTATUS":
         return { prefix: "của", name: healthStatuses.some((h) => h.HorseID === TargetID) ? horseName(TargetID) : undefined };
       default:

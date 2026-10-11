@@ -3,6 +3,8 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, SearchX } from "lucide-react";
 import LoadingState from "../../components/LoadingState";
 import ScheduleWeekGrid from "./ScheduleWeekGrid";
+import TrainingLockNotice from "../../components/TrainingLockNotice";
+import { LOCK_CONFLICT_SCHEDULE } from "../../utils/trainingLock";
 import { getActiveTrainingLocks, getGrooms, getHorses, getSchedules } from "../../services/trainerService";
 import { addDays, formatDayMonth, startOfWeek, todayISO } from "../../utils/date";
 
@@ -29,7 +31,7 @@ export default function Schedule() {
   const [schedules, setSchedules] = useState([]);
   const [horses, setHorses] = useState([]);
   const [grooms, setGrooms] = useState([]);
-  const [lockedHorseIds, setLockedHorseIds] = useState(new Set());
+  const [locks, setLocks] = useState([]); // lệnh khóa đang hiệu lực
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
   const [message, setMessage] = useState(state?.message ?? "");
@@ -43,7 +45,7 @@ export default function Schedule() {
         setSchedules(scheduleList);
         setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
         setGrooms([...groomList].sort((a, b) => a.HoTen.localeCompare(b.HoTen, "vi")));
-        setLockedHorseIds(new Set(lockList.map((l) => l.HorseID)));
+        setLocks(lockList);
         setLoading(false);
       }
     );
@@ -61,6 +63,15 @@ export default function Schedule() {
   };
 
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
+  const lockedHorseIds = new Set(locks.map((l) => l.HorseID));
+  // Ngựa đang bị khóa nhưng còn buổi tập sắp tới (đã xếp trước khi khóa): không tự xóa, nhắc HLV tự đổi lịch
+  const lockConflicts = locks
+    .map((lock) => ({
+      lock,
+      horse: horseById[lock.HorseID],
+      upcoming: schedules.filter((s) => s.HorseID === lock.HorseID && s.Ngay >= today).sort((a, b) => a.Ngay.localeCompare(b.Ngay) || a.Gio.localeCompare(b.Gio)),
+    }))
+    .filter((c) => c.horse && c.upcoming.length > 0);
   const groomNameById = Object.fromEntries(grooms.map((g) => [g.UserID, g.HoTen]));
 
   // Buổi trong tuần, lọc theo tên ngựa (ở cả 2 chế độ)
@@ -184,8 +195,19 @@ export default function Schedule() {
             </div>
           </div>
 
-          {/* Chú giải màu chip — dùng đúng 2 kiểu chip trong lưới */}
-          <p className="-mt-1 text-xs text-stone">Xám: đã diễn ra · Viền cam: sắp tới</p>
+          {lockConflicts.map(({ lock, horse, upcoming }) => (
+            <TrainingLockNotice
+              key={lock.LockID}
+              lock={lock}
+              horseName={horse.Ten}
+              hint={`${LOCK_CONFLICT_SCHEDULE}: ${upcoming.map((s) => `${formatDayMonth(s.Ngay)} ${s.Gio}`).join(", ")}.`}
+            />
+          ))}
+
+          {/* Chú giải màu chip — dùng đúng các kiểu chip trong lưới */}
+          <p className="-mt-1 text-xs text-stone">
+            Xám: đã diễn ra · Viền cam: sắp tới{lockConflicts.length > 0 && " · Viền nâu đỏ: ngựa đang bị khóa, cần đổi lịch"}
+          </p>
 
           {rows.length === 0 ? (
             <div className="border-y border-stone/20 py-16 text-center text-stone">
@@ -201,6 +223,7 @@ export default function Schedule() {
               schedulesByCell={schedulesByCell}
               horseById={horseById}
               groomNameById={groomNameById}
+              lockedHorseIds={lockedHorseIds}
             />
           )}
         </div>

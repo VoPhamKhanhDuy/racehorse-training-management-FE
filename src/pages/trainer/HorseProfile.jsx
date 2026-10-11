@@ -52,7 +52,7 @@ async function loadProfile(horseId) {
     ownerName: userName(horse.OwnerID),
     health: healthList.find((h) => h.HorseID === horse.HorseID),
     lock,
-    lockedByName: lock ? userName(lock.LockedBy) : undefined,
+    lockedByName: lock ? userName(lock.VetID) : undefined,
     plans,
     sessions,
     vaccinations,

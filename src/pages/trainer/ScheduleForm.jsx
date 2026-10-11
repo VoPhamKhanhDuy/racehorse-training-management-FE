@@ -91,7 +91,7 @@ export default function ScheduleForm() {
   const selectedHorse = horses.find((h) => h.HorseID === Number(form.HorseID));
   const selectedGroom = grooms.find((g) => g.UserID === Number(form.GroomID));
   const selectedLock = selectedHorse ? locks.find((l) => l.HorseID === selectedHorse.HorseID) ?? null : null;
-  const lockedByName = selectedLock ? users.find((u) => u.UserID === selectedLock.LockedBy)?.HoTen : undefined;
+  const lockedByName = selectedLock ? users.find((u) => u.UserID === selectedLock.VetID)?.HoTen : undefined;
   // Chỉ nhân viên chăm sóc đang hoạt động; khi sửa vẫn giữ người đang phụ trách dù đã bị khóa
   const groomOptions = grooms
     .filter((g) => g.isActive || g.UserID === Number(form.GroomID))

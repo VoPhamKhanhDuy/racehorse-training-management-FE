@@ -1,5 +1,4 @@
 import {
-  Bandage,
   CalendarDays,
   ChartColumn,
   ClipboardList,
@@ -30,10 +29,10 @@ const roleMenus = {
     { label: "Hồ sơ ngựa", path: "/trainer/horses", icon: FolderOpen },
   ],
   veterinarian: [
-    { label: "Hồ sơ khám bệnh", path: "/vet/records", icon: Stethoscope },
-    { label: "Chấn thương", path: "/vet/injuries", icon: Bandage },
-    { label: "Cảnh báo & khóa huấn luyện", path: "/vet/alerts", icon: ShieldAlert },
-    { label: "Lịch tiêm phòng/tẩy giun", path: "/vet/vaccination", icon: Syringe },
+    { label: "Tổng quan sức khỏe", path: "/vet/overview", icon: HeartPulse },
+    { label: "Khám bệnh", path: "/vet/exams", icon: Stethoscope },
+    { label: "Lệnh khóa huấn luyện", path: "/vet/locks", icon: ShieldAlert },
+    { label: "Lịch tiêm phòng", path: "/vet/vaccinations", icon: Syringe },
   ],
   groom: [
     { label: "Sơ đồ chuồng trại", path: "/groom/stable-map", icon: LayoutGrid },

@@ -1,10 +1,8 @@
 // TODO: thay bằng gọi API thật khi BE xong (BE kiểm tra khóa ngoại trước khi xóa HORSE)
 // Kiểm tra 1 ngựa đã có dữ liệu liên quan chưa — có rồi thì KHÔNG cho xóa hồ sơ (tránh mất lịch sử huấn luyện/sức khỏe).
 // Tách riêng khỏi horseService để không import vòng (trainerService đã import horseService).
-import trainingLocks from "../data/trainingLocks";
-import vaccinations from "../data/vaccinations";
-import medicalRecords from "../data/medicalRecords";
 import { deleteHorse, getHealthStatuses } from "./horseService";
+import { getHorseIdsWithLocks, getHorseIdsWithRecords, getHorseIdsWithVaccinations } from "./vetService";
 import { getRaceRegistrations, getSchedules, getTrainingPlans, getTrainingSessions } from "./trainerService";
 
 // Tập HorseID đã có dữ liệu ở bất kỳ bảng liên quan nào:
@@ -19,9 +17,10 @@ export async function getHorseIdsWithRelatedData() {
     getHealthStatuses(),
   ]);
   return new Set(
-    [plans, schedules, sessions, registrations, trainingLocks, vaccinations, medicalRecords, healthList]
+    [plans, schedules, sessions, registrations, healthList]
       .flat()
       .map((record) => record.HorseID)
+      .concat([...getHorseIdsWithRecords(), ...getHorseIdsWithLocks(), ...getHorseIdsWithVaccinations()])
   );
 }
 

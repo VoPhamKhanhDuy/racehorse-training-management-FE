@@ -4,7 +4,7 @@ import { daysFromToday } from "../utils/date";
 // NhipTim: bpm, VanToc: km/h, ChiSoTap: chỉ số tập thang 0–100 (đơn vị/giới hạn ở data/trainingSessionOptions.js)
 // Ngay = hôm nay − n (n từ 1 đến 21), không có buổi trong tương lai; mỗi ngựa tối đa 1 buổi mỗi ngày.
 // Mỗi ngựa một xu hướng (viết tay, có buổi thụt): Thunder — đi ngang; Lightning — tăng rồi chững; Storm — 4 buổi cũ, trước khi khóa tập; Blaze — tăng ổn định; Shadow — giảm nhẹ 3 buổi gần nhất; Spirit — tăng rồi chững.
-// Nhịp tim 165–198 bpm, dao động 5–12 bpm giữa các buổi liên tiếp.
+// Nhịp tim 165–198 bpm, dao động 5–12 bpm giữa các buổi liên tiếp — trừ Thunder −3 ngày: 198 bpm (vượt ngưỡng, demo cảnh báo ở Tổng quan sức khỏe).
 // Các ngày 1–3 khớp lịch tập đã qua (tỷ lệ hoàn thành lịch ở trang Báo cáo).
 const trainingSessions = [
   { SessionID: 1, HorseID: 3, NhipTim: 191, VanToc: 47.1, ChiSoTap: 57, NhanXet: "Ra mồ hôi nhiều, theo dõi lượng nước", Ngay: daysFromToday(-21) },
@@ -40,13 +40,13 @@ const trainingSessions = [
   { SessionID: 31, HorseID: 4, NhipTim: 177, VanToc: 50.6, ChiSoTap: 72, NhanXet: "Tốc độ cải thiện rõ so với tuần trước", Ngay: daysFromToday(-5) },
   { SessionID: 32, HorseID: 5, NhipTim: 184, VanToc: 52.1, ChiSoTap: 74, NhanXet: "Mỏi rõ ở vòng cuối, chưa nên tăng cự ly", Ngay: daysFromToday(-5) },
   { SessionID: 33, HorseID: 2, NhipTim: 179, VanToc: 54.6, ChiSoTap: 77, NhanXet: "Chưa vượt được mốc tốc độ tuần trước", Ngay: daysFromToday(-4) },
-  { SessionID: 34, HorseID: 1, NhipTim: 185, VanToc: 54.2, ChiSoTap: 72, NhanXet: "Thở gấp hơn thường lệ, giảm cường độ buổi sau", Ngay: daysFromToday(-3) },
+  { SessionID: 34, HorseID: 1, NhipTim: 198, VanToc: 54.2, ChiSoTap: 72, NhanXet: "Thở gấp hơn thường lệ, giảm cường độ buổi sau", Ngay: daysFromToday(-3) },
   { SessionID: 35, HorseID: 5, NhipTim: 190, VanToc: 51.2, ChiSoTap: 70, NhanXet: "Nhịp chân chậm dần, cần xem lại khẩu phần", Ngay: daysFromToday(-3) },
   { SessionID: 36, HorseID: 2, NhipTim: 171, VanToc: 55.3, ChiSoTap: 81, NhanXet: "Giữ phong độ, chưa có bước tiến mới", Ngay: daysFromToday(-2) },
   { SessionID: 37, HorseID: 6, NhipTim: 166, VanToc: 59, ChiSoTap: 87, NhanXet: "Ổn định ở mức cao, chưa tăng thêm", Ngay: daysFromToday(-2) },
   { SessionID: 38, HorseID: 1, NhipTim: 174, VanToc: 54.9, ChiSoTap: 77, NhanXet: "Ổn định, có thể giữ giáo án hiện tại", Ngay: daysFromToday(-1) },
   { SessionID: 39, HorseID: 4, NhipTim: 170, VanToc: 52.1, ChiSoTap: 78, NhanXet: "Thời gian chạy tốt nhất trong tháng", Ngay: daysFromToday(-1) },
-  { SessionID: 40, HorseID: 5, NhipTim: 196, VanToc: 50.4, ChiSoTap: 66, NhanXet: "Hụt hơi ở đoạn cuối, cần theo dõi", Ngay: daysFromToday(-1) },
+  { SessionID: 40, HorseID: 5, NhipTim: 188, VanToc: 50.4, ChiSoTap: 66, NhanXet: "Hụt hơi ở đoạn cuối, cần theo dõi", Ngay: daysFromToday(-1) },
 ];
 
 export default trainingSessions;

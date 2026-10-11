@@ -1,5 +1,5 @@
 import HorseIcon from "../../components/HorseIcon";
-import TrainingLockNotice from "./TrainingLockNotice";
+import TrainingLockNotice from "../../components/TrainingLockNotice";
 import { formatBirthDateWithAge } from "../../utils/date";
 
 // HorseID → mã hồ sơ hiển thị: 1 → "NG-001"

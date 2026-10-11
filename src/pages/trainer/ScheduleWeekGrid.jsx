@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import HorseIcon from "../../components/HorseIcon";
 import { formatDate, weekdayName } from "../../utils/date";
+import { LOCK_CONFLICT_SCHEDULE } from "../../utils/trainingLock";
 
 const SHORT_WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const shortWeekday = (isoDate) => {
@@ -21,7 +22,8 @@ const LOCK_LABEL = "rounded-sm border border-[#946330]/40 px-1 py-px text-[10px]
 
 // Lưới tuần kiểu bảng xếp ca: hàng = ngựa (mode "horse") hoặc nhân viên (mode "groom"), cột = 7 ngày T2 → CN.
 // rows: [{ key, kind, entity, isLocked, count }]. Cột đầu dính trái; màn hẹp phần 7 ngày cuộn ngang.
-export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedulesByCell, horseById, groomNameById }) {
+// lockedHorseIds: ngựa đang bị khóa — buổi sắp tới của các ngựa này viền nâu đỏ + tooltip "cần đổi lịch" (không tự xóa).
+export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedulesByCell, horseById, groomNameById, lockedHorseIds }) {
   const scrollRef = useRef(null);
   const weekKey = weekDays[0];
 
@@ -122,7 +124,7 @@ export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedule
                     className={`${CELL} ${dayBorder(index)} ${date === today ? "bg-brass/5" : ""} ${row.isLocked ? "bg-stone/5" : ""}`}
                   >
                     {cellSchedules.length > 0 ? (
-                      <div className={`flex flex-col gap-1 ${row.isLocked ? "opacity-60" : ""}`}>
+                      <div className="flex flex-col gap-1">
                         {cellSchedules.map((s) => {
                           const otherName =
                             mode === "horse"
@@ -141,6 +143,17 @@ export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedule
                             <span key={s.ScheduleID} title={`Đã qua — ${detail}`} className="truncate rounded-sm bg-stone/10 px-1.5 py-0.5 text-xs text-stone">
                               {label}
                             </span>
+                          ) : lockedHorseIds.has(s.HorseID) ? (
+                            // Ngựa đang bị khóa nhưng buổi đã xếp từ trước: HLV tự đổi lịch (bấm để sửa)
+                            <Link
+                              key={s.ScheduleID}
+                              to={`/trainer/schedule/${s.ScheduleID}/edit`}
+                              title={`${LOCK_CONFLICT_SCHEDULE} — ${detail}`}
+                              aria-label={`${LOCK_CONFLICT_SCHEDULE}: ${detail}`}
+                              className="truncate rounded-sm border border-rust/60 bg-rust/5 px-1.5 py-0.5 text-xs text-rust transition-colors hover:border-rust hover:bg-rust/10"
+                            >
+                              {label}
+                            </Link>
                           ) : (
                             <Link
                               key={s.ScheduleID}

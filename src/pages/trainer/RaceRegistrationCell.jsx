@@ -1,11 +1,13 @@
 import { Plus } from "lucide-react";
 import { formatDayMonth } from "../../utils/date";
+import { LOCK_CONFLICT_RACE } from "../../utils/trainingLock";
 
 const NOTE_BROWN = "text-[#946330]";
 
 // Ô giao ngựa × giải:
 // - đã đăng ký: chip 1 dòng viền cam "Đã đăng ký 28/09"; bấm để hủy (giải đã diễn ra: chỉ xem).
-//   Ngựa bị chặn mà vẫn đang đăng ký: chữ nâu lý do ngay bên phải chip, vẫn cho hủy.
+//   Ngựa bị chặn mà vẫn đang đăng ký: chữ nâu lý do ngay bên phải chip, vẫn cho hủy; ngựa đang bị khóa (locked):
+//   chữ nâu đỏ "Cần rút đăng ký" để HLV tự rút.
 // - chưa đăng ký, đủ điều kiện: ô trống, dấu "+" chỉ hiện khi rê chuột/focus; bấm để đăng ký.
 // - bị chặn (khóa tập / đang điều trị): "—" xám nhạt, không bấm được. Giải đã diễn ra: để trống.
 // rowHighlighted: hàng đang rê chuột (nền be rất nhạt); cellHovered: ô đang rê chuột (viền hairline đậm hơn).
@@ -14,6 +16,7 @@ export default function RaceRegistrationCell({
   race,
   registration,
   blockReason,
+  locked,
   isPast,
   isFirst,
   rowHighlighted,
@@ -50,7 +53,14 @@ export default function RaceRegistrationCell({
         >
           {chipBody}
         </button>
-        {blockReason && <span className={`text-[11px] whitespace-nowrap ${NOTE_BROWN}`}>{blockReason}</span>}
+        {/* Ngựa đang bị khóa mà vẫn đăng ký giải sắp tới: nhắc HLV tự rút (hệ thống không tự hủy) */}
+        {locked ? (
+          <span title={LOCK_CONFLICT_RACE} className="text-[11px] font-medium whitespace-nowrap text-rust">
+            Cần rút đăng ký
+          </span>
+        ) : (
+          blockReason && <span className={`text-[11px] whitespace-nowrap ${NOTE_BROWN}`}>{blockReason}</span>
+        )}
       </div>
     );
   } else if (isPast) {

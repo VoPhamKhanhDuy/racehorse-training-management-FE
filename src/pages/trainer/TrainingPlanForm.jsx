@@ -111,7 +111,7 @@ export default function TrainingPlanForm() {
   // Giai đoạn đã có giáo án của ngựa đang chọn (bỏ qua chính giáo án đang sửa)
   const takenPhases = new Set(horsePlans.filter((p) => p.PlanID !== Number(id)).map((p) => p.GiaiDoan));
   const selectedLock = selectedHorse ? locks.find((l) => l.HorseID === selectedHorse.HorseID) ?? null : null;
-  const lockedByName = selectedLock ? users.find((u) => u.UserID === selectedLock.LockedBy)?.HoTen : undefined;
+  const lockedByName = selectedLock ? users.find((u) => u.UserID === selectedLock.VetID)?.HoTen : undefined;
   // Quay về danh sách và giữ ngựa đang làm việc được chọn
   const backToList = form.HorseID ? `/trainer/plans?horse=${form.HorseID}` : "/trainer/plans";
 

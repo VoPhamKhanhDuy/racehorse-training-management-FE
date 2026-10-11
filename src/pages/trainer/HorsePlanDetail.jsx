@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import HorseRecentSessions from "./HorseRecentSessions";
 import HorseSummary from "./HorseSummary";
-import TrainingLockNotice from "./TrainingLockNotice";
+import TrainingLockNotice from "../../components/TrainingLockNotice";
 import { PLAN_UNITS, TRAINING_PHASES } from "../../data/trainingPlanOptions";
 
 const formatNumber = (value) => value.toLocaleString("vi-VN");
