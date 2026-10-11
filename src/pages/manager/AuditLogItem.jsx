@@ -1,4 +1,4 @@
-import { Activity, ClipboardList, FolderOpen, HeartPulse, History, Package, UserCog } from "lucide-react";
+import { Activity, ClipboardList, FolderOpen, HeartPulse, History, Package, ShieldAlert, Syringe, UserCog } from "lucide-react";
 import { formatRelativeTime } from "../../utils/date";
 
 // Icon theo nhóm hành động (khớp AUDIT_CATEGORIES trong auditService)
@@ -8,6 +8,8 @@ const CATEGORY_ICONS = {
   "Sức khỏe": HeartPulse,
   "Giáo án": ClipboardList,
   "Buổi tập": Activity,
+  "Khóa huấn luyện": ShieldAlert,
+  "Tiêm phòng": Syringe,
   "Vật tư": Package,
 };
 

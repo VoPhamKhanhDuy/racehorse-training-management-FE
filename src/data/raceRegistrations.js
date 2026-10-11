@@ -9,7 +9,7 @@ const raceRegistrations = [
   { HorseID: 6, RaceID: 1, NgayDangKy: daysFromToday(-28) },
   { HorseID: 4, RaceID: 2, NgayDangKy: daysFromToday(-12) },
   { HorseID: 2, RaceID: 2, NgayDangKy: daysFromToday(-8) },
-  { HorseID: 3, RaceID: 3, NgayDangKy: daysFromToday(-6) },
+  { HorseID: 3, RaceID: 3, NgayDangKy: daysFromToday(-14) },
 ];
 
 export default raceRegistrations;

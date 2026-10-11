@@ -25,6 +25,13 @@ import TrainingSessionForm from "./pages/trainer/TrainingSessionForm";
 import Races from "./pages/trainer/Races";
 import HorseProfiles from "./pages/trainer/HorseProfiles";
 import HorseProfile from "./pages/trainer/HorseProfile";
+import MedicalExams from "./pages/vet/MedicalExams";
+import MedicalExamForm from "./pages/vet/MedicalExamForm";
+import HealthOverview from "./pages/vet/HealthOverview";
+import TrainingLocks from "./pages/vet/TrainingLocks";
+import TrainingLockForm from "./pages/vet/TrainingLockForm";
+import Vaccinations from "./pages/vet/Vaccinations";
+import VaccinationForm from "./pages/vet/VaccinationForm";
 
 function App() {
   return (
@@ -70,7 +77,17 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/vet" element={<Navigate to="/vet/records" replace />} />
+        {/* Trang đích của bác sĩ thú y sau khi đăng nhập */}
+        <Route path="/vet" element={<Navigate to="/vet/overview" replace />} />
+        <Route path="/vet/overview" element={<HealthOverview />} />
+        <Route path="/vet/exams" element={<MedicalExams />} />
+        <Route path="/vet/exams/new" element={<MedicalExamForm />} />
+        <Route path="/vet/exams/:id/edit" element={<MedicalExamForm />} />
+        <Route path="/vet/locks" element={<TrainingLocks />} />
+        <Route path="/vet/locks/new" element={<TrainingLockForm />} />
+        <Route path="/vet/vaccinations" element={<Vaccinations />} />
+        <Route path="/vet/vaccinations/new" element={<VaccinationForm />} />
+        <Route path="/vet/vaccinations/:id/edit" element={<VaccinationForm />} />
         <Route path="/vet/*" element={<PlaceholderPage />} />
       </Route>
 

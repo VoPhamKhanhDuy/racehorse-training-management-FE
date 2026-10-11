@@ -163,7 +163,7 @@ export default function TrainingPlans() {
                   plans={plansByHorse[selectedHorse.HorseID] ?? []}
                   healthStatus={healthStatuses.find((h) => h.HorseID === selectedHorse.HorseID)?.TrangThai}
                   lock={selectedLock}
-                  lockedByName={selectedLock ? userNameById[selectedLock.LockedBy] : undefined}
+                  lockedByName={selectedLock ? userNameById[selectedLock.VetID] : undefined}
                   sessions={sessions.filter((s) => s.HorseID === selectedHorse.HorseID)}
                   currentUserId={currentUserId}
                 />

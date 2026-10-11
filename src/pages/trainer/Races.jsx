@@ -1,3 +1,5 @@
+import TrainingLockNotice from "../../components/TrainingLockNotice";
+import { LOCK_CONFLICT_RACE } from "../../utils/trainingLock";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -14,7 +16,7 @@ import {
   getTrainingSessions,
   registerHorseForRace,
 } from "../../services/trainerService";
-import { addDays, todayISO } from "../../utils/date";
+import { addDays, formatDayMonth, todayISO } from "../../utils/date";
 
 const VIEW_TABS = [
   { value: "upcoming", label: "Sắp tới" },
@@ -30,7 +32,7 @@ export default function Races() {
   const [races, setRaces] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [horses, setHorses] = useState([]);
-  const [lockedHorseIds, setLockedHorseIds] = useState(new Set());
+  const [locks, setLocks] = useState([]); // lệnh khóa đang hiệu lực
   const [healthByHorse, setHealthByHorse] = useState({});
   const [sessionDatesByHorse, setSessionDatesByHorse] = useState({});
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function Races() {
         setRaces(raceList);
         setRegistrations(regList);
         setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-        setLockedHorseIds(new Set(lockList.map((l) => l.HorseID)));
+        setLocks(lockList);
         setHealthByHorse(Object.fromEntries(healthList.map((h) => [h.HorseID, h.TrangThai])));
         setSessionDatesByHorse(sessionList.reduce((acc, s) => ({ ...acc, [s.HorseID]: [...(acc[s.HorseID] ?? []), s.Ngay] }), {}));
         setLoading(false);
@@ -78,6 +80,18 @@ export default function Races() {
   const visibleHorses = horses.filter((h) => h.Ten.toLowerCase().includes(normalizedKeyword));
 
   const registrationByKey = Object.fromEntries(registrations.map((r) => [`${r.HorseID}|${r.RaceID}`, r]));
+  const lockedHorseIds = new Set(locks.map((l) => l.HorseID));
+  // Ngựa đang bị khóa nhưng còn đăng ký giải sắp tới (đăng ký trước khi khóa): không tự rút, nhắc HLV tự xử lý
+  const lockConflicts = locks
+    .map((lock) => ({
+      lock,
+      horse: horses.find((h) => h.HorseID === lock.HorseID),
+      upcoming: registrations
+        .map((r) => (r.HorseID === lock.HorseID ? races.find((race) => race.RaceID === r.RaceID) : null))
+        .filter((race) => race && race.Ngay >= today)
+        .sort((a, b) => a.Ngay.localeCompare(b.Ngay)),
+    }))
+    .filter((c) => c.horse && c.upcoming.length > 0);
   const recentStart = addDays(today, -RECENT_TRAINING_DAYS);
   const horseInfoById = Object.fromEntries(
     horses.map((horse) => {
@@ -89,6 +103,7 @@ export default function Races() {
         horse.HorseID,
         {
           blockReason,
+          locked: lockedHorseIds.has(horse.HorseID),
           health,
           lastSession: dates.reduce((max, d) => (d > max ? d : max), ""),
           trainedRecently: dates.some((d) => d >= recentStart && d <= today),
@@ -172,6 +187,18 @@ export default function Races() {
               ))}
             </div>
           </div>
+          {lockConflicts.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {lockConflicts.map(({ lock, horse, upcoming }) => (
+                <TrainingLockNotice
+                  key={lock.LockID}
+                  lock={lock}
+                  horseName={horse.Ten}
+                  hint={`${LOCK_CONFLICT_RACE}: ${upcoming.map((race) => `${race.TenGiai} (${formatDayMonth(race.Ngay)})`).join(", ")}.`}
+                />
+              ))}
+            </div>
+          )}
           <p className="mt-3 mb-4 text-xs text-stone">Viền cam: đã đăng ký · Bấm + để đăng ký · Bấm ô đã đăng ký để hủy</p>
 
           {visibleRaces.length === 0 ? (

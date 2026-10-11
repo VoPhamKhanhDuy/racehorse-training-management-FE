@@ -103,6 +103,15 @@ export function formatRelativeTime(isoDateTime) {
   return `${formatDate(datePart)} ${timePart}`;
 }
 
+// Số ngày từ "YYYY-MM-DD" from tới to (theo lịch, to trước from thì âm)
+export function daysBetween(from, to) {
+  const toDate = (iso) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+  return Math.round((toDate(to) - toDate(from)) / 86400000);
+}
+
 // Cộng n ngày vào "YYYY-MM-DD"
 export function addDays(isoDate, n) {
   const [year, month, day] = isoDate.split("-").map(Number);

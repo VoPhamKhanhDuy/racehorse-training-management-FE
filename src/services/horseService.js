@@ -124,6 +124,17 @@ export async function getHealthStatuses() {
   return healthStore.map((h) => ({ ...h }));
 }
 
+// Cập nhật tình trạng sức khỏe sau khám bệnh (bác sĩ thú y). Chỉ ghi khi ngày khám >= NgayCapNhat hiện tại,
+// để bệnh án nhập bù cho ngày cũ không đè tình trạng mới hơn. Trả về true nếu đã cập nhật. BE cũng phải kiểm tra lại.
+export async function updateHealthStatus(horseId, trangThai, ngay) {
+  await delay();
+  const current = healthStore.find((h) => h.HorseID === Number(horseId));
+  if (current && ngay < current.NgayCapNhat) return false;
+  if (current) Object.assign(current, { TrangThai: trangThai, NgayCapNhat: ngay });
+  else healthStore.push({ HorseID: Number(horseId), TrangThai: trangThai, NgayCapNhat: ngay });
+  return true;
+}
+
 // Chủ ngựa đã được duyệt (USER có roleId "horse_owner") theo field ERD, không kèm mật khẩu.
 // Gồm cả tài khoản đã bị khóa (isActive = false) để vẫn hiện tên chủ của ngựa cũ; form chỉ cho chọn tài khoản đang hoạt động.
 export async function getHorseOwners() {

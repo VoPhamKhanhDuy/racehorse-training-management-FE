@@ -1,9 +1,10 @@
 import HorseSummary from "./HorseSummary";
-import TrainingLockNotice from "./TrainingLockNotice";
+import TrainingLockNotice from "../../components/TrainingLockNotice";
 import { formatDate } from "../../utils/date";
 
 // Cột ngữ cảnh của form lịch tập:
-// - Khi chọn ngựa: thông tin ngựa + dải cảnh báo nếu đang khóa tập (form sẽ chặn xếp lịch).
+// - Khi chọn ngựa: thông tin ngựa + dải cảnh báo nếu đang khóa tập (form sẽ chặn xếp lịch),
+//   hoặc lời nhắc nếu ngựa "Cần theo dõi" (vẫn xếp lịch được).
 // - Khi chọn nhân viên + ngày: các buổi nhân viên đó đã nhận trong ngày để tránh trùng giờ.
 export default function ScheduleFormContext({
   horse,
@@ -23,6 +24,12 @@ export default function ScheduleFormContext({
           <HorseSummary horse={horse} healthStatus={healthStatus} />
           {lock && (
             <TrainingLockNotice lock={lock} lockedByName={lockedByName} hint="Ngựa đang bị khóa tập nên không thể xếp lịch." />
+          )}
+          {/* "Cần theo dõi" (vd vừa được bác sĩ gỡ khóa): vẫn xếp lịch được nhưng nhắc giữ cường độ */}
+          {!lock && healthStatus === "Cần theo dõi" && (
+            <p role="note" className="rounded-sm border-l-2 border-sand bg-sand/20 px-4 py-3 text-sm text-ink">
+              Ngựa đang ở tình trạng Cần theo dõi. Vẫn xếp lịch được, nên giữ cường độ nhẹ và theo dõi sau buổi tập.
+            </p>
           )}
         </>
       ) : (

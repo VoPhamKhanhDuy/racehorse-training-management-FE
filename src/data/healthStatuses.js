@@ -6,7 +6,7 @@ import { daysFromToday } from "../utils/date";
 const healthStatuses = [
   { HorseID: 1, TrangThai: "Tốt", NgayCapNhat: daysFromToday(-1) },
   { HorseID: 2, TrangThai: "Tốt", NgayCapNhat: daysFromToday(-1) },
-  { HorseID: 3, TrangThai: "Đang điều trị", NgayCapNhat: daysFromToday(-3) },
+  { HorseID: 3, TrangThai: "Đang điều trị", NgayCapNhat: daysFromToday(-12) }, // cùng ngày khám viêm gân
   { HorseID: 4, TrangThai: "Tốt", NgayCapNhat: daysFromToday(-2) },
   { HorseID: 5, TrangThai: "Tốt", NgayCapNhat: daysFromToday(-1) },
   { HorseID: 6, TrangThai: "Cần theo dõi", NgayCapNhat: daysFromToday(0) },

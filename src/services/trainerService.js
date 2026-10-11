@@ -4,18 +4,15 @@
 import trainingPlans from "../data/trainingPlans";
 import trainingSchedules from "../data/trainingSchedules";
 import trainingSessions from "../data/trainingSessions";
-import trainingLocks from "../data/trainingLocks";
 import races from "../data/races";
 import raceRegistrations from "../data/raceRegistrations";
-import healthStatuses from "../data/healthStatuses";
-import vaccinations from "../data/vaccinations";
-import medicalRecords from "../data/medicalRecords";
 import users from "../data/users";
 import { toUserID } from "../utils/userId";
 import { formatDate, todayISO } from "../utils/date";
 import { getUsers as getAccountUsers } from "./accountService";
 import { SESSION_LIMITS } from "../data/trainingSessionOptions";
 import { getHealthStatuses, getHorseById, getHorses } from "./horseService";
+import { getActiveTrainingLocks as getActiveLocks, getLatestExamDate, getVaccinations, isHorseLocked } from "./vetService";
 
 // Ngựa + trạng thái sức khỏe dùng chung kho với trang Quản lý hồ sơ ngựa (Club Manager)
 export { getHealthStatuses, getHorseById, getHorses };
@@ -115,9 +112,9 @@ export async function deleteTrainingPlan(planId, userId) {
 }
 
 // Ngựa đang bị khóa tập: bản ghi TRAININGLOCK chưa gỡ (NgayGo = null)
+// Đọc kho lệnh khóa dùng chung (vetService) nên thấy ngay lệnh khóa bác sĩ thú y vừa đặt
 export async function getActiveTrainingLocks() {
-  await delay();
-  return clone(trainingLocks.filter((l) => !l.NgayGo));
+  return getActiveLocks();
 }
 
 export async function getSchedules(date) {
@@ -149,7 +146,7 @@ function toScheduleRecord(data) {
 // Ràng buộc nghiệp vụ của lịch tập — BE cũng phải kiểm tra lại:
 // ngựa đang khóa tập không được xếp; 1 nhân viên / 1 ngựa không có 2 buổi cùng ngày cùng giờ
 function assertScheduleAllowed(record, exceptScheduleId = null) {
-  if (trainingLocks.some((l) => l.HorseID === record.HorseID && !l.NgayGo)) {
+  if (isHorseLocked(record.HorseID)) {
     throw new Error("Ngựa đang bị khóa tập, không thể xếp lịch");
   }
   const sameSlot = db.trainingSchedules.filter(
@@ -233,7 +230,7 @@ function assertSessionValid(record, exceptSessionId = null) {
 export async function createTrainingSession(data) {
   await delay();
   const record = toSessionRecord(data);
-  if (trainingLocks.some((l) => l.HorseID === record.HorseID && !l.NgayGo)) {
+  if (isHorseLocked(record.HorseID)) {
     throw new Error("Ngựa đang bị khóa tập, không thể ghi nhận buổi tập mới.");
   }
   assertSessionValid(record);
@@ -248,7 +245,7 @@ export async function updateTrainingSession(sessionId, data) {
   const session = db.trainingSessions.find((s) => s.SessionID === Number(sessionId));
   if (!session) throw new Error("Không tìm thấy buổi tập");
   const record = toSessionRecord(data);
-  if (record.HorseID !== session.HorseID && trainingLocks.some((l) => l.HorseID === record.HorseID && !l.NgayGo)) {
+  if (record.HorseID !== session.HorseID && isHorseLocked(record.HorseID)) {
     throw new Error("Ngựa đang bị khóa tập, không thể ghi nhận buổi tập mới.");
   }
   assertSessionValid(record, session.SessionID);
@@ -281,10 +278,12 @@ export async function registerHorseForRace(raceId, horseId) {
   if (db.raceRegistrations.some((r) => r.RaceID === race.RaceID && r.HorseID === Number(horseId))) {
     throw new Error("Ngựa này đã đăng ký giải đua này");
   }
-  if (trainingLocks.some((l) => l.HorseID === Number(horseId) && !l.NgayGo)) {
+  if (isHorseLocked(horseId)) {
     throw new Error("Ngựa đang khóa tập, không thể đăng ký thi đấu");
   }
-  if (healthStatuses.find((h) => h.HorseID === Number(horseId))?.TrangThai === BLOCKING_HEALTH_STATUS) {
+  // Đọc tình trạng hiện tại từ kho dùng chung (bác sĩ thú y có thể vừa cập nhật sau khám)
+  const health = (await getHealthStatuses()).find((h) => h.HorseID === Number(horseId));
+  if (health?.TrangThai === BLOCKING_HEALTH_STATUS) {
     throw new Error("Ngựa đang điều trị, không thể đăng ký thi đấu");
   }
   const registration = { HorseID: Number(horseId), RaceID: race.RaceID, NgayDangKy: todayISO() };
@@ -304,17 +303,15 @@ export async function cancelRaceRegistration(raceId, horseId) {
 // ---- Hồ sơ ngựa (chỉ xem) ----
 
 // Lịch tiêm phòng (VACCINATIONSCHEDULE) của 1 ngựa, NgayHen mới nhất trước
+// Đọc kho lịch tiêm dùng chung (vetService) nên thấy ngay thay đổi của bác sĩ thú y; NgayHen mới nhất trước
 export async function getVaccinationSchedules(horseId) {
-  await delay();
-  return clone(vaccinations.filter((v) => v.HorseID === Number(horseId))).sort((a, b) => b.NgayHen.localeCompare(a.NgayHen));
+  const items = await getVaccinations(horseId);
+  return items.sort((a, b) => b.NgayHen.localeCompare(a.NgayHen));
 }
 
 // Ngày khám gần nhất của 1 ngựa từ MEDICALRECORD; null nếu chưa khám lần nào.
 // Phân quyền: CHỈ trả HorseID + Ngay — HLV không được xem ChanDoan / PhacDo / ViTriChanThuong (BE cũng phải lọc cột)
+// Đọc từ kho bệnh án của bác sĩ thú y (vetService) nên thấy ngay lần khám vừa ghi
 export async function getLatestCheckupDate(horseId) {
-  await delay();
-  const latest = medicalRecords
-    .filter((r) => r.HorseID === Number(horseId))
-    .reduce((max, r) => (r.Ngay > max ? r.Ngay : max), "");
-  return latest ? { HorseID: Number(horseId), Ngay: latest } : null;
+  return getLatestExamDate(horseId);
 }

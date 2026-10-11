@@ -76,6 +76,7 @@ export default function RaceMatrix({
                         race={race}
                         registration={registration}
                         blockReason={info.blockReason}
+                        locked={info.locked}
                         isPast={race.isPast}
                         isFirst={index === 0}
                         rowHighlighted={hovered?.horseId === horse.HorseID}
