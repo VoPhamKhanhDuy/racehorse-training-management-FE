@@ -5,7 +5,11 @@ import PlaceholderPage from "./components/PlaceholderPage";
 import Welcome from "./pages/Welcome";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import PendingApproval from "./pages/auth/PendingApproval";
+import AccountStatus from "./pages/auth/AccountStatus";
+import MyHorses from "./pages/owner/MyHorses";
+import OwnerHorseProfile from "./pages/owner/OwnerHorseProfile";
+import OwnerHealth from "./pages/owner/OwnerHealth";
+import OwnerSchedule from "./pages/owner/OwnerSchedule";
 import ChangePassword from "./pages/auth/ChangePassword";
 import AccountApprovals from "./pages/manager/AccountApprovals";
 import CreateStaffAccount from "./pages/manager/CreateStaffAccount";
@@ -45,7 +49,10 @@ function App() {
       <Route path="/" element={<Welcome />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/pending-approval" element={<PendingApproval />} />
+      {/* Màn trạng thái tài khoản (sau Đăng ký / Đăng nhập khi chờ duyệt, bị từ chối) */}
+      <Route path="/account-status" element={<AccountStatus />} />
+      {/* URL cũ của màn Đã gửi đăng ký (đã đổi thành /account-status): không còn state → về Đăng nhập */}
+      <Route path="/pending-approval" element={<Navigate to="/login" replace />} />
       {/* Đổi mật khẩu lần đầu: trang tự kiểm tra đăng nhập + cờ mustChangePassword */}
       <Route path="/change-password" element={<ChangePassword />} />
 
@@ -123,6 +130,10 @@ function App() {
         }
       >
         <Route path="/owner" element={<Navigate to="/owner/horses" replace />} />
+        <Route path="/owner/horses" element={<MyHorses />} />
+        <Route path="/owner/horses/:id" element={<OwnerHorseProfile />} />
+        <Route path="/owner/health" element={<OwnerHealth />} />
+        <Route path="/owner/schedule" element={<OwnerSchedule />} />
         <Route path="/owner/*" element={<PlaceholderPage />} />
       </Route>
 

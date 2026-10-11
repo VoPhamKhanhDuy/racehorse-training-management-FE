@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import AccountStatusText from "../../components/AccountStatusText";
 import { Lock, LockOpen, Pencil } from "lucide-react";
 import actionButtonColors from "../../utils/actionButtonStyles";
 import { formatDate } from "../../utils/date";
@@ -21,15 +22,9 @@ const ACTION_LABEL = "sr-only xl:not-sr-only";
 // 2 nút cùng 1 độ rộng CỐ ĐỊNH (dư cho chữ dài nhất "Mở khóa", từ xl khi có chữ): cặp nút cân nhau, cột thẳng hàng dù đổi Khóa/Mở khóa
 const BUTTON_WIDTH = "justify-center whitespace-nowrap xl:w-26";
 
-// Trạng thái: vạch dọc mảnh bo tròn cao bằng dòng chữ, cách chữ 8px — xanh rêu trầm #5c7a3f (tương phản ~4.6:1)
-// cho đang hoạt động, xám stone cho đã khóa (vạch cùng độ đậm/tương phản với vạch xanh). Không nền, không chấm.
+// Trạng thái tài khoản: chữ màu dùng chung (components/AccountStatusText) — "Đang hoạt động" / "Đã khóa"
 function StatusText({ isActive, className = "" }) {
-  return (
-    <span className={`inline-flex items-center gap-2 ${isActive ? "text-[#5c7a3f]" : "text-stone"} ${className}`}>
-      <span aria-hidden="true" className={`h-[1em] w-[3px] shrink-0 rounded-full ${isActive ? "bg-[#5c7a3f]" : "bg-stone"}`} />
-      {isActive ? "Đang hoạt động" : "Đã khóa"}
-    </span>
-  );
+  return <AccountStatusText status={isActive ? "Đang hoạt động" : "Đã khóa"} className={className} />;
 }
 
 // 1 dòng trong bảng nhân sự

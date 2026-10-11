@@ -68,7 +68,9 @@ export default function Register() {
       roleId: REGISTER_ROLE_ID,
       status: "pending",
     });
-    navigate("/pending-approval", { state: { fullName: newUser.fullName, email: newUser.email } });
+    navigate("/account-status", {
+      state: { status: "Chờ duyệt", source: "register", fullName: newUser.fullName, email: newUser.email },
+    });
   };
 
   return (

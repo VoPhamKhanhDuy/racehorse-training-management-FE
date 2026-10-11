@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import HealthStatusBadge from "../../components/HealthStatusBadge";
 import Modal from "../../components/Modal";
+import HorseRaceRecord from "./HorseRaceRecord";
 import { formatBirthDateWithAge, formatDate } from "../../utils/date";
 
 // Một dòng thông tin trong modal: nhãn trên, giá trị dưới
@@ -16,7 +17,8 @@ function DetailItem({ label, children, wide = false }) {
 
 // Modal chi tiết hồ sơ ngựa, có nút Sửa (sang trang sửa) và Xóa (trang cha mở ConfirmDialog).
 // canDelete = false: ngựa đã có dữ liệu liên quan → nút Xóa bị vô hiệu kèm dòng giải thích
-export default function HorseDetailModal({ horse, owner, healthRecord, canDelete, onClose, onDelete }) {
+// achievements: getHorseAchievements của ngựa — cho khối "Thành tích thi đấu" (chỉ xem)
+export default function HorseDetailModal({ horse, owner, healthRecord, achievements, canDelete, onClose, onDelete }) {
   return (
     <Modal open={Boolean(horse)} title={horse ? `Hồ sơ ngựa ${horse.Ten}` : ""} onClose={onClose}>
       {horse && (
@@ -57,6 +59,8 @@ export default function HorseDetailModal({ horse, owner, healthRecord, canDelete
               )}
             </DetailItem>
           </dl>
+
+          {achievements && <HorseRaceRecord key={horse.HorseID} achievements={achievements} />}
 
           <div className="mt-8 flex flex-wrap justify-end gap-3 border-t border-stone/15 pt-5">
             {/* Ngựa đã có dữ liệu liên quan (giáo án, buổi tập, sức khỏe...) thì không cho xóa */}

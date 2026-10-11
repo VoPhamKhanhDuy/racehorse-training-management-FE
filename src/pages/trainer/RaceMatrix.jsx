@@ -2,6 +2,7 @@ import { useState } from "react";
 import RaceColumnHeader from "./RaceColumnHeader";
 import RaceHorseCell from "./RaceHorseCell";
 import RaceRegistrationCell from "./RaceRegistrationCell";
+import { hasResult } from "../../utils/raceResult";
 
 // Cột giải: tối thiểu 170px (ít cột thì giãn tối đa 280px rồi khung dừng lại, không kéo dãn hết trang).
 // --horse-col: chiều rộng cột ngựa dính trái (điện thoại thu nhỏ còn ảnh + tên).
@@ -19,9 +20,18 @@ export default function RaceMatrix({
   emptyText,
   onRegister,
   onCancel,
+  onOpenResult,
 }) {
   const [hovered, setHovered] = useState(null); // { horseId, raceId }
   const clearHover = () => setHovered(null);
+
+  // "Đã nhập N/M" ở tiêu đề giải đã diễn ra — đếm trên mọi ngựa đăng ký (không theo ô tìm)
+  const resultCountByRace = Object.values(registrationByKey).reduce((acc, r) => {
+    const count = (acc[r.RaceID] ??= { done: 0, total: 0 });
+    count.total += 1;
+    if (hasResult(r)) count.done += 1;
+    return acc;
+  }, {});
 
   return (
     <div
@@ -48,6 +58,7 @@ export default function RaceMatrix({
                 key={race.RaceID}
                 race={race}
                 isFirst={index === 0}
+                resultCount={resultCountByRace[race.RaceID]}
               />
             ))}
           </tr>
@@ -86,6 +97,7 @@ export default function RaceMatrix({
                         onLeave={clearHover}
                         onRegister={() => onRegister(horse, race)}
                         onCancel={() => onCancel(horse, race, registration)}
+                        onOpenResult={(anchor) => onOpenResult(horse, race, anchor)}
                       />
                     );
                   })}

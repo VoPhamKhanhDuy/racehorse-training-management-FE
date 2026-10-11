@@ -286,7 +286,7 @@ export async function registerHorseForRace(raceId, horseId) {
   if (health?.TrangThai === BLOCKING_HEALTH_STATUS) {
     throw new Error("Ngựa đang điều trị, không thể đăng ký thi đấu");
   }
-  const registration = { HorseID: Number(horseId), RaceID: race.RaceID, NgayDangKy: todayISO() };
+  const registration = { HorseID: Number(horseId), RaceID: race.RaceID, NgayDangKy: todayISO(), ThuHang: null };
   db.raceRegistrations.push(registration);
   return { ...registration };
 }
@@ -298,6 +298,28 @@ export async function cancelRaceRegistration(raceId, horseId) {
   if (!race) throw new Error("Không tìm thấy giải đua");
   if (race.Ngay < todayISO()) throw new Error("Giải đua đã diễn ra, không thể hủy đăng ký");
   db.raceRegistrations = db.raceRegistrations.filter((r) => !(r.RaceID === race.RaceID && r.HorseID === Number(horseId)));
+}
+
+// Nhập/sửa kết quả thi đấu (RACEREGISTRATION.ThuHang): null = chưa có kết quả, 0 = không xếp hạng, 1…N = thứ hạng
+// (N = số ngựa đăng ký giải). Ràng buộc — BE cũng phải kiểm tra lại: chỉ HLV; giải đã diễn ra; ngựa có đăng ký giải;
+// không trùng thứ hạng (≥ 1) giữa các ngựa trong cùng giải.
+export async function updateRaceResult(raceId, horseId, thuHang) {
+  await delay();
+  const race = races.find((r) => r.RaceID === Number(raceId));
+  if (!race) throw new Error("Không tìm thấy giải đua");
+  if (race.Ngay >= todayISO()) throw new Error("Giải đua chưa diễn ra, chưa thể nhập kết quả");
+  const entries = db.raceRegistrations.filter((r) => r.RaceID === race.RaceID);
+  const registration = entries.find((r) => r.HorseID === Number(horseId));
+  if (!registration) throw new Error("Ngựa này không đăng ký giải đua này");
+  const rank = thuHang === null ? null : Number(thuHang);
+  if (rank !== null && (!Number.isInteger(rank) || rank < 0 || rank > entries.length)) {
+    throw new Error("Thứ hạng không hợp lệ");
+  }
+  if (rank >= 1 && entries.some((r) => r !== registration && r.ThuHang === rank)) {
+    throw new Error(`Thứ hạng ${rank} đã được gán cho ngựa khác trong giải này`);
+  }
+  registration.ThuHang = rank;
+  return { ...registration };
 }
 
 // ---- Hồ sơ ngựa (chỉ xem) ----

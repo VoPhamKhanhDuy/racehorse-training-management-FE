@@ -5,6 +5,21 @@ import FormField from "../../components/FormField";
 import useAuth from "../../hooks/useAuth";
 import roleHomePaths from "../../routes/roleHomePaths";
 import { isValidEmail } from "../../utils/validators";
+import AccountStatusText from "../../components/AccountStatusText";
+
+// Lỗi chung dưới nút Đăng nhập. Lỗi do trạng thái tài khoản (hiện chỉ còn bị khóa): câu chữ thường,
+// riêng cụm trạng thái tô màu dùng chung của AccountStatusText. Lỗi khác (sai email/mật khẩu): giữ chữ đỏ.
+function FormError({ message, accountStatus }) {
+  const index = accountStatus ? message.indexOf(accountStatus.phrase) : -1;
+  if (index < 0) return <p className="mt-2 text-sm text-red-500">{message}</p>;
+  return (
+    <p className="mt-2 text-sm text-[#6E6E76]">
+      {message.slice(0, index)}
+      <AccountStatusText status={accountStatus.status}>{accountStatus.phrase}</AccountStatusText>
+      {message.slice(index + accountStatus.phrase.length)}
+    </p>
+  );
+}
 
 export default function Login() {
   const { login } = useAuth();
@@ -33,8 +48,13 @@ export default function Login() {
     }
 
     const result = login(form.email, form.password);
+    // Chờ duyệt / bị từ chối: sang màn trạng thái, không đăng nhập
+    if (result.statusScreen) {
+      navigate("/account-status", { state: { ...result.statusScreen, source: "login" } });
+      return;
+    }
     if (result.error) {
-      setErrors({ form: result.error });
+      setErrors({ form: result.error, accountStatus: result.accountStatus });
       return;
     }
     // Nhân sự mới đăng nhập bằng mật khẩu mặc định → bắt buộc đổi mật khẩu trước
@@ -101,7 +121,7 @@ export default function Login() {
           >
             Đăng nhập
           </button>
-          {errors.form && <p className="mt-2 text-sm text-red-500">{errors.form}</p>}
+          {errors.form && <FormError message={errors.form} accountStatus={errors.accountStatus} />}
         </div>
       </form>
     </AuthLayout>

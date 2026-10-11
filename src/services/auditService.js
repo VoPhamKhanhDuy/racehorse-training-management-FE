@@ -20,6 +20,7 @@ export const AUDIT_CATEGORIES = {
   VACCINATIONSCHEDULE: "Tiêm phòng",
   CARETASK: "Chăm sóc",
   INCIDENTREPORT: "Sự cố",
+  RACEREGISTRATION: "Thi đấu",
   SUPPLY: "Vật tư",
 };
 
@@ -64,6 +65,9 @@ export async function getAuditLogs() {
       // Lệnh khóa / lịch tiêm: tên ngựa lấy từ targetLabel lúc ghi log
       case "CARETASK":
         return { prefix: "của" };
+      // Kết quả thi đấu: HanhDong đã ghi đủ tên giải + ngựa + hạng, không cần đối tượng phía sau
+      case "RACEREGISTRATION":
+        return { name: "" };
       case "INCIDENTREPORT":
       case "VACCINATIONSCHEDULE":
       case "TRAININGLOCK":
