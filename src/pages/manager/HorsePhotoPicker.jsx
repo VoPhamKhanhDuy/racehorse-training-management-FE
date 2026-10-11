@@ -1,8 +1,7 @@
 import { useId } from "react";
 import { ImagePlus, X } from "lucide-react";
 import HorseIcon from "../../components/HorseIcon";
-
-const MAX_PHOTO_SIZE_MB = 5;
+import { HORSE_PHOTO_MAX_MB as MAX_PHOTO_SIZE_MB, HORSE_PHOTO_TYPES } from "../../data/horseOptions";
 
 // Chọn ảnh ngựa trong HorseForm: xem trước ngay, có thể đổi hoặc bỏ ảnh.
 // photo: đường dẫn ảnh có sẵn / data URL vừa chọn / null (dùng placeholder)
@@ -13,12 +12,13 @@ export default function HorsePhotoPicker({ photo, horseName, error, onChange, on
     const file = e.target.files?.[0];
     e.target.value = ""; // cho phép chọn lại đúng file vừa bỏ
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      onError("Vui lòng chọn file ảnh (JPG, PNG, WebP...)");
+    // Ảnh không hợp lệ: báo lỗi dưới ô ảnh, giữ nguyên ảnh đang có (không lưu file vừa chọn)
+    if (!HORSE_PHOTO_TYPES.includes(file.type)) {
+      onError("Chỉ nhận ảnh JPG, PNG hoặc WebP.");
       return;
     }
     if (file.size > MAX_PHOTO_SIZE_MB * 1024 * 1024) {
-      onError(`Ảnh tối đa ${MAX_PHOTO_SIZE_MB} MB`);
+      onError(`Ảnh vượt quá ${MAX_PHOTO_SIZE_MB} MB, vui lòng chọn ảnh nhỏ hơn.`);
       return;
     }
     // TODO: thay bằng upload lên server khi BE xong — hiện đọc thành data URL, chỉ giữ trong phiên làm việc
@@ -43,7 +43,7 @@ export default function HorsePhotoPicker({ photo, horseName, error, onChange, on
           <input
             id={inputId}
             type="file"
-            accept="image/*"
+            accept={HORSE_PHOTO_TYPES.join(",")}
             onChange={handleFileChange}
             className="sr-only"
           />
@@ -67,7 +67,7 @@ export default function HorsePhotoPicker({ photo, horseName, error, onChange, on
           <p className="text-xs text-stone">JPG, PNG, WebP · tối đa {MAX_PHOTO_SIZE_MB} MB. Không chọn sẽ dùng ảnh mặc định.</p>
         </div>
       </div>
-      {error && <p className="mt-1.5 text-sm text-alert">{error}</p>}
+      {error && <p role="alert" className="mt-1.5 text-sm text-rust">{error}</p>}
     </div>
   );
 }

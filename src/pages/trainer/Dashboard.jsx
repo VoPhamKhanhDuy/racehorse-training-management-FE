@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import LoadingState from "../../components/LoadingState";
 import StatusBadge from "../../components/StatusBadge";
 import { getHealthStatuses, getHorses, getSchedules, getUsers } from "../../services/trainerService";
-import { todayISO } from "../../utils/date";
+import { formatHorseAge, todayISO } from "../../utils/date";
 
 export default function Dashboard() {
   const [horses, setHorses] = useState([]);
@@ -96,7 +96,7 @@ export default function Dashboard() {
                       <span className="font-medium">{horse?.Ten ?? `Ngựa #${health.HorseID}`}</span>
                       {horse && (
                         <span className="text-[#6E6E76]">
-                          {" "}· {horse.Giong} · {horse.Tuoi} tuổi
+                          {" "}· {horse.Giong} · {formatHorseAge(horse.NgaySinh)}
                         </span>
                       )}
                     </span>

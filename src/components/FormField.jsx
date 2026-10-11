@@ -18,10 +18,10 @@ const variantStyles = {
     label: "mb-1 block font-serif text-sm font-semibold text-stone",
     input:
       "w-full border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors placeholder:text-stone/50 autofill:shadow-[inset_0_0_0_1000px_var(--color-parchment)] autofill:[-webkit-text-fill-color:var(--color-ink)]",
-    inputState: (error) => (error ? "border-alert" : "border-stone/50 focus:border-brass"),
+    inputState: (error) => (error ? "border-rust" : "border-stone/50 focus:border-brass"),
     iconPadding: "pl-8",
     iconBox: "w-7 text-stone",
-    error: "text-alert",
+    error: "text-rust",
   },
   // "outline": viền đủ 4 cạnh, bo nhẹ, focus viền cam — đồng bộ với ô tìm kiếm ở các trang danh sách (dùng trong card form)
   outline: {

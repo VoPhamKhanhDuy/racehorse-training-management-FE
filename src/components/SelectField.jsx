@@ -10,8 +10,8 @@ const variantStyles = {
   line: {
     label: "mb-1 block font-serif text-sm font-semibold text-stone",
     select: "w-full cursor-pointer border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors",
-    selectState: (error) => (error ? "border-alert" : "border-stone/50 focus:border-brass"),
-    error: "text-alert",
+    selectState: (error) => (error ? "border-rust" : "border-stone/50 focus:border-brass"),
+    error: "text-rust",
   },
   // "outline": viền đủ 4 cạnh, bo nhẹ — cùng kiểu FormField variant="outline"
   outline: {

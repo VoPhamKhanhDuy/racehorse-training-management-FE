@@ -23,6 +23,8 @@ import ScheduleForm from "./pages/trainer/ScheduleForm";
 import TrainingSessions from "./pages/trainer/TrainingSessions";
 import TrainingSessionForm from "./pages/trainer/TrainingSessionForm";
 import Races from "./pages/trainer/Races";
+import HorseProfiles from "./pages/trainer/HorseProfiles";
+import HorseProfile from "./pages/trainer/HorseProfile";
 
 function App() {
   return (
@@ -54,7 +56,9 @@ function App() {
         <Route path="/trainer/sessions/new" element={<TrainingSessionForm />} />
         <Route path="/trainer/sessions/:id/edit" element={<TrainingSessionForm />} />
         <Route path="/trainer/races" element={<Races />} />
-        {/* Hồ sơ ngựa (chỉ xem): tạm placeholder */}
+        {/* Hồ sơ ngựa: chỉ xem */}
+        <Route path="/trainer/horses" element={<HorseProfiles />} />
+        <Route path="/trainer/horses/:id" element={<HorseProfile />} />
         <Route path="/trainer/*" element={<PlaceholderPage />} />
       </Route>
 

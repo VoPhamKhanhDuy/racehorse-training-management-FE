@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { Search, SearchX } from "lucide-react";
 import HorseIcon from "../../components/HorseIcon";
 import LoadingState from "../../components/LoadingState";
+import Sparkline from "../../components/Sparkline";
 import SessionDetail from "./SessionDetail";
 import { getActiveTrainingLocks, getHorses, getTrainingSessions } from "../../services/trainerService";
 import { formatDayMonth } from "../../utils/date";
@@ -18,21 +19,6 @@ function HorseAvatar({ horse, size = "h-8 w-8" }) {
         <HorseIcon className="h-4 w-4" />
       )}
     </span>
-  );
-}
-
-// Sparkline 52×16 chỉ số tập các buổi gần đây: đường 1.5px mực nâu, không chấm, không trục
-function Sparkline({ values }) {
-  if (values.length < 2) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const points = values
-    .map((v, i) => `${(i / (values.length - 1)) * 50 + 1},${max === min ? 8 : 15 - ((v - min) / (max - min)) * 14}`)
-    .join(" ");
-  return (
-    <svg width="52" height="16" aria-hidden="true" className="block">
-      <polyline points={points} fill="none" stroke="var(--color-bark)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
   );
 }
 

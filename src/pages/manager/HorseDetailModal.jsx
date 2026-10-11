@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import HealthStatusBadge from "../../components/HealthStatusBadge";
 import Modal from "../../components/Modal";
-import { formatDate } from "../../utils/date";
+import { formatBirthDateWithAge, formatDate } from "../../utils/date";
 
 // Một dòng thông tin trong modal: nhãn trên, giá trị dưới
 function DetailItem({ label, children, wide = false }) {
@@ -14,8 +14,9 @@ function DetailItem({ label, children, wide = false }) {
   );
 }
 
-// Modal chi tiết hồ sơ ngựa, có nút Sửa (sang trang sửa) và Xóa (trang cha mở ConfirmDialog)
-export default function HorseDetailModal({ horse, owner, healthRecord, onClose, onDelete }) {
+// Modal chi tiết hồ sơ ngựa, có nút Sửa (sang trang sửa) và Xóa (trang cha mở ConfirmDialog).
+// canDelete = false: ngựa đã có dữ liệu liên quan → nút Xóa bị vô hiệu kèm dòng giải thích
+export default function HorseDetailModal({ horse, owner, healthRecord, canDelete, onClose, onDelete }) {
   return (
     <Modal open={Boolean(horse)} title={horse ? `Hồ sơ ngựa ${horse.Ten}` : ""} onClose={onClose}>
       {horse && (
@@ -32,7 +33,9 @@ export default function HorseDetailModal({ horse, owner, healthRecord, onClose, 
               <span className="font-serif text-base font-semibold">{horse.Ten}</span>
             </DetailItem>
             <DetailItem label="Giống">{horse.Giong || "—"}</DetailItem>
-            <DetailItem label="Tuổi">{horse.Tuoi} tuổi</DetailItem>
+            <DetailItem label="Ngày sinh">{formatBirthDateWithAge(horse.NgaySinh) || "—"}</DetailItem>
+            <DetailItem label="Giới tính">{horse.GioiTinh || "—"}</DetailItem>
+            <DetailItem label="Màu lông">{horse.MauLong || "—"}</DetailItem>
             <DetailItem label="Cân nặng">{horse.CanNang.toLocaleString("vi-VN")} kg</DetailItem>
             <DetailItem label="Dòng dõi" wide>
               {horse.DongDoi || "—"}
@@ -43,7 +46,7 @@ export default function HorseDetailModal({ horse, owner, healthRecord, onClose, 
                 <span className="ml-2 text-sm text-stone">(cập nhật {formatDate(healthRecord.NgayCapNhat)})</span>
               )}
             </DetailItem>
-            <DetailItem label="Chủ sở hữu" wide>
+            <DetailItem label="Chủ ngựa" wide>
               {owner ? (
                 <>
                   {owner.HoTen}
@@ -56,10 +59,13 @@ export default function HorseDetailModal({ horse, owner, healthRecord, onClose, 
           </dl>
 
           <div className="mt-8 flex flex-wrap justify-end gap-3 border-t border-stone/15 pt-5">
+            {/* Ngựa đã có dữ liệu liên quan (giáo án, buổi tập, sức khỏe...) thì không cho xóa */}
             <button
               type="button"
               onClick={() => onDelete(horse)}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-alert/40 px-4 py-2 text-sm font-semibold text-alert transition-colors hover:bg-alert/5"
+              disabled={!canDelete}
+              aria-describedby={canDelete ? undefined : "horse-delete-hint"}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-alert/40 px-4 py-2 text-sm font-semibold text-alert transition-colors hover:bg-alert/5 disabled:cursor-not-allowed disabled:border-stone/25 disabled:text-stone/60 disabled:hover:bg-transparent"
             >
               <Trash2 className="h-4 w-4" />
               Xóa hồ sơ
@@ -72,6 +78,11 @@ export default function HorseDetailModal({ horse, owner, healthRecord, onClose, 
               Sửa hồ sơ
             </Link>
           </div>
+          {!canDelete && (
+            <p id="horse-delete-hint" className="mt-2 text-right text-xs text-stone">
+              Ngựa đã có dữ liệu huấn luyện/sức khỏe nên không thể xóa.
+            </p>
+          )}
         </>
       )}
     </Modal>

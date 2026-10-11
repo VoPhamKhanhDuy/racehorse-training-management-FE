@@ -8,15 +8,17 @@ import trainingLocks from "../data/trainingLocks";
 import races from "../data/races";
 import raceRegistrations from "../data/raceRegistrations";
 import healthStatuses from "../data/healthStatuses";
+import vaccinations from "../data/vaccinations";
+import medicalRecords from "../data/medicalRecords";
 import users from "../data/users";
 import { toUserID } from "../utils/userId";
 import { formatDate, todayISO } from "../utils/date";
 import { getUsers as getAccountUsers } from "./accountService";
 import { SESSION_LIMITS } from "../data/trainingSessionOptions";
-import { getHealthStatuses, getHorses } from "./horseService";
+import { getHealthStatuses, getHorseById, getHorses } from "./horseService";
 
 // Ngựa + trạng thái sức khỏe dùng chung kho với trang Quản lý hồ sơ ngựa (Club Manager)
-export { getHealthStatuses, getHorses };
+export { getHealthStatuses, getHorseById, getHorses };
 
 const NETWORK_DELAY_MS = 400;
 
@@ -297,4 +299,22 @@ export async function cancelRaceRegistration(raceId, horseId) {
   if (!race) throw new Error("Không tìm thấy giải đua");
   if (race.Ngay < todayISO()) throw new Error("Giải đua đã diễn ra, không thể hủy đăng ký");
   db.raceRegistrations = db.raceRegistrations.filter((r) => !(r.RaceID === race.RaceID && r.HorseID === Number(horseId)));
+}
+
+// ---- Hồ sơ ngựa (chỉ xem) ----
+
+// Lịch tiêm phòng (VACCINATIONSCHEDULE) của 1 ngựa, NgayHen mới nhất trước
+export async function getVaccinationSchedules(horseId) {
+  await delay();
+  return clone(vaccinations.filter((v) => v.HorseID === Number(horseId))).sort((a, b) => b.NgayHen.localeCompare(a.NgayHen));
+}
+
+// Ngày khám gần nhất của 1 ngựa từ MEDICALRECORD; null nếu chưa khám lần nào.
+// Phân quyền: CHỈ trả HorseID + Ngay — HLV không được xem ChanDoan / PhacDo / ViTriChanThuong (BE cũng phải lọc cột)
+export async function getLatestCheckupDate(horseId) {
+  await delay();
+  const latest = medicalRecords
+    .filter((r) => r.HorseID === Number(horseId))
+    .reduce((max, r) => (r.Ngay > max ? r.Ngay : max), "");
+  return latest ? { HorseID: Number(horseId), Ngay: latest } : null;
 }

@@ -1,5 +1,5 @@
 import HorseIcon from "../../components/HorseIcon";
-import { formatDayMonth } from "../../utils/date";
+import { formatDayMonth, formatHorseAge } from "../../utils/date";
 
 const NOTE_BROWN = "text-[#946330]";
 // Cột dính cần nền đặc: hàng bị chặn = stone 5% trên trắng; hàng đang rê chuột = be rất nhạt
@@ -36,7 +36,7 @@ export default function RaceHorseCell({ horse, info, highlighted }) {
             {horse.Ten}
           </p>
           <p className="hidden truncate text-xs text-stone sm:block">
-            {[horse.Giong, horse.Tuoi && `${horse.Tuoi} tuổi`].filter(Boolean).join(" · ")}
+            {[horse.Giong, formatHorseAge(horse.NgaySinh)].filter(Boolean).join(" · ")}
           </p>
           {(blockReason || needsWatch) && (
             <p className={`hidden truncate text-xs sm:block ${blockReason ? "text-stone" : NOTE_BROWN}`}>
