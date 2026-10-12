@@ -1,9 +1,10 @@
 // TODO: thay bằng gọi API thật khi BE xong
 // Mock API hồ sơ ngựa (bảng HORSE) — dùng chung cho Club Manager (thêm/sửa/xóa) và Head Trainer (xem).
-// Dữ liệu giữ trong bộ nhớ của module nên còn nguyên khi chuyển trang, mất khi tải lại trang.
+// Dữ liệu lưu bền: SEED (data/horses.js, data/healthStatuses.js) + lớp thay đổi trong localStorage (services/persistedStore.js).
 import horses from "../data/horses";
 import healthStatuses from "../data/healthStatuses";
 import { getUsers } from "./accountService";
+import { createPersistedList } from "./persistedStore";
 import { toUserID } from "../utils/userId";
 import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../data/horseOptions";
 import { getHorseAge, todayISO } from "../utils/date";
@@ -14,8 +15,10 @@ function delay(ms = NETWORK_DELAY_MS) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-let horseStore = horses.map((h) => ({ ...h }));
-const healthStore = healthStatuses.map((h) => ({ ...h }));
+const horseList = createPersistedList("horses", horses, "HorseID");
+const healthList = createPersistedList("healthStatuses", healthStatuses, "HorseID");
+const horseStore = horseList.items;
+const healthStore = healthList.items;
 
 const nextHorseId = () => horseStore.reduce((max, h) => Math.max(max, h.HorseID), 0) + 1;
 
@@ -95,6 +98,7 @@ export async function createHorse(data) {
   assertValidProfile(record);
   const newHorse = { HorseID: nextHorseId(), ...record };
   horseStore.push(newHorse);
+  horseList.save();
   return { ...newHorse };
 }
 
@@ -109,13 +113,14 @@ export async function updateHorse(horseId, data) {
   // Vị trí cắt ảnh chỉ đúng với ảnh cũ — đổi ảnh thì bỏ, quay về mặc định
   const photoPosition = record.photo === current.photo ? current.photoPosition : undefined;
   horseStore[index] = { HorseID: current.HorseID, ...record, ...(photoPosition && { photoPosition }) };
+  horseList.save();
   return { ...horseStore[index] };
 }
 
 // Chỉ gọi sau khi đã kiểm tra ngựa không có dữ liệu liên quan — dùng deleteHorseIfUnused (horseUsageService)
 export async function deleteHorse(horseId) {
   await delay();
-  horseStore = horseStore.filter((h) => h.HorseID !== Number(horseId));
+  horseList.remove((h) => h.HorseID === Number(horseId));
 }
 
 // Trạng thái sức khỏe hiện tại (bảng HEALTHSTATUS) — ngựa mới thêm sẽ chưa có bản ghi
@@ -132,6 +137,7 @@ export async function updateHealthStatus(horseId, trangThai, ngay) {
   if (current && ngay < current.NgayCapNhat) return false;
   if (current) Object.assign(current, { TrangThai: trangThai, NgayCapNhat: ngay });
   else healthStore.push({ HorseID: Number(horseId), TrangThai: trangThai, NgayCapNhat: ngay });
+  healthList.save();
   return true;
 }
 

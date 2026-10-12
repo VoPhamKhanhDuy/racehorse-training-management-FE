@@ -21,6 +21,7 @@ import {
   VACCINE_TYPES,
 } from "../data/vaccinationOptions";
 import { getUsers as getAccountUsers } from "./accountService";
+import { createPersistedList } from "./persistedStore";
 import { getHealthStatuses, getHorses, updateHealthStatus } from "./horseService";
 import { toUserID } from "../utils/userId";
 import { todayISO } from "../utils/date";
@@ -34,7 +35,9 @@ function delay(ms = NETWORK_DELAY_MS) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const recordStore = medicalRecords.map((r) => ({ ...r }));
+// Lưu bền: SEED + lớp thay đổi trong localStorage (services/persistedStore.js)
+const recordList = createPersistedList("medicalRecords", medicalRecords, "RecordID");
+const recordStore = recordList.items;
 
 // Mới nhất trước: theo Ngay, cùng ngày thì bản ghi tạo sau trước
 const byNewest = (a, b) => b.Ngay.localeCompare(a.Ngay) || b.RecordID - a.RecordID;
@@ -75,7 +78,8 @@ export async function getVets() {
 
 // ---- Lệnh khóa huấn luyện (TRAININGLOCK) ----
 // Kho dùng chung cho mọi role: HLV trưởng đọc qua trainerService để chặn xếp lịch / ghi buổi tập / đăng ký thi đấu.
-const lockStore = trainingLocks.map((l) => ({ ...l }));
+const lockList = createPersistedList("trainingLocks", trainingLocks, "LockID");
+const lockStore = lockList.items;
 
 // Mọi lệnh khóa huấn luyện, kể cả đã gỡ (ngăn chi tiết bệnh án tìm lệnh khóa đặt cùng ngày khám)
 export async function getTrainingLocks() {
@@ -113,6 +117,7 @@ export async function createTrainingLock(data, vetId) {
   if (reason.length < LOCK_REASON_LIMITS.min || reason.length > LOCK_REASON_LIMITS.max) throw new Error("Lý do không hợp lệ");
   const lock = { LockID: nextLockId(), HorseID: horseId, VetID: Number(vetId), LyDo: reason, NgayDat: data.NgayDat, NgayGo: null };
   lockStore.push(lock);
+  lockList.save();
   const health = (await getHealthStatuses()).find((h) => h.HorseID === horseId);
   if (health?.TrangThai !== TREATMENT_STATE) await updateHealthStatus(horseId, TREATMENT_STATE, todayISO());
   return { ...lock };
@@ -127,6 +132,7 @@ export async function releaseTrainingLock(lockId, newStatus) {
   if (lock.NgayGo) throw new Error("Lệnh khóa này đã được gỡ");
   if (!RELEASE_HEALTH_STATES.includes(newStatus)) throw new Error("Vui lòng chọn tình trạng sức khỏe mới");
   lock.NgayGo = todayISO();
+  lockList.save();
   await updateHealthStatus(lock.HorseID, newStatus, lock.NgayGo);
   return { ...lock };
 }
@@ -150,6 +156,7 @@ function createLockFromRecord(record, vetId) {
     NgayGo: null,
   };
   lockStore.push(lock);
+  lockList.save();
   return { ...lock };
 }
 
@@ -194,6 +201,7 @@ export async function createMedicalRecord(data, vetId) {
   assertRecordValid(record, data.injuries);
   const newRecord = { RecordID: recordStore.reduce((max, r) => Math.max(max, r.RecordID), 0) + 1, VetID: Number(vetId), ...record };
   recordStore.push(newRecord);
+  recordList.save();
   const healthUpdated = data.TrangThai ? await updateHealthStatus(record.HorseID, data.TrangThai, record.Ngay) : false;
   const lock = autoLockIfNeeded(newRecord, data.injuries, data.TrangThai, vetId);
   return { record: { ...newRecord }, healthUpdated, lock };
@@ -208,6 +216,7 @@ export async function updateMedicalRecord(recordId, data, vetId) {
   const record = { ...toRecord(data), HorseID: current.HorseID };
   assertRecordValid(record, data.injuries);
   Object.assign(current, record);
+  recordList.save();
   const canUpdateHealth = data.TrangThai && isLatestRecordOfHorse(current);
   const healthUpdated = canUpdateHealth ? await updateHealthStatus(current.HorseID, data.TrangThai, current.Ngay) : false;
   // Tình trạng chỉ đổi được ở lần khám mới nhất → chỉ lần đó mới có thể tự đặt lệnh khóa
@@ -225,7 +234,8 @@ export async function isLatestMedicalRecord(recordId) {
 // ---- Lịch tiêm phòng / tẩy giun (VACCINATIONSCHEDULE) ----
 // Kho dùng chung: HLV trưởng đọc qua trainerService (hồ sơ ngựa), kiểm tra xóa ngựa đọc getHorseIdsWithVaccinations.
 // TrangThai chỉ lưu "Chờ tiêm" | "Đã tiêm"; "Quá hạn" / "Sắp tới" tính bằng getVaccineState (utils/healthAlerts.js).
-const vaccineStore = vaccinations.map((v) => ({ ...v }));
+const vaccineList = createPersistedList("vaccinations", vaccinations, "ScheduleID");
+const vaccineStore = vaccineList.items;
 const nextVaccineId = () => vaccineStore.reduce((max, v) => Math.max(max, v.ScheduleID), 0) + 1;
 const sameText = (a, b) => a.toLocaleLowerCase("vi") === b.toLocaleLowerCase("vi");
 
@@ -278,6 +288,7 @@ export async function createVaccination(data) {
   assertPendingValid(record);
   const item = { ScheduleID: nextVaccineId(), ...record, TrangThai: VACCINE_PENDING };
   vaccineStore.push(item);
+  vaccineList.save();
   return { ...item };
 }
 
@@ -289,6 +300,7 @@ export async function updateVaccination(scheduleId, data) {
   if (!record.NgayHen || (record.NgayHen !== item.NgayHen && record.NgayHen < todayISO())) throw new Error("Ngày hẹn không được ở quá khứ");
   assertPendingValid(record, item.ScheduleID);
   Object.assign(item, record);
+  vaccineList.save();
   return { ...item };
 }
 
@@ -297,6 +309,7 @@ export async function deleteVaccination(scheduleId) {
   await delay();
   const item = findPendingOrThrow(scheduleId);
   vaccineStore.splice(vaccineStore.indexOf(item), 1);
+  vaccineList.save();
 }
 
 // Đánh dấu đã tiêm; nextDate (tùy chọn, phải sau hôm nay): tạo thêm lịch chờ tiêm cùng ngựa + cùng loại.
@@ -312,5 +325,6 @@ export async function markVaccinated(scheduleId, nextDate) {
     next = { ScheduleID: nextVaccineId(), HorseID: item.HorseID, Loai: item.Loai, NgayHen: nextDate, TrangThai: VACCINE_PENDING };
     vaccineStore.push(next);
   }
+  vaccineList.save();
   return { item: { ...item }, next: next && { ...next } };
 }

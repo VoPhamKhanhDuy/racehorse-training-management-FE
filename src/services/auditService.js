@@ -7,6 +7,7 @@ import { getHorses } from "./horseService";
 import { getSupplies } from "./supplyService";
 import { getTrainingPlans, getTrainingSessions } from "./trainerService";
 import { toUserID } from "../utils/userId";
+import { createPersistedList } from "./persistedStore";
 import { toISODateTime } from "../utils/date";
 
 // Nhóm hành động theo bảng bị tác động — dùng cho pill lọc và icon trên timeline
@@ -21,17 +22,20 @@ export const AUDIT_CATEGORIES = {
   CARETASK: "Chăm sóc",
   INCIDENTREPORT: "Sự cố",
   RACEREGISTRATION: "Thi đấu",
+  EXPENSE: "Tài chính",
   SUPPLY: "Vật tư",
 };
 
 // Bản sao trong bộ nhớ để ghi thêm log mới (mất khi tải lại trang, giống chưa có DB)
-const logStore = auditLog.map((log) => ({ ...log }));
+const logList = createPersistedList("auditLog", auditLog, "LogID");
+const logStore = logList.items;
 
 // Ghi 1 dòng nhật ký. targetLabel (chỉ phía FE, không thuộc ERD): tên đối tượng lúc ghi —
 // dùng khi bản ghi đã bị xóa (vd Xóa hồ sơ ngựa) để timeline vẫn hiện tên thay vì "#ID".
 export function addAuditLog({ UserID, HanhDong, TargetTable, TargetID, targetLabel }) {
   const LogID = logStore.reduce((max, log) => Math.max(max, log.LogID), 0) + 1;
   logStore.push({ LogID, UserID, HanhDong, TargetTable, TargetID, ThoiGian: toISODateTime(new Date()), targetLabel });
+  logList.save();
 }
 
 export async function getAuditLogs() {
@@ -68,6 +72,9 @@ export async function getAuditLogs() {
       // Kết quả thi đấu: HanhDong đã ghi đủ tên giải + ngựa + hạng, không cần đối tượng phía sau
       case "RACEREGISTRATION":
         return { name: "" };
+      // Chi phí: tên ngựa lấy từ targetLabel lúc ghi log
+      case "EXPENSE":
+        return { prefix: "cho" };
       case "INCIDENTREPORT":
       case "VACCINATIONSCHEDULE":
       case "TRAININGLOCK":

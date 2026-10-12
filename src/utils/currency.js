@@ -1,7 +1,7 @@
 // Định dạng tiền VNĐ
-// 232220000 → "232.220.000 ₫"
+// 232220000 → "232.220.000 đ"
 export function formatCurrency(amount) {
-  return `${Math.round(amount).toLocaleString("vi-VN")} ₫`;
+  return `${Math.round(amount).toLocaleString("vi-VN")} đ`;
 }
 
 // Rút gọn cho số liệu lớn: 232220000 → "232,2 triệu", 1500000000 → "1,5 tỷ"

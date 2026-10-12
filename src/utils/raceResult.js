@@ -4,6 +4,11 @@ export const PODIUM_MAX = 3; // hạng 1–3 nổi bật hơn
 
 export const hasResult = (registration) => registration?.ThuHang !== null && registration?.ThuHang !== undefined;
 
+// Hạng bằng chữ: 1 → "Nhất", 2 → "Nhì", 3 → "Ba", còn lại "Hạng N"
+export function formatRankWord(thuHang) {
+  return { 1: "Nhất", 2: "Nhì", 3: "Ba" }[thuHang] ?? formatRank(thuHang);
+}
+
 // 2 → "Hạng 2"; 0 → "Không xếp hạng"; null → ""
 export function formatRank(thuHang) {
   if (thuHang === null || thuHang === undefined) return "";

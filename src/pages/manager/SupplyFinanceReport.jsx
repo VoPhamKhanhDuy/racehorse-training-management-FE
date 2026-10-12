@@ -16,7 +16,7 @@ const FALLBACK_COLOR = "color-mix(in srgb, var(--color-brass) 55%, white)";
 
 const formatShare = (share) => `${Math.round(share * 100)}%`;
 
-// Nửa "Tài chính vật tư": giá trị tồn kho (Σ SoLuongTon × DonGia) + bảng tỷ trọng theo loại vật tư
+// Nửa "Giá trị vật tư tồn kho": giá trị tồn kho (Σ SoLuongTon × DonGia) + bảng tỷ trọng theo loại vật tư
 export default function SupplyFinanceReport({ report }) {
   const topType = report.valueByType[0];
   const metrics = [
@@ -35,7 +35,7 @@ export default function SupplyFinanceReport({ report }) {
 
   return (
     <ReportPanel
-      title="Tài chính vật tư"
+      title="Giá trị vật tư tồn kho"
       description="Giá trị hàng trong kho tính theo đơn giá hiện tại."
       metrics={metrics}
     >

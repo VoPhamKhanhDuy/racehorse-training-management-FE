@@ -1,26 +1,24 @@
-/* Trang chi tiết ngựa của Chủ ngựa — 1 lưới 2 cột thống nhất (440px | còn lại, cách 48px) dùng cho mọi hàng để thẳng cột.
-   Viết CSS module để giá trị bố cục chắc chắn được áp dụng (không phụ thuộc class Tailwind tùy ý).
-   Màu dùng biến của hệ thống trong styles/index.css. Màn hẹp (< 900px): 1 cột. */
+/* Trang chi tiết ngựa của Chủ ngựa. Viết CSS module để giá trị bố cục chắc chắn được áp dụng (không phụ thuộc class Tailwind
+   tùy ý). Màu dùng biến của hệ thống trong styles/index.css.
+   - Phần đầu: ảnh (tỉ lệ 4:3, tối đa 620px) | thông tin (eyebrow, tên, sức khỏe, bảng Hồ sơ), căn đỉnh theo đỉnh ảnh.
+   - Bên dưới: "Chăm sóc hằng ngày" | "Thành tích thi đấu" 2 cột (≥ 1100px) hoặc xếp dọc full-width.
+   - Tiêu đề mục dùng components/SectionTitle (cách phía trên 56px). */
 
 .page {
-  max-width: 960px;
+  max-width: 1180px;
 }
 
-.grid {
+/* Phần đầu: 1 cột (màn hẹp); ≥ 900px: ảnh | thông tin */
+.top {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   row-gap: 32px;
   align-items: start;
 }
 
-.column {
-  min-width: 0;
-}
-
-/* Hàng 1 — ảnh 4:3 */
 .photo {
   width: 100%;
-  max-width: 440px;
+  max-width: 620px;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 2px;
@@ -48,12 +46,10 @@
   color: #d9cdb8;
 }
 
-/* Hàng 1 — nhận diện, nằm sát trên */
 .identity {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  align-self: start;
 }
 
 .eyebrow {
@@ -74,13 +70,6 @@
   color: #2b2118;
 }
 
-.subtitle {
-  margin-top: 8px;
-  font-family: var(--font-serif);
-  font-size: 18px;
-  color: var(--color-stone);
-}
-
 .health {
   margin-top: 16px;
   font-size: 16px;
@@ -94,20 +83,22 @@
   color: var(--color-brass-deep);
 }
 
-/* Giữa hàng 1 và hàng 2: 40px · hairline · 40px */
-.divider {
-  margin: 40px 0;
-  border: 0;
-  border-top: 1px solid #ece5d8;
+/* Mục "Hồ sơ" trong cột thông tin: cách phía trên 56px như mọi mục khác */
+.profile {
+  margin-top: 56px;
 }
 
-.sectionGap {
-  margin-top: 32px;
+/* Hàng dưới: Chăm sóc hằng ngày | Thành tích thi đấu */
+.lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 56px;
+  margin-top: 56px;
+  align-items: start;
 }
 
 /* Bảng đường chấm: mỗi dòng ~40px, nhãn màu phụ 15px, giá trị màu mực 15px */
 .specs {
-  margin-top: 4px;
   font-size: 15px;
 }
 
@@ -156,13 +147,13 @@
   color: var(--color-stone);
 }
 
-/* Thành tích thi đấu (cột phải hàng 2) */
+/* Thành tích thi đấu */
 .achievements {
   margin-top: 0;
 }
 
 .raceList {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .raceRow {
@@ -209,21 +200,27 @@
 }
 
 .empty {
-  margin-top: 12px;
+  margin-top: 0;
   font-size: 14px;
   color: var(--color-stone);
 }
 
-/* ≥ 900px: 2 cột 440px | phần còn lại, cách 48px; ảnh cố định 440×330 */
+/* ≥ 900px: ảnh (co theo cột, tối đa 620px) | thông tin, cách 48px */
 @media (min-width: 900px) {
-  .grid {
-    grid-template-columns: 440px minmax(0, 1fr);
+  .top {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     column-gap: 48px;
   }
 
-  .photo {
-    width: 440px;
-    height: 330px;
-    aspect-ratio: auto;
+  .name {
+    font-size: 56px;
+  }
+}
+
+/* ≥ 1100px: Chăm sóc hằng ngày | Thành tích thi đấu cạnh nhau, cùng khoảng cách 48px */
+@media (min-width: 1100px) {
+  .lower {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 48px;
   }
 }

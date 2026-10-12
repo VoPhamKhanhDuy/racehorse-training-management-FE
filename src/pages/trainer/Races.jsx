@@ -166,7 +166,7 @@ export default function Races() {
   const doSaveResult = async (horse, race, rank) => {
     setSavingResult(true);
     try {
-      const saved = await updateRaceResult(race.RaceID, horse.HorseID, rank);
+      const { registration: saved, prizeCleared } = await updateRaceResult(race.RaceID, horse.HorseID, rank);
       setRegistrations((prev) => prev.map((r) => (r.RaceID === saved.RaceID && r.HorseID === saved.HorseID ? saved : r)));
       addAuditLog({
         UserID: trainerId,
@@ -175,7 +175,9 @@ export default function Races() {
         TargetID: race.RaceID,
         targetLabel: horse.Ten,
       });
-      setToast({ text: `Đã lưu kết quả: ${horse.Ten} – ${resultText(rank)}` });
+      setToast({
+        text: `Đã lưu kết quả: ${horse.Ten} – ${resultText(rank)}${prizeCleared ? ". Đã xóa tiền thưởng cũ, Quản lý cần nhập lại" : ""}`,
+      });
       setResultTarget(null);
     } catch (err) {
       setToast({ text: err.message, error: true });

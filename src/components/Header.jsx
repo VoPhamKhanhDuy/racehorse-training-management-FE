@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, RotateCcw } from "lucide-react";
 import useAuth from "../hooks/useAuth";
+import { clearDemoData } from "../services/persistedStore";
 import roles from "../data/roles";
 
 // Thanh trên cùng: avatar mở menu tài khoản (tên, vai trò, Đăng xuất). onMenuClick mở sidebar trên mobile.
@@ -37,6 +38,13 @@ export default function Header({ onMenuClick }) {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [menuOpen]);
+
+  // Dev: xóa dữ liệu demo đã lưu rồi tải lại trang → về đúng SEED
+  const handleResetDemoData = () => {
+    if (!window.confirm("Xóa mọi thay đổi dữ liệu demo đã lưu trong trình duyệt và về dữ liệu mẫu ban đầu?")) return;
+    clearDemoData();
+    window.location.reload();
+  };
 
   const handleLogout = () => {
     setMenuOpen(false);
@@ -100,6 +108,18 @@ export default function Header({ onMenuClick }) {
               <LogOut className="h-4 w-4 text-stone" aria-hidden="true" />
               Đăng xuất
             </button>
+            {/* Chỉ khi chạy dev: xóa lớp dữ liệu demo đã lưu trong trình duyệt để về đúng SEED */}
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleResetDemoData}
+                className="flex w-full cursor-pointer items-center gap-2 border-t border-stone/15 px-4 py-2.5 text-left text-sm text-stone transition-colors hover:bg-black/5 focus:bg-black/5 focus:outline-none"
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                Reset dữ liệu demo
+              </button>
+            )}
           </div>
         )}
       </div>

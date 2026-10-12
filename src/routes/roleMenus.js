@@ -16,6 +16,7 @@ import {
   Trophy,
   UserCheck,
   Users,
+  Wallet,
 } from "lucide-react";
 
 // Menu sidebar của từng role (roleId → danh sách mục). icon: component từ lucide-react
@@ -43,6 +44,7 @@ const roleMenus = {
     { label: "Ngựa của tôi", path: "/owner/horses", icon: FolderOpen },
     { label: "Sức khỏe", path: "/owner/health", icon: HeartPulse },
     { label: "Lịch trình", path: "/owner/schedule", icon: CalendarDays },
+    { label: "Chi phí", path: "/owner/finance", icon: Wallet },
   ],
   // Sắp theo mức ưu tiên công việc: việc cốt lõi/cần xử lý nhanh lên trên, xem định kỳ/audit xuống dưới
   club_manager: [
@@ -51,6 +53,7 @@ const roleMenus = {
     { label: "Quản lý nhân sự", path: "/manager/staff", icon: Users },
     { label: "Quản lý vật tư", path: "/manager/supplies", icon: Package },
     { label: "Báo cáo hiệu suất & tài chính", path: "/manager/reports", icon: ChartColumn },
+    { label: "Chi phí & tiền thưởng", path: "/manager/finance", icon: Wallet },
     { label: "Nhật ký thao tác", path: "/manager/audit-log", icon: History },
   ],
 };

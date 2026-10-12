@@ -28,7 +28,8 @@ export default function TrainingPerformanceReport({ report }) {
             key={horse.name}
             label={horse.name}
             ratio={horse.sessions / maxSessions}
-            color="var(--color-brass)"
+            color="#c2570c"
+            trackColor="#fbf1e6"
             value={`${horse.sessions} buổi`}
           />
         ))}
