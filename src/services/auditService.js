@@ -1,0 +1,102 @@
+// TODO: thay bằng gọi API thật khi BE xong (BE ghi log tự động ở mỗi thao tác ghi dữ liệu)
+// Mock nhật ký thao tác (bảng AUDITLOG) cho Club Manager — join tên người thực hiện + tên đối tượng bị tác động.
+import auditLog from "../data/auditLog";
+import healthStatuses from "../data/healthStatuses";
+import { getUsers } from "./accountService";
+import { getHorses } from "./horseService";
+import { getSupplies } from "./supplyService";
+import { getTrainingPlans, getTrainingSessions } from "./trainerService";
+import { toUserID } from "../utils/userId";
+import { createPersistedList } from "./persistedStore";
+import { toISODateTime } from "../utils/date";
+
+// Nhóm hành động theo bảng bị tác động — dùng cho pill lọc và icon trên timeline
+export const AUDIT_CATEGORIES = {
+  USER: "Tài khoản",
+  HORSE: "Hồ sơ ngựa",
+  HEALTHSTATUS: "Sức khỏe",
+  TRAININGPLAN: "Giáo án",
+  TRAININGSESSION: "Buổi tập",
+  TRAININGLOCK: "Khóa huấn luyện",
+  VACCINATIONSCHEDULE: "Tiêm phòng",
+  CARETASK: "Chăm sóc",
+  INCIDENTREPORT: "Sự cố",
+  RACEREGISTRATION: "Thi đấu",
+  EXPENSE: "Tài chính",
+  SUPPLY: "Vật tư",
+};
+
+// Bản sao trong bộ nhớ để ghi thêm log mới (mất khi tải lại trang, giống chưa có DB)
+const logList = createPersistedList("auditLog", auditLog, "LogID");
+const logStore = logList.items;
+
+// Ghi 1 dòng nhật ký. targetLabel (chỉ phía FE, không thuộc ERD): tên đối tượng lúc ghi —
+// dùng khi bản ghi đã bị xóa (vd Xóa hồ sơ ngựa) để timeline vẫn hiện tên thay vì "#ID".
+export function addAuditLog({ UserID, HanhDong, TargetTable, TargetID, targetLabel }) {
+  const LogID = logStore.reduce((max, log) => Math.max(max, log.LogID), 0) + 1;
+  logStore.push({ LogID, UserID, HanhDong, TargetTable, TargetID, ThoiGian: toISODateTime(new Date()), targetLabel });
+  logList.save();
+}
+
+export async function getAuditLogs() {
+  const [users, horses, supplies, plans, sessions] = await Promise.all([
+    getUsers(),
+    getHorses(),
+    getSupplies(),
+    getTrainingPlans(),
+    getTrainingSessions(),
+  ]);
+  const userById = Object.fromEntries(users.map((u) => [toUserID(u.id), u]));
+  const horseName = (horseId) => horses.find((h) => h.HorseID === horseId)?.Ten;
+
+  // Đối tượng trong câu "<người> đã <hành động> [giới từ] <tên>" → { prefix, name }; bản ghi đã bị xóa thì name = undefined
+  const resolveTarget = ({ TargetTable, TargetID }) => {
+    switch (TargetTable) {
+      case "USER":
+        return { name: userById[TargetID]?.fullName };
+      case "HORSE":
+        return { name: horseName(TargetID) };
+      case "SUPPLY":
+        return { name: supplies.find((s) => s.SupplyID === TargetID)?.TenVatTu };
+      case "TRAININGPLAN": {
+        const plan = plans.find((p) => p.PlanID === TargetID);
+        return { prefix: "cho", name: plan && horseName(plan.HorseID) };
+      }
+      case "TRAININGSESSION": {
+        const session = sessions.find((s) => s.SessionID === TargetID);
+        return { prefix: "của", name: session && horseName(session.HorseID) };
+      }
+      // Lệnh khóa / lịch tiêm: tên ngựa lấy từ targetLabel lúc ghi log
+      case "CARETASK":
+        return { prefix: "của" };
+      // Kết quả thi đấu: HanhDong đã ghi đủ tên giải + ngựa + hạng, không cần đối tượng phía sau
+      case "RACEREGISTRATION":
+        return { name: "" };
+      // Chi phí: tên ngựa lấy từ targetLabel lúc ghi log
+      case "EXPENSE":
+        return { prefix: "cho" };
+      case "INCIDENTREPORT":
+      case "VACCINATIONSCHEDULE":
+      case "TRAININGLOCK":
+        return { prefix: "cho" };
+      case "HEALTHSTATUS":
+        return { prefix: "của", name: healthStatuses.some((h) => h.HorseID === TargetID) ? horseName(TargetID) : undefined };
+      default:
+        return {};
+    }
+  };
+
+  return logStore
+    .map((log) => {
+      const target = resolveTarget(log);
+      return {
+        ...log,
+        actorName: userById[log.UserID]?.fullName ?? `Người dùng #${log.UserID}`,
+        actorRoleId: userById[log.UserID]?.roleId,
+        targetPrefix: target.prefix ?? "",
+        targetName: target.name ?? log.targetLabel ?? `#${log.TargetID}`,
+        category: AUDIT_CATEGORIES[log.TargetTable] ?? "Khác",
+      };
+    })
+    .sort((a, b) => b.ThoiGian.localeCompare(a.ThoiGian));
+}

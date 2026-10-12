@@ -18,16 +18,27 @@ const variantStyles = {
     label: "mb-1 block font-serif text-sm font-semibold text-stone",
     input:
       "w-full border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors placeholder:text-stone/50 autofill:shadow-[inset_0_0_0_1000px_var(--color-parchment)] autofill:[-webkit-text-fill-color:var(--color-ink)]",
-    inputState: (error) => (error ? "border-alert" : "border-stone/50 focus:border-brass"),
+    inputState: (error) => (error ? "border-rust" : "border-stone/50 focus:border-brass"),
     iconPadding: "pl-8",
     iconBox: "w-7 text-stone",
+    error: "text-rust",
+  },
+  // "outline": viền đủ 4 cạnh, bo nhẹ, focus viền cam — đồng bộ với ô tìm kiếm ở các trang danh sách (dùng trong card form)
+  outline: {
+    label: "mb-1.5 block font-serif text-sm font-semibold text-stone",
+    input:
+      "w-full rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors placeholder:text-stone/50 focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 disabled:text-stone",
+    inputState: (error) => (error ? "border-alert focus:ring-alert/20" : "border-stone/25 focus:border-brass"),
+    iconPadding: "pl-10",
+    iconBox: "w-10 text-stone",
     error: "text-alert",
   },
 };
 
 // Ô nhập liệu có nhãn + thông báo lỗi. type="password" sẽ có nút ẩn/hiện mật khẩu.
 // leadingIcon: icon hiển thị bên trái ô (vd kính lúp cho ô tìm kiếm)
-export default function FormField({ label, id, type = "text", error, leadingIcon, variant = "filled", ...inputProps }) {
+// suffix: chữ đơn vị nằm bên phải TRONG ô (vd "m", "km/tuần")
+export default function FormField({ label, id, type = "text", error, leadingIcon, suffix, variant = "filled", ...inputProps }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
   const styles = variantStyles[variant] ?? variantStyles.filled;
@@ -47,9 +58,14 @@ export default function FormField({ label, id, type = "text", error, leadingIcon
           id={id}
           type={isPassword && showPassword ? "text" : type}
           aria-invalid={Boolean(error)}
-          className={`${styles.input} ${isPassword ? "pr-12" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
+          className={`${styles.input} ${isPassword ? "pr-12" : ""} ${suffix ? "pr-20" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
           {...inputProps}
         />
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-sm text-stone">
+            {suffix}
+          </span>
+        )}
         {isPassword && (
           <button
             type="button"
