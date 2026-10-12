@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import LoadingState from "../../components/LoadingState";
+import SectionTitle from "../../components/SectionTitle";
 import useAuth from "../../hooks/useAuth";
 import OwnerHealthRow, { OWNER_HEALTH_GRID } from "./OwnerHealthRow";
 import OwnerVaccineStatus from "./OwnerVaccineStatus";
@@ -7,7 +8,6 @@ import { getActiveLockDates, getHealthStatuses, getOwnerHorses, getOwnerVaccinat
 import { formatDate } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
-const LABEL = "text-[11px] font-medium tracking-[0.16em] text-stone uppercase";
 const HEAD_CELL = "text-xs font-medium tracking-wide text-stone uppercase";
 const isDone = (v) => v.TrangThai === "Đã tiêm";
 
@@ -64,8 +64,8 @@ export default function OwnerHealth() {
       ) : (
         <>
           <section aria-label="Tình trạng hiện tại">
-            <h2 className={LABEL}>Tình trạng hiện tại</h2>
-            <div aria-hidden="true" className={`mt-3 hidden border-b border-stone/20 pr-2 pb-2 pl-1 min-[900px]:grid ${OWNER_HEALTH_GRID}`}>
+            <SectionTitle>Tình trạng hiện tại</SectionTitle>
+            <div aria-hidden="true" className={`hidden border-b border-stone/20 pr-2 pb-2 pl-1 min-[900px]:grid ${OWNER_HEALTH_GRID}`}>
               <span className={HEAD_CELL}>Ngựa</span>
               <span className={HEAD_CELL}>Sức khỏe</span>
               <span className={HEAD_CELL}>Thi đấu</span>
@@ -84,12 +84,12 @@ export default function OwnerHealth() {
             </ul>
           </section>
 
-          <section aria-label="Lịch tiêm phòng" className="mt-10">
-            <h2 className={LABEL}>Lịch tiêm phòng</h2>
+          <section aria-label="Lịch tiêm phòng" className="mt-14">
+            <SectionTitle>Lịch tiêm phòng</SectionTitle>
             {schedule.length === 0 ? (
-              <p className="mt-3 text-sm text-stone">Chưa có lịch tiêm nào.</p>
+              <p className="text-sm text-stone">Chưa có lịch tiêm nào.</p>
             ) : (
-              <ul className="mt-2 border-t border-stone/20">
+              <ul className="border-t border-stone/20">
                 {schedule.map((v) => (
                   <li
                     key={v.ScheduleID}

@@ -10,6 +10,7 @@ import MyHorses from "./pages/owner/MyHorses";
 import OwnerHorseProfile from "./pages/owner/OwnerHorseProfile";
 import OwnerHealth from "./pages/owner/OwnerHealth";
 import OwnerSchedule from "./pages/owner/OwnerSchedule";
+import OwnerFinance from "./pages/owner/OwnerFinance";
 import ChangePassword from "./pages/auth/ChangePassword";
 import AccountApprovals from "./pages/manager/AccountApprovals";
 import CreateStaffAccount from "./pages/manager/CreateStaffAccount";
@@ -20,6 +21,7 @@ import SupplyManagement from "./pages/manager/SupplyManagement";
 import SupplyForm from "./pages/manager/SupplyForm";
 import Reports from "./pages/manager/Reports";
 import AuditLog from "./pages/manager/AuditLog";
+import ManagerFinance from "./pages/manager/ManagerFinance";
 import TrainingPlans from "./pages/trainer/TrainingPlans";
 import TrainingPlanForm from "./pages/trainer/TrainingPlanForm";
 import Schedule from "./pages/trainer/Schedule";
@@ -134,6 +136,7 @@ function App() {
         <Route path="/owner/horses/:id" element={<OwnerHorseProfile />} />
         <Route path="/owner/health" element={<OwnerHealth />} />
         <Route path="/owner/schedule" element={<OwnerSchedule />} />
+        <Route path="/owner/finance" element={<OwnerFinance />} />
         <Route path="/owner/*" element={<PlaceholderPage />} />
       </Route>
 
@@ -150,6 +153,7 @@ function App() {
         <Route path="/manager/horses/new" element={<HorseForm />} />
         <Route path="/manager/horses/:id/edit" element={<HorseForm />} />
         <Route path="/manager/approvals" element={<AccountApprovals />} />
+        <Route path="/manager/finance" element={<ManagerFinance />} />
         <Route path="/manager/staff" element={<StaffManagement />} />
         <Route path="/manager/staff/new" element={<CreateStaffAccount />} />
         <Route path="/manager/staff/:id/edit" element={<CreateStaffAccount />} />

@@ -4,6 +4,7 @@
 import supplies from "../data/supplies";
 import { STAFF_ROLE_IDS } from "../data/roles";
 import { getUsers } from "./accountService";
+import { createPersistedList } from "./persistedStore";
 import { toUserID } from "../utils/userId";
 
 const NETWORK_DELAY_MS = 400;
@@ -12,7 +13,9 @@ function delay(ms = NETWORK_DELAY_MS) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-let supplyStore = supplies.map((s) => ({ ...s }));
+// Lưu bền: SEED (data/supplies.js) + lớp thay đổi trong localStorage (services/persistedStore.js)
+const supplyList = createPersistedList("supplies", supplies, "SupplyID");
+const supplyStore = supplyList.items;
 
 const nextSupplyId = () => supplyStore.reduce((max, s) => Math.max(max, s.SupplyID), 0) + 1;
 
@@ -49,6 +52,7 @@ export async function createSupply(data) {
   await delay();
   const newSupply = { SupplyID: nextSupplyId(), ...toSupplyRecord(data) };
   supplyStore.push(newSupply);
+  supplyList.save();
   return { ...newSupply };
 }
 
@@ -56,12 +60,13 @@ export async function updateSupply(supplyId, data) {
   await delay();
   const supply = findSupplyOrThrow(supplyId);
   Object.assign(supply, toSupplyRecord(data));
+  supplyList.save();
   return { ...supply };
 }
 
 export async function deleteSupply(supplyId) {
   await delay();
-  supplyStore = supplyStore.filter((s) => s.SupplyID !== Number(supplyId));
+  supplyList.remove((s) => s.SupplyID === Number(supplyId));
 }
 
 // Nhập kho (delta > 0) / xuất kho (delta < 0). Không cho tồn kho âm.
@@ -71,6 +76,7 @@ export async function adjustStock(supplyId, delta) {
   const newQuantity = supply.SoLuongTon + delta;
   if (newQuantity < 0) throw new Error(`Chỉ còn ${supply.SoLuongTon} trong kho, không thể xuất ${-delta}`);
   supply.SoLuongTon = newQuantity;
+  supplyList.save();
   return { ...supply };
 }
 

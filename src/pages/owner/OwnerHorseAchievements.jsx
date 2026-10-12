@@ -1,3 +1,4 @@
+import SectionTitle from "../../components/SectionTitle";
 import styles from "./OwnerHorseCard.module.css";
 import { formatDayMonth } from "../../utils/date";
 import { formatRank } from "../../utils/raceResult";
@@ -17,7 +18,7 @@ export default function OwnerHorseAchievements({ achievements }) {
 
   return (
     <section aria-label="Thành tích thi đấu" className={styles.achievements}>
-      <h3 className={styles.eyebrow}>Thành tích thi đấu</h3>
+      <SectionTitle as="h3">Thành tích thi đấu</SectionTitle>
       {entries.length === 0 ? (
         <p className={styles.empty}>Chưa tham gia giải nào</p>
       ) : (

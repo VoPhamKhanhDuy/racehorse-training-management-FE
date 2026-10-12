@@ -1,18 +1,22 @@
 // TODO: thay bằng gọi API báo cáo thật khi BE xong (BE nên tổng hợp sẵn, FE chỉ hiển thị)
 // Báo cáo snapshot hiện tại cho Club Manager — tính từ các mock service khác nên số liệu
 // cập nhật theo thao tác trong phiên (thêm buổi tập, nhập/xuất kho, sửa đơn giá...).
-import races from "../data/races";
-import raceRegistrations from "../data/raceRegistrations";
 import { getHorses } from "./horseService";
 import { getSupplies } from "./supplyService";
-import { getSchedules, getTrainingSessions } from "./trainerService";
+import { getRaceRegistrations, getRaces, getSchedules, getTrainingSessions } from "./trainerService";
 import { todayISO } from "../utils/date";
 
 const TOP_HORSE_COUNT = 6;
 
 // Hiệu suất tập luyện: tổng buổi tập, số ngựa đã thi đấu, tỷ lệ hoàn thành lịch, số buổi tập theo ngựa
 export async function getTrainingReport() {
-  const [horses, sessions, schedules] = await Promise.all([getHorses(), getTrainingSessions(), getSchedules()]);
+  const [horses, sessions, schedules, races, raceRegistrations] = await Promise.all([
+    getHorses(),
+    getTrainingSessions(),
+    getSchedules(),
+    getRaces(),
+    getRaceRegistrations(),
+  ]);
   const today = todayISO();
 
   // Ngựa đã thi đấu: có đăng ký ở giải đã diễn ra (ngày trước hôm nay)

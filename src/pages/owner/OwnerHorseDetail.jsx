@@ -1,8 +1,9 @@
+import SectionTitle from "../../components/SectionTitle";
 import OwnerDottedRow from "./OwnerDottedRow";
 import OwnerHorseAchievements from "./OwnerHorseAchievements";
 import styles from "./OwnerHorseCard.module.css";
 import { FEED_COMPONENTS, FEED_MEALS } from "../../data/feedingOptions";
-import { formatBirthDateWithAge, formatHorseAge } from "../../utils/date";
+import { formatBirthDateWithAge } from "../../utils/date";
 import { OWNER_HEALTH_COLORS } from "../../utils/ownerHealthText";
 
 // Dòng sức khỏe cho chủ ngựa: chữ thường đậm 600, chỉ cụm trạng thái có màu (không pill/chấm/nền).
@@ -30,19 +31,17 @@ function formatFeeding(feeding) {
     .join("\n");
 }
 
-// Trang chi tiết ngựa của chủ ngựa (chỉ xem) — 1 lưới 2 cột thống nhất (OwnerHorseCard.module.css: 440px | còn lại):
-// Hàng 1: ảnh 440×330 | "DÒNG DÕI · …", tên, "Giống · tuổi", dòng sức khỏe, "Đang tạm ngưng huấn luyện" nếu đang khóa tập
-// (KHÔNG hiện lý do). Hairline. Hàng 2: Hồ sơ + Chăm sóc hằng ngày | Thành tích thi đấu.
-// Màn hẹp (< 900px): 1 cột theo thứ tự nhận diện → Hồ sơ → Chăm sóc → Thành tích.
+// Trang chi tiết ngựa của chủ ngựa (chỉ xem) — bố cục trong OwnerHorseCard.module.css:
+// Phần đầu 2 cột: ảnh (4:3, tối đa 620px) | "DÒNG DÕI · …", tên 56px, dòng sức khỏe, "Đang tạm ngưng huấn luyện" nếu đang khóa
+// tập (KHÔNG hiện lý do), rồi bảng "Hồ sơ" đường chấm; cột phải căn đỉnh theo đỉnh ảnh.
+// Bên dưới: "Chăm sóc hằng ngày" | "Thành tích thi đấu" cạnh nhau (≥ 1100px) hoặc xếp dọc full-width.
 // care: { stable, feeding } từ getHorseDailyCare.
 export default function OwnerHorseDetail({ horse, health, locked, care, achievements }) {
-  const subtitle = [horse.Giong, formatHorseAge(horse.NgaySinh)].filter(Boolean).join(" · ");
   const healthLine = HEALTH_LINES[health?.TrangThai];
 
   return (
     <article aria-label={`Hồ sơ ${horse.Ten}`} className={styles.page}>
-      {/* Hàng 1 — nhận diện */}
-      <div className={styles.grid}>
+      <div className={styles.top}>
         <div className={styles.photo}>
           {horse.photo ? (
             <img src={horse.photo} alt={`Ảnh ngựa ${horse.Ten}`} style={{ objectPosition: horse.photoPosition ?? "center 30%" }} />
@@ -56,7 +55,6 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
         <div className={styles.identity}>
           {horse.DongDoi && <p className={styles.eyebrow}>Dòng dõi · {horse.DongDoi}</p>}
           <h2 className={styles.name}>{horse.Ten}</h2>
-          {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
           <p className={styles.health}>
             {healthLine ? (
               <>
@@ -68,16 +66,9 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
             )}
           </p>
           {locked && <p className={styles.lock}>Đang tạm ngưng huấn luyện</p>}
-        </div>
-      </div>
 
-      <hr className={styles.divider} />
-
-      {/* Hàng 2 — dữ liệu */}
-      <div className={styles.grid}>
-        <div className={styles.column}>
-          <section aria-label="Hồ sơ">
-            <h3 className={styles.eyebrow}>Hồ sơ</h3>
+          <section aria-label="Hồ sơ" className={styles.profile}>
+            <SectionTitle as="h3">Hồ sơ</SectionTitle>
             <dl className={styles.specs}>
               <OwnerDottedRow label="Giống" value={horse.Giong} />
               <OwnerDottedRow label="Giới tính" value={horse.GioiTinh} />
@@ -86,20 +77,20 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
               <OwnerDottedRow label="Cân nặng" value={horse.CanNang ? `${horse.CanNang.toLocaleString("vi-VN")} kg` : ""} />
             </dl>
           </section>
-
-          <section aria-label="Chăm sóc hằng ngày" className={styles.sectionGap}>
-            <h3 className={styles.eyebrow}>Chăm sóc hằng ngày</h3>
-            <dl className={styles.specs}>
-              <OwnerDottedRow label="Số chuồng" value={care.stable?.SoChuong} />
-              <OwnerDottedRow label="Lịch sinh hoạt" value={care.stable?.LichSinhHoat} stacked />
-              <OwnerDottedRow label="Khẩu phần" value={formatFeeding(care.feeding)} stacked />
-            </dl>
-          </section>
         </div>
+      </div>
 
-        <div className={styles.column}>
-          <OwnerHorseAchievements achievements={achievements} />
-        </div>
+      <div className={styles.lower}>
+        <section aria-label="Chăm sóc hằng ngày">
+          <SectionTitle as="h3">Chăm sóc hằng ngày</SectionTitle>
+          <dl className={styles.specs}>
+            <OwnerDottedRow label="Số chuồng" value={care.stable?.SoChuong} />
+            <OwnerDottedRow label="Lịch sinh hoạt" value={care.stable?.LichSinhHoat} stacked />
+            <OwnerDottedRow label="Khẩu phần" value={formatFeeding(care.feeding)} stacked />
+          </dl>
+        </section>
+
+        <OwnerHorseAchievements achievements={achievements} />
       </div>
     </article>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import LoadingState from "../../components/LoadingState";
+import SectionTitle from "../../components/SectionTitle";
 import useAuth from "../../hooks/useAuth";
 import {
   getActiveLockDates,
@@ -9,15 +10,23 @@ import {
   getRaceRegistrations,
   getRaces,
 } from "../../services/ownerService";
-import { formatDate, formatDayMonth, todayISO } from "../../utils/date";
+import { daysBetween, formatDate, formatDayMonth, todayISO, weekdayName } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
-const LABEL = "text-[11px] font-medium tracking-[0.16em] text-stone uppercase";
 const SESSION_LIMIT = 6;
+const UPCOMING_DAY_LIMIT = 5;
+
+// "Thi đấu · còn 6 ngày" / "Thi đấu · ngày mai" / "Thi đấu · hôm nay"
+function raceCountdownText(days) {
+  if (days <= 0) return "Thi đấu · hôm nay";
+  if (days === 1) return "Thi đấu · ngày mai";
+  return `Thi đấu · còn ${days} ngày`;
+}
 
 // "Lịch trình" của Chủ ngựa — CHỈ XEM, ngựa có HORSE.OwnerID = người đang đăng nhập.
-// Khối 1 "Sắp tới": buổi tập (TRAININGSCHEDULE) + giải đã đăng ký (RACEREGISTRATION → RACE) gộp 1 danh sách theo ngày tăng
-// dần, chỉ từ hôm nay. Ngựa đang khóa tập: không có buổi tập, kèm dòng "Đang tạm ngưng huấn luyện" (không hiện lý do).
+// Khối 1 "Sắp tới" (kiểu agenda): buổi tập (TRAININGSCHEDULE) + giải đã đăng ký (RACEREGISTRATION → RACE), chỉ từ hôm nay,
+// nhóm theo ngày ("Thứ Ba, 13/10"); hiện 5 ngày gần nhất + "Xem thêm". Ngựa đang khóa tập: không có buổi tập, có dòng
+// "Đang tạm ngưng huấn luyện" phía trên danh sách (không hiện lý do).
 // Khối 2 "Nhận xét gần đây": 6 buổi TRAININGSESSION gần nhất — chỉ ngày, tên ngựa, chỉ số tập, nhận xét của HLV.
 export default function OwnerSchedule() {
   const { user } = useAuth();
@@ -29,6 +38,7 @@ export default function OwnerSchedule() {
   const [races, setRaces] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAllDays, setShowAllDays] = useState(false);
 
   // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock ownerService)
   useEffect(() => {
@@ -58,35 +68,57 @@ export default function OwnerSchedule() {
   const today = todayISO();
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
   const horseName = (horseId) => horseById[horseId]?.Ten ?? `Ngựa #${horseId}`;
-  // Giai đoạn huấn luyện: giáo án lập gần nhất của ngựa (plans đã sắp PlanID mới → cũ; ERD chưa nối buổi tập với giáo án)
-  const phaseOf = (horseId) => training.plans.find((p) => p.HorseID === horseId)?.GiaiDoan;
 
-  const trainingItems = training.schedules
+  // Giai đoạn huấn luyện của từng buổi tập: ERD chưa nối TRAININGSCHEDULE với TRAININGPLAN, nên các buổi sắp tới của 1 ngựa
+  // lần lượt lấy giai đoạn của các giáo án của ngựa đó (PlanID mới → cũ) để không lặp cùng 1 nội dung.
+  const upcomingSessions = training.schedules
     .filter((s) => s.Ngay >= today && !lockByHorse[s.HorseID])
-    .map((s) => ({
+    .sort((a, b) => a.Ngay.localeCompare(b.Ngay) || a.Gio.localeCompare(b.Gio));
+  const sessionCountByHorse = {};
+  const trainingItems = upcomingSessions.map((s) => {
+    const plans = training.plans.filter((p) => p.HorseID === s.HorseID);
+    const order = (sessionCountByHorse[s.HorseID] = (sessionCountByHorse[s.HorseID] ?? -1) + 1);
+    return {
       key: `s${s.ScheduleID}`,
-      kind: "Tập",
+      isRace: false,
       horseId: s.HorseID,
       date: s.Ngay,
       time: s.Gio,
       title: "Buổi tập",
-      detail: phaseOf(s.HorseID),
-    }));
+      detail: plans.length > 0 ? plans[order % plans.length].GiaiDoan : "",
+    };
+  });
   const raceItems = registrations
     .map((r) => ({ registration: r, race: races.find((race) => race.RaceID === r.RaceID) }))
     .filter(({ race }) => race && race.Ngay >= today)
     .map(({ registration, race }) => ({
       key: `r${race.RaceID}-${registration.HorseID}`,
-      kind: "Thi đấu",
+      isRace: true,
       horseId: registration.HorseID,
       date: race.Ngay,
       time: "",
       title: race.TenGiai,
       detail: race.DiaDiem,
     }));
-  const upcoming = [...trainingItems, ...raceItems].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  // Nhóm theo ngày (tăng dần); trong ngày: giải thi đấu LÊN TRÊN, rồi các buổi tập theo giờ
+  const sortedItems = [...trainingItems, ...raceItems].sort(
+    (a, b) => a.date.localeCompare(b.date) || Number(b.isRace) - Number(a.isRace) || a.time.localeCompare(b.time)
+  );
+  const dayGroups = sortedItems.reduce((groups, item) => {
+    const last = groups[groups.length - 1];
+    if (last?.date === item.date) {
+      last.items.push(item);
+      last.hasRace = last.hasRace || item.isRace;
+    } else {
+      groups.push({ date: item.date, items: [item], hasRace: item.isRace });
+    }
+    return groups;
+  }, []);
+  const visibleGroups = showAllDays ? dayGroups : dayGroups.slice(0, UPCOMING_DAY_LIMIT);
 
   const recentSessions = training.sessions.slice(0, SESSION_LIMIT); // đã sắp mới → cũ
+  const lockedHorses = horses.filter((h) => lockByHorse[h.HorseID]);
 
   return (
     <div className="max-w-[1100px]">
@@ -105,53 +137,77 @@ export default function OwnerSchedule() {
       ) : (
         <>
           <section aria-label="Sắp tới">
-            <h2 className={LABEL}>Sắp tới</h2>
-            {upcoming.length === 0 ? (
-              <p className="mt-3 text-sm text-stone">Chưa có lịch sắp tới</p>
+            <SectionTitle>Sắp tới</SectionTitle>
+            {lockedHorses.map((horse) => (
+              <p key={horse.HorseID} className="mb-2 text-sm text-brass-deep">
+                {horse.Ten}: Đang tạm ngưng huấn luyện, không có buổi tập sắp tới.
+              </p>
+            ))}
+            {dayGroups.length === 0 ? (
+              <p className="text-sm text-stone">Chưa có lịch sắp tới</p>
             ) : (
-              <ul className="mt-2 border-t border-stone/20">
-                {upcoming.map((item) => (
-                  <li
-                    key={item.key}
-                    className="grid grid-cols-[64px_minmax(0,0.9fr)_minmax(0,1.4fr)_auto] items-baseline gap-x-4 border-b border-stone/15 py-3 pr-2 pl-1 text-[15px] whitespace-nowrap"
-                  >
-                    <span>
-                      <span className="block text-stone tabular-nums">{formatDayMonth(item.date)}</span>
-                      {item.time && <span className="block text-xs text-stone/80 tabular-nums">{item.time}</span>}
-                    </span>
-                    <span className="min-w-0">
-                      <Link
-                        to={`/owner/horses/${item.horseId}`}
-                        className="block truncate font-serif text-base font-semibold text-[#2b2118] underline-offset-2 hover:underline"
-                      >
-                        {horseName(item.horseId)}
-                      </Link>
-                      {lockByHorse[item.horseId] && (
-                        <span className="block truncate text-xs text-brass-deep">Đang tạm ngưng huấn luyện</span>
-                      )}
-                    </span>
-                    <span className="min-w-0 truncate text-ink" title={[item.title, item.detail].filter(Boolean).join(" · ")}>
-                      {item.title}
-                      {item.detail && <span className="text-stone"> · {item.detail}</span>}
-                    </span>
-                    <span className={`text-right text-sm ${item.kind === "Thi đấu" ? "font-semibold text-[#c2570c]" : "text-stone"}`}>
-                      {item.kind}
-                    </span>
-                  </li>
+              <>
+                {visibleGroups.map((group, groupIndex) => (
+                  <div key={group.date} className={groupIndex === 0 ? "" : "mt-5"}>
+                    <h3 className={`border-b border-stone/20 pb-1.5 font-serif text-lg ${group.hasRace ? "text-[#c2570c]" : "text-ink"}`}>
+                      {weekdayName(group.date)}, {formatDayMonth(group.date)}
+                    </h3>
+                    <ul>
+                      {group.items.map((item) => (
+                        // 1 việc / dòng: giờ 64px (giải thi đấu để trống) | tên ngựa | nội dung | (giải) "Thi đấu · còn N ngày"
+                        <li
+                          key={item.key}
+                          className={`grid grid-cols-[56px_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b text-[15px] min-[640px]:grid-cols-[64px_160px_minmax(0,1fr)_auto] ${
+                            item.isRace
+                              ? "border-[#ecd9c4] bg-[#fbf1e6] py-3.5 pr-2 pl-3 shadow-[inset_3px_0_0_#c2570c]"
+                              : "border-stone/10 py-2.5"
+                          }`}
+                        >
+                          <span className="text-stone tabular-nums">{item.time}</span>
+                          <Link
+                            to={`/owner/horses/${item.horseId}`}
+                            className="min-w-0 truncate font-serif text-base text-[#2b2118] no-underline hover:underline"
+                          >
+                            {horseName(item.horseId)}
+                          </Link>
+                          <span
+                            className="col-span-3 col-start-1 row-start-2 min-w-0 truncate pl-[72px] text-ink min-[640px]:col-span-1 min-[640px]:col-start-auto min-[640px]:row-start-auto min-[640px]:pl-0"
+                            title={[item.title, item.detail].filter(Boolean).join(" · ")}
+                          >
+                            <span className={item.isRace ? "text-[17px] font-bold text-[#2b2118]" : ""}>{item.title}</span>
+                            {item.detail && <span className="text-stone"> · {item.detail}</span>}
+                          </span>
+                          <span className="text-right text-sm font-semibold whitespace-nowrap text-[#c2570c]">
+                            {item.isRace ? raceCountdownText(daysBetween(today, item.date)) : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+                {dayGroups.length > UPCOMING_DAY_LIMIT && !showAllDays && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllDays(true)}
+                    className="mt-4 cursor-pointer text-sm text-stone underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    Xem thêm ({dayGroups.length - UPCOMING_DAY_LIMIT} ngày)
+                  </button>
+                )}
+              </>
             )}
           </section>
 
-          <section aria-label="Nhận xét gần đây" className="mt-10">
-            <h2 className={LABEL}>Nhận xét gần đây</h2>
+          <section aria-label="Nhận xét gần đây" className="mt-14">
+            <SectionTitle>Nhận xét gần đây</SectionTitle>
             {recentSessions.length === 0 ? (
-              <p className="mt-3 text-sm text-stone">Chưa có nhận xét</p>
+              <p className="text-sm text-stone">Chưa có nhận xét</p>
             ) : (
-              <ul className="mt-2 border-t border-stone/20">
-                {recentSessions.map((session) => (
+              <ul className="border-t border-stone/20">
+                {recentSessions.map((session, index) => (
                   <li key={session.SessionID} className="border-b border-stone/15 py-3.5 pr-2 pl-1">
-                    <p className="flex items-baseline justify-between gap-4 text-sm text-stone">
+                    {/* Mục mới nhất: dòng ngày / ngựa màu mực; nhận xét cùng cỡ 16px với các mục khác */}
+                    <p className={`flex items-baseline justify-between gap-4 text-sm ${index === 0 ? "text-ink" : "text-stone"}`}>
                       <span>
                         <span className="tabular-nums">{formatDate(session.Ngay)}</span> · {horseName(session.HorseID)}
                       </span>

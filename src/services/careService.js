@@ -8,6 +8,7 @@ import incidentReports from "../data/incidentReports";
 import { INCIDENT_DESCRIPTION_MAX, INCIDENT_TYPES } from "../data/incidentOptions";
 import { todayISO } from "../utils/date";
 import { getHorses } from "./horseService";
+import { createPersistedList } from "./persistedStore";
 
 export { getHorses };
 
@@ -17,25 +18,30 @@ function delay(ms = NETWORK_DELAY_MS) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const taskStore = careTasks.map((t) => ({ ...t }));
-const reportStore = incidentReports.map((r) => ({ ...r }));
+// Lưu bền: SEED + lớp thay đổi trong localStorage (services/persistedStore.js)
+const taskList = createPersistedList("careTasks", careTasks, "TaskID");
+const reportList = createPersistedList("incidentReports", incidentReports, "ReportID");
+const stableList = createPersistedList("stableAssignments", stableAssignments, "StableID");
+const feedingList = createPersistedList("feedingPlans", feedingPlans, "FeedID");
+const taskStore = taskList.items;
+const reportStore = reportList.items;
 
 // Phân chuồng đầy đủ (STABLEASSIGNMENT: StableID, HorseID, SoChuong, LichSinhHoat)
 export async function getStableAssignments() {
   await delay();
-  return stableAssignments.map((s) => ({ ...s }));
+  return stableList.items.map((s) => ({ ...s }));
 }
 
 // Kế hoạch khẩu phần (FEEDINGPLAN) của mọi ngựa
 export async function getFeedingPlans() {
   await delay();
-  return feedingPlans.map((f) => ({ ...f }));
+  return feedingList.items.map((f) => ({ ...f }));
 }
 
 // Số chuồng của từng ngựa (STABLEASSIGNMENT): { [HorseID]: "A1" }
 export async function getStableNumbers() {
   await delay(0);
-  return Object.fromEntries(stableAssignments.map((s) => [s.HorseID, s.SoChuong]));
+  return Object.fromEntries(stableList.items.map((s) => [s.HorseID, s.SoChuong]));
 }
 
 // Công việc của 1 nhân viên (GroomID), mới → cũ theo Ngay; không truyền groomId thì lấy tất cả
@@ -54,6 +60,7 @@ export async function completeCareTask(taskId, groomId) {
   if (task.GroomID !== Number(groomId)) throw new Error("Bạn chỉ được xác nhận công việc của chính mình");
   if (task.TrangThai) throw new Error("Công việc này đã được xác nhận");
   task.TrangThai = true;
+  taskList.save();
   return { ...task };
 }
 
@@ -86,5 +93,6 @@ export async function createIncidentReport(data, groomId) {
     Ngay: data.Ngay,
   };
   reportStore.push(report);
+  reportList.save();
   return { ...report };
 }
