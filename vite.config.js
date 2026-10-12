@@ -7,5 +7,18 @@ import { defineConfig } from 'vite'
 // để localStorage — phiên đăng nhập, dữ liệu mock — luôn gắn với cùng 1 origin)
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { port: 5174, strictPort: true },
+  server: {
+    port: 5174,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5214',
+        changeOrigin: true,
+      },
+      '/media': {
+        target: 'http://localhost:5214',
+        changeOrigin: true,
+      },
+    },
+  },
 })

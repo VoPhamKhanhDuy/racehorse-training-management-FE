@@ -4,7 +4,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import ApprovalRow from "./ApprovalRow";
 import roles from "../../data/roles";
-import { getUsers, updateUserStatus } from "../../services/accountService";
+import { approveAccountApi, fetchPendingApprovals } from "../../services/authApi";
 
 // Chỉ tài khoản Chủ ngựa tự đăng ký mới cần duyệt; nhân sự nội bộ do Quản lý CLB tạo sẵn ở trạng thái "approved"
 const APPROVAL_ROLE_ID = "horse_owner";
@@ -49,14 +49,20 @@ export default function AccountApprovals() {
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState(null); // { text, tone: "success" | "danger" }
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock accountService)
   useEffect(() => {
     let ignore = false;
-    getUsers().then((userList) => {
-      if (ignore) return;
-      setAccounts(userList.filter((u) => u.roleId === APPROVAL_ROLE_ID));
-      setLoading(false);
-    });
+    fetchPendingApprovals()
+      .then((pending) => {
+        if (ignore) return;
+        setAccounts(pending.filter((u) => u.roleId === APPROVAL_ROLE_ID));
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!ignore) {
+          setAccounts([]);
+          setLoading(false);
+        }
+      });
     return () => {
       ignore = true;
     };
@@ -76,12 +82,23 @@ export default function AccountApprovals() {
   const handleConfirm = async () => {
     const { type, account } = pendingAction;
     const action = ACTIONS[type];
+    if (type === "reject") {
+      setPendingAction(null);
+      setMessage({ text: "Từ chối tài khoản chưa có trên API — liên hệ quản trị DB nếu cần.", tone: "danger" });
+      return;
+    }
     setProcessing(true);
-    const updated = await updateUserStatus(account.id, action.status);
-    setAccounts((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-    setProcessing(false);
-    setPendingAction(null);
-    setMessage({ text: action.doneText(account), tone: type === "approve" ? "success" : "danger" });
+    try {
+      const userId = account.userId ?? Number(String(account.id).replace(/\D/g, ""));
+      await approveAccountApi(userId);
+      setAccounts((prev) => prev.filter((a) => a.id !== account.id));
+      setMessage({ text: action.doneText(account), tone: "success" });
+    } catch {
+      setMessage({ text: "Không duyệt được tài khoản, vui lòng thử lại.", tone: "danger" });
+    } finally {
+      setProcessing(false);
+      setPendingAction(null);
+    }
   };
 
   const currentAction = pendingAction ? ACTIONS[pendingAction.type] : null;

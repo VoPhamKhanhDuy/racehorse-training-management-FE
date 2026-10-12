@@ -21,7 +21,6 @@ export default function MyHorses() {
   const [stables, setStables] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock ownerService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getOwnerHorses(ownerId), getHealthStatuses(), getLockedHorseIds(), getStableNumbers()]).then(

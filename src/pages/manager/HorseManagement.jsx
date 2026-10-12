@@ -40,7 +40,6 @@ export default function HorseManagement() {
   const [message, setMessage] = useState(state?.message ?? "");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock horseService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getHorses(), getHorseOwners(), getHealthStatuses(), getHorseIdsWithRelatedData(), getRaces(), getRaceRegistrations()]).then(
