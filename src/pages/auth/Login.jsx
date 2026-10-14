@@ -36,7 +36,9 @@ export default function Login() {
     setErrors((prev) => ({ ...prev, [name]: undefined, form: undefined }));
   };
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
     if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
@@ -47,7 +49,9 @@ export default function Login() {
       return;
     }
 
-    const result = login(form.email, form.password);
+    setSubmitting(true);
+    const result = await login(form.email, form.password);
+    setSubmitting(false);
     // Chờ duyệt / bị từ chối: sang màn trạng thái, không đăng nhập
     if (result.statusScreen) {
       navigate("/account-status", { state: { ...result.statusScreen, source: "login" } });
@@ -117,9 +121,10 @@ export default function Login() {
         <div>
           <button
             type="submit"
-            className="w-full rounded-xl bg-orange-500 py-3 font-semibold text-white shadow-md cursor-pointer transition-colors hover:bg-orange-600"
+            disabled={submitting}
+            className="w-full rounded-xl bg-orange-500 py-3 font-semibold text-white shadow-md cursor-pointer transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Đăng nhập
+            {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
           {errors.form && <FormError message={errors.form} accountStatus={errors.accountStatus} />}
         </div>

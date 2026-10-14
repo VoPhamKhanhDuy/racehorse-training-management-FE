@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../../components/AuthLayout";
 import FormField from "../../components/FormField";
-import { addUser, isEmailTaken } from "../../services/accountService";
+import { ApiError } from "../../services/apiClient";
+import { registerWithApi } from "../../services/authApi";
 import { isValidEmail, isValidPassword, MIN_PASSWORD_LENGTH } from "../../utils/validators";
 
 // Trang đăng ký công khai chỉ dành cho Chủ ngựa.
 // Tài khoản nhân sự nội bộ do Quản lý CLB tạo ở pages/manager/CreateStaffAccount.jsx
-const REGISTER_ROLE_ID = "horse_owner";
 
 const initialForm = {
   fullName: "",
@@ -22,6 +22,7 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   // Đã rời khỏi ô "Xác nhận mật khẩu" ít nhất 1 lần → bắt đầu báo lỗi không khớp
   const [confirmTouched, setConfirmTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const passwordMismatch =
     form.confirmPassword !== "" && form.confirmPassword !== form.password;
@@ -43,7 +44,6 @@ export default function Register() {
     if (!form.fullName.trim()) newErrors.fullName = "Vui lòng nhập họ và tên";
     if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
     else if (!isValidEmail(form.email)) newErrors.email = "Email không hợp lệ";
-    else if (isEmailTaken(form.email)) newErrors.email = "Email này đã được đăng ký";
     if (!isValidPassword(form.password))
       newErrors.password = `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự`;
     if (!form.confirmPassword) newErrors.confirmPassword = "Vui lòng nhập lại mật khẩu";
@@ -52,25 +52,37 @@ export default function Register() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    // TODO: thay bằng gọi API thật khi BE xong
-    // Chủ ngựa tự đăng ký phải chờ Quản lý CLB duyệt (/manager/approvals) mới đăng nhập được
-    const newUser = addUser({
-      fullName: form.fullName,
-      email: form.email,
-      password: form.password,
-      roleId: REGISTER_ROLE_ID,
-      status: "pending",
-    });
-    navigate("/account-status", {
-      state: { status: "Chờ duyệt", source: "register", fullName: newUser.fullName, email: newUser.email },
-    });
+    setSubmitting(true);
+    try {
+      await registerWithApi({
+        fullName: form.fullName,
+        email: form.email,
+        password: form.password,
+      });
+      navigate("/account-status", {
+        state: {
+          status: "Chờ duyệt",
+          source: "register",
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
+        },
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "EMAIL_EXISTS") {
+        setErrors({ email: "Email này đã được đăng ký" });
+      } else {
+        setErrors({ form: err.message ?? "Không đăng ký được, vui lòng thử lại." });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -135,12 +147,13 @@ export default function Register() {
           />
         </div>
 
+        {errors.form && <p className="text-sm text-red-500">{errors.form}</p>}
         <button
           type="submit"
-          disabled={passwordMismatch}
+          disabled={passwordMismatch || submitting}
           className="w-full rounded-xl bg-orange-500 py-3 font-semibold text-white shadow-md cursor-pointer transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-orange-500"
         >
-          Đăng ký
+          {submitting ? "Đang gửi..." : "Đăng ký"}
         </button>
       </form>
     </AuthLayout>
