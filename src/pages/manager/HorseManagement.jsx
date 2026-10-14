@@ -4,10 +4,17 @@ import { SearchX } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import Pagination from "../../components/Pagination";
-import HorseCard from "./HorseCard";
+import HorseCard from "../../components/HorseCard";
 import HorseDetailModal from "./HorseDetailModal";
 import HorseFilters from "./HorseFilters";
-import { deleteHorse, getHealthStatuses, getHorseOwners, getHorses } from "../../services/horseService";
+import useAuth from "../../hooks/useAuth";
+import { getHealthStatuses, getHorseOwners, getHorses } from "../../services/horseService";
+import { deleteHorseIfUnused, getHorseIdsWithRelatedData } from "../../services/horseUsageService";
+import { getRaceRegistrations, getRaces } from "../../services/trainerService";
+import { getHorseAchievements } from "../../utils/horseAchievements";
+import { addAuditLog } from "../../services/auditService";
+import { toUserID } from "../../utils/userId";
+import { getHorseAge } from "../../utils/date";
 
 // 8 thẻ/trang = 2 hàng khi lưới 4 cột (màn rộng)
 const PAGE_SIZE = 8;
@@ -16,9 +23,13 @@ const initialFilters = { keyword: "", breed: "", ownerId: "" };
 export default function HorseManagement() {
   // Thông báo do HorseForm gửi sang sau khi lưu thành công
   const { state } = useLocation();
+  const { user } = useAuth();
   const [horses, setHorses] = useState([]);
   const [owners, setOwners] = useState([]);
   const [healthStatuses, setHealthStatuses] = useState([]);
+  const [usedHorseIds, setUsedHorseIds] = useState(new Set()); // ngựa đã có dữ liệu liên quan → không cho xóa
+  const [races, setRaces] = useState([]);
+  const [registrations, setRegistrations] = useState([]); // RACEREGISTRATION — cho khối "Thành tích thi đấu"
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(initialFilters);
   const [sort, setSort] = useState({ key: "Ten", direction: "asc" });
@@ -27,17 +38,23 @@ export default function HorseManagement() {
   const [horseToDelete, setHorseToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState(state?.message ?? "");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock horseService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getHorses(), getHorseOwners(), getHealthStatuses()]).then(([horseList, ownerList, healthList]) => {
-      if (ignore) return;
-      setHorses(horseList);
-      setOwners(ownerList);
-      setHealthStatuses(healthList);
-      setLoading(false);
-    });
+    Promise.all([getHorses(), getHorseOwners(), getHealthStatuses(), getHorseIdsWithRelatedData(), getRaces(), getRaceRegistrations()]).then(
+      ([horseList, ownerList, healthList, usedIds, raceList, registrationList]) => {
+        if (ignore) return;
+        setHorses(horseList);
+        setOwners(ownerList);
+        setHealthStatuses(healthList);
+        setUsedHorseIds(usedIds);
+        setRaces(raceList);
+        setRegistrations(registrationList);
+        setLoading(false);
+      }
+    );
     return () => {
       ignore = true;
     };
@@ -45,10 +62,14 @@ export default function HorseManagement() {
 
   const ownerById = Object.fromEntries(owners.map((o) => [o.UserID, o]));
   const healthByHorse = Object.fromEntries(healthStatuses.map((h) => [h.HorseID, h]));
+  // Thành tích thi đấu của ngựa đang xem (util dùng chung với trang Ngựa của tôi)
+  const selectedAchievements = selectedHorse ? getHorseAchievements(selectedHorse.HorseID, races, registrations) : null;
   const breeds = [...new Set(horses.map((h) => h.Giong).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi"));
 
   // Số liệu tổng quan — tính trên toàn bộ danh sách, không phụ thuộc bộ lọc
-  const averageAge = horses.length ? horses.reduce((sum, h) => sum + h.Tuoi, 0) / horses.length : 0;
+  // Tuổi trung bình tính từ NgaySinh (bỏ qua ngựa chưa có ngày sinh)
+  const ages = horses.map((h) => getHorseAge(h.NgaySinh)).filter((age) => age !== null);
+  const averageAge = ages.length ? ages.reduce((sum, age) => sum + age, 0) / ages.length : 0;
   const stats = [
     { label: "Tổng số ngựa", value: horses.length },
     { label: "Số giống khác nhau", value: breeds.length },
@@ -65,7 +86,11 @@ export default function HorseManagement() {
   );
   const sortedHorses = [...filteredHorses].sort((a, b) => {
     const result =
-      sort.key === "Ten" ? a.Ten.localeCompare(b.Ten, "vi") : a[sort.key] - b[sort.key];
+      sort.key === "Ten"
+        ? a.Ten.localeCompare(b.Ten, "vi")
+        : sort.key === "NgaySinh"
+          ? (b.NgaySinh ?? "").localeCompare(a.NgaySinh ?? "") // "Tuổi tăng dần" = ngày sinh muộn (trẻ) trước
+          : a[sort.key] - b[sort.key];
     return sort.direction === "asc" ? result : -result;
   });
   const totalPages = Math.max(1, Math.ceil(sortedHorses.length / PAGE_SIZE));
@@ -93,11 +118,26 @@ export default function HorseManagement() {
   const handleConfirmDelete = async () => {
     const horse = horseToDelete;
     setDeleting(true);
-    await deleteHorse(horse.HorseID);
-    setHorses((prev) => prev.filter((h) => h.HorseID !== horse.HorseID));
-    setDeleting(false);
-    setHorseToDelete(null);
-    setMessage(`Đã xóa hồ sơ ngựa "${horse.Ten}".`);
+    try {
+      // Service kiểm tra lại dữ liệu liên quan ngay trước khi xóa
+      await deleteHorseIfUnused(horse.HorseID);
+      addAuditLog({
+        UserID: toUserID(user.id),
+        HanhDong: "Xóa hồ sơ ngựa",
+        TargetTable: "HORSE",
+        TargetID: horse.HorseID,
+        targetLabel: horse.Ten,
+      });
+      setHorses((prev) => prev.filter((h) => h.HorseID !== horse.HorseID));
+      setMessage(`Đã xóa hồ sơ ngựa "${horse.Ten}".`);
+    } catch (err) {
+      // Vừa phát sinh dữ liệu liên quan từ màn khác → khóa nút Xóa của ngựa này
+      setUsedHorseIds((prev) => new Set(prev).add(horse.HorseID));
+      setErrorMessage(err.message);
+    } finally {
+      setDeleting(false);
+      setHorseToDelete(null);
+    }
   };
 
   return (
@@ -105,11 +145,11 @@ export default function HorseManagement() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Quản lý hồ sơ ngựa</h1>
-          <p className="mt-1 text-stone">Danh sách ngựa của câu lạc bộ và chủ sở hữu.</p>
+          <p className="mt-1 text-stone">Danh sách ngựa của câu lạc bộ và chủ ngựa.</p>
         </div>
         <Link
           to="/manager/horses/new"
-          className="rounded-sm bg-brass px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-brass/85"
+          className="btn-primary"
         >
           + Thêm ngựa mới
         </Link>
@@ -123,6 +163,15 @@ export default function HorseManagement() {
             onClick={() => setMessage("")}
             className="cursor-pointer font-semibold text-green-700 hover:underline"
           >
+            Đóng
+          </button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div role="alert" className="mb-4 flex items-center justify-between gap-4 rounded-sm border-l-2 border-rust bg-white/60 px-4 py-3 text-sm text-rust">
+          {errorMessage}
+          <button type="button" onClick={() => setErrorMessage("")} className="cursor-pointer font-semibold hover:underline">
             Đóng
           </button>
         </div>
@@ -162,7 +211,7 @@ export default function HorseManagement() {
                 <HorseCard
                   key={horse.HorseID}
                   horse={horse}
-                  ownerName={ownerById[horse.OwnerID]?.HoTen}
+                  meta={`Chủ ngựa: ${ownerById[horse.OwnerID]?.HoTen ?? "Chưa rõ"}`}
                   healthStatus={healthByHorse[horse.HorseID]?.TrangThai}
                   onClick={setSelectedHorse}
                 />
@@ -184,6 +233,8 @@ export default function HorseManagement() {
         horse={selectedHorse}
         owner={selectedHorse ? ownerById[selectedHorse.OwnerID] : null}
         healthRecord={selectedHorse ? healthByHorse[selectedHorse.HorseID] : null}
+        achievements={selectedAchievements}
+        canDelete={selectedHorse ? !usedHorseIds.has(selectedHorse.HorseID) : false}
         onClose={() => setSelectedHorse(null)}
         onDelete={handleRequestDelete}
       />
@@ -191,7 +242,7 @@ export default function HorseManagement() {
       <ConfirmDialog
         open={Boolean(horseToDelete)}
         title="Xóa hồ sơ ngựa"
-        message={`Bạn có chắc muốn xóa hồ sơ ngựa "${horseToDelete?.Ten ?? ""}"? Thao tác này không thể hoàn tác.`}
+        message={`Xóa hồ sơ ${horseToDelete?.Ten ?? ""}? Hành động này không thể hoàn tác.`}
         loading={deleting}
         onConfirm={handleConfirmDelete}
         onCancel={() => setHorseToDelete(null)}

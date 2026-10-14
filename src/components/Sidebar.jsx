@@ -15,9 +15,10 @@ export default function Sidebar({ isOpen = false, onClose }) {
         <div className="fixed inset-0 z-30 bg-[#232328]/40 lg:hidden" onClick={onClose} />
       )}
 
+      {/* Màn nhỏ khi đóng: vừa trượt ra ngoài vừa invisible — không lộ chữ ra mép trái, không Tab vào được link ẩn */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-stone/15 bg-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-hidden border-r border-stone/15 bg-white transition-[translate,visibility] lg:visible lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          isOpen ? "visible translate-x-0" : "invisible -translate-x-full"
         }`}
       >
         <div className="flex h-16 items-center border-b border-stone/15 px-6">
