@@ -3,15 +3,26 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { Search, SearchX } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
-import TrainingBadge from "../../components/TrainingBadge";
+import { DataCell, DataRow, DataTable } from "../../components/DataTable";
+import IntensityText from "../../components/IntensityText";
+import StatusText from "../../components/StatusText";
+import { statusDisplayLabel } from "../../utils/statusLabels";
+import TabFilter from "../../components/TabFilter";
 import useApiResource from "../../hooks/useApiResource";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { getHorses, getTrainingPlans } from "../../services/trainingApi";
 import { formatDate } from "../../utils/date";
 import { formatNumber } from "../../utils/trainingFormat";
 
-const TH = "px-4 py-2.5 text-xs font-medium text-stone whitespace-nowrap";
-const TD = "px-4 py-3 align-top";
+const PLAN_GRID = "minmax(260px,2.2fr) 150px 190px 130px 170px 130px";
+const COLUMNS = [
+  { key: "plan", label: "Giáo án" },
+  { key: "horse", label: "Ngựa" },
+  { key: "time", label: "Thời gian" },
+  { key: "intensity", label: "Cường độ cao nhất" },
+  { key: "progress", label: "Tiến độ" },
+  { key: "status", label: "Trạng thái" },
+];
 
 // Danh sách giáo án (GET /api/trainer/training-plans) — lọc theo ngựa + trạng thái phía BE (?horse=&status= trên URL),
 // tìm theo tên giáo án phía FE. Bấm 1 dòng → chi tiết giáo án.
@@ -55,10 +66,16 @@ export default function TrainingPlans() {
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Giáo án tập luyện</h1>
-        <Link to={newPlanLink} className="btn-primary">
-          + Lập giáo án
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">Giáo án tập luyện</h1>
+          <p className="mt-1 text-sm text-[#6b6055]">Theo dõi giáo án, cường độ và tiến độ của từng ngựa.</p>
+        </div>
+        <Link
+          to={newPlanLink}
+          className="inline-flex h-10 items-center rounded bg-[#c2570c] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#a8480a]"
+        >
+          Lập giáo án
         </Link>
       </div>
 
@@ -71,27 +88,15 @@ export default function TrainingPlans() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        {/* Lọc trạng thái dạng pill — "Tất cả" + 4 trạng thái giáo án */}
-        <div role="radiogroup" aria-label="Lọc theo trạng thái" className="flex flex-wrap gap-1.5">
-          {[{ code: "", label: "Tất cả" }, ...options.planStatuses].map((option) => {
-            const active = statusFilter === option.code;
-            return (
-              <button
-                key={option.code || "all"}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => updateFilter("status", option.code)}
-                className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
-                  active ? "border-brass bg-brass/15 font-medium text-brass-deep" : "border-stone/25 bg-white text-ink hover:border-stone/40"
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Lọc trạng thái dạng tab chữ — "Tất cả" + 4 trạng thái giáo án */}
+      <TabFilter
+        ariaLabel="Lọc theo trạng thái"
+        options={[{ code: "", label: "Tất cả" }, ...options.planStatuses.map((o) => ({ ...o, label: statusDisplayLabel(o.code, o.label) }))]}
+        value={statusFilter}
+        onChange={(code) => updateFilter("status", code)}
+      />
+
+      <div className="mt-4 mb-4 flex flex-wrap items-center gap-3">
         <label htmlFor="planHorse" className="sr-only">
           Lọc theo ngựa
         </label>
@@ -99,7 +104,7 @@ export default function TrainingPlans() {
           id="planHorse"
           value={horseFilter}
           onChange={(e) => updateFilter("horse", e.target.value)}
-          className="cursor-pointer rounded-full border border-stone/20 bg-white px-4 py-2 text-sm text-ink outline-none focus:border-brass"
+          className="h-10 cursor-pointer rounded border border-[#d9d0bf] bg-white px-3 text-sm text-[#2b2118] outline-none focus:border-[#c2570c]"
         >
           <option value="">Tất cả ngựa</option>
           {horses.map((horse) => (
@@ -108,18 +113,18 @@ export default function TrainingPlans() {
             </option>
           ))}
         </select>
-        <div className="relative w-full sm:ml-auto sm:w-64">
+        <div className="relative w-full sm:ml-auto sm:w-80">
           <label htmlFor="planKeyword" className="sr-only">
             Tìm theo tên giáo án hoặc tên ngựa
           </label>
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" />
           <input
             id="planKeyword"
             type="search"
             placeholder="Tìm giáo án, ngựa..."
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+            className="h-10 w-full rounded border border-[#d9d0bf] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
           />
         </div>
       </div>
@@ -129,89 +134,66 @@ export default function TrainingPlans() {
       ) : error ? (
         <ApiErrorNotice variant="page" error={error} onRetry={retry} />
       ) : visiblePlans.length === 0 ? (
-        <div className="rounded-lg border border-stone/15 bg-white py-16 text-center text-stone">
-          <SearchX className="mx-auto mb-3 h-10 w-10 text-stone/40" />
+        <div className="border-y border-[#ece5d6] py-16 text-center text-[#6b6055]">
+          <SearchX className="mx-auto mb-3 h-10 w-10 text-[#6b6055]/40" />
           {plans.length === 0 ? "Chưa có giáo án nào phù hợp bộ lọc." : "Không tìm thấy giáo án phù hợp."}
           <div className="mt-4">
-            <Link to={newPlanLink} className="text-sm font-semibold text-brass-deep hover:underline">
+            <Link to={newPlanLink} className="text-sm font-semibold text-[#c2570c] hover:underline">
               Lập giáo án mới →
             </Link>
           </div>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-stone/15 bg-white">
-          <table className="w-full min-w-[56rem] text-left text-sm">
-            <thead className="border-b border-stone/15">
-              <tr>
-                <th className={TH}>Giáo án</th>
-                <th className={TH}>Ngựa</th>
-                <th className={TH}>Thời gian</th>
-                <th className={TH}>Cường độ cao nhất</th>
-                <th className={TH}>Tiến độ</th>
-                <th className={TH}>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone/10">
-              {visiblePlans.map((plan) => {
-                const progress = plan.progress ?? {};
-                const rate = Math.min(100, Number(progress.completionRate) || 0);
-                return (
-                  <tr
-                    key={plan.planId}
-                    onClick={() => navigate(`/trainer/plans/${plan.planId}`)}
-                    className="cursor-pointer transition-colors hover:bg-brass/5"
+        <DataTable columns={COLUMNS} template={PLAN_GRID} minWidth={1100} footer={`${visiblePlans.length} giáo án`}>
+          {visiblePlans.map((plan) => {
+            const progress = plan.progress ?? {};
+            const rate = Math.min(100, Number(progress.completionRate) || 0);
+            const subtitle = `${plan.trainingType ? label("planTypes", plan.trainingType) : "Chưa chọn loại"}${plan.objective ? ` · ${plan.objective}` : ""}`;
+            return (
+              <DataRow key={plan.planId} template={PLAN_GRID} onClick={() => navigate(`/trainer/plans/${plan.planId}`)}>
+                <DataCell>
+                  <Link
+                    to={`/trainer/plans/${plan.planId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    title={plan.planName}
+                    className="block truncate font-serif font-semibold text-[#2b2118] hover:text-[#c2570c]"
                   >
-                    <td className={TD}>
-                      <Link
-                        to={`/trainer/plans/${plan.planId}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="font-serif font-semibold text-ink hover:text-brass-deep"
-                      >
-                        {plan.planName}
-                      </Link>
-                      <p className="mt-0.5 text-xs text-stone">
-                        {plan.trainingType ? label("planTypes", plan.trainingType) : "Chưa chọn loại"}
-                        {plan.objective ? ` · ${plan.objective}` : ""}
-                      </p>
-                    </td>
-                    <td className={`${TD} font-medium whitespace-nowrap text-ink`}>{plan.horseName}</td>
-                    <td className={`${TD} whitespace-nowrap`}>
-                      {formatDate(plan.startDate)} – {formatDate(plan.endDate)}
-                      <span className="block text-xs text-stone">{plan.phaseCount} giai đoạn</span>
-                    </td>
-                    <td className={TD}>
-                      {plan.intensityLevel ? (
-                        <TrainingBadge kind="intensity" code={plan.intensityLevel}>
-                          {label("intensityLevels", plan.intensityLevel)}
-                        </TrainingBadge>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className={`${TD} min-w-40`}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-track">
-                          <div className="h-full rounded-full bg-moss" style={{ width: `${rate}%` }} />
-                        </div>
-                        <span className="text-xs font-medium text-ink tabular-nums">{formatNumber(progress.completionRate ?? 0)}%</span>
-                      </div>
-                      <p className="mt-1 text-xs text-stone">
-                        {progress.completedSessions ?? 0}/{(progress.totalSessions ?? 0) - (progress.cancelledSessions ?? 0)} buổi
-                        {progress.averagePerformanceScore != null && ` · điểm TB ${formatNumber(progress.averagePerformanceScore)}`}
-                      </p>
-                    </td>
-                    <td className={TD}>
-                      <TrainingBadge kind="planStatus" code={plan.status}>
-                        {label("planStatuses", plan.status)}
-                      </TrainingBadge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="border-t border-stone/15 px-4 py-2.5 text-xs text-stone">{visiblePlans.length} giáo án</p>
-        </div>
+                    {plan.planName}
+                  </Link>
+                  <p className="mt-0.5 truncate text-[13px] text-[#6b6055]" title={subtitle}>
+                    {subtitle}
+                  </p>
+                </DataCell>
+                <DataCell className="truncate font-medium whitespace-nowrap text-[#2b2118]" title={plan.horseName}>
+                  {plan.horseName}
+                </DataCell>
+                <DataCell className="whitespace-nowrap">
+                  {formatDate(plan.startDate)} – {formatDate(plan.endDate)}
+                  <span className="block text-xs text-[#6b6055]">{plan.phaseCount} giai đoạn</span>
+                </DataCell>
+                <DataCell>
+                  {plan.intensityLevel ? (
+                    <IntensityText code={plan.intensityLevel}>{label("intensityLevels", plan.intensityLevel)}</IntensityText>
+                  ) : (
+                    "—"
+                  )}
+                </DataCell>
+                <DataCell>
+                  <div className="h-1 overflow-hidden rounded-sm bg-[#ece5d6]">
+                    <div className="h-full rounded-sm bg-[#6b7a3a]" style={{ width: `${rate}%` }} />
+                  </div>
+                  <p className="mt-1 truncate text-xs whitespace-nowrap text-[#6b6055]">
+                    {progress.completedSessions ?? 0}/{(progress.totalSessions ?? 0) - (progress.cancelledSessions ?? 0)} buổi
+                    {progress.averagePerformanceScore != null && ` · TB ${formatNumber(progress.averagePerformanceScore)}`}
+                  </p>
+                </DataCell>
+                <DataCell>
+                  <StatusText code={plan.status}>{label("planStatuses", plan.status)}</StatusText>
+                </DataCell>
+              </DataRow>
+            );
+          })}
+        </DataTable>
       )}
     </div>
   );
