@@ -73,7 +73,14 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
               <OwnerDottedRow label="Giống" value={horse.Giong} />
               <OwnerDottedRow label="Giới tính" value={horse.GioiTinh} />
               <OwnerDottedRow label="Màu lông" value={horse.MauLong} />
-              <OwnerDottedRow label="Ngày sinh" value={formatBirthDateWithAge(horse.NgaySinh)} />
+              <OwnerDottedRow
+                label="Ngày sinh"
+                value={
+                  horse.NgaySinh?.includes("/")
+                    ? horse.NgaySinh
+                    : formatBirthDateWithAge(horse.NgaySinh)
+                }
+              />
               <OwnerDottedRow label="Cân nặng" value={horse.CanNang ? `${horse.CanNang.toLocaleString("vi-VN")} kg` : ""} />
             </dl>
           </section>
@@ -84,9 +91,17 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
         <section aria-label="Chăm sóc hằng ngày">
           <SectionTitle as="h3">Chăm sóc hằng ngày</SectionTitle>
           <dl className={styles.specs}>
-            <OwnerDottedRow label="Số chuồng" value={care.stable?.SoChuong} />
-            <OwnerDottedRow label="Lịch sinh hoạt" value={care.stable?.LichSinhHoat} stacked />
-            <OwnerDottedRow label="Khẩu phần" value={formatFeeding(care.feeding)} stacked />
+            <OwnerDottedRow label="Số chuồng" value={care.stable?.SoChuong || "—"} />
+            <OwnerDottedRow
+              label="Lịch sinh hoạt"
+              value={care.stable?.LichSinhHoat || "Chưa có lịch sinh hoạt."}
+              stacked
+            />
+            <OwnerDottedRow
+              label="Khẩu phần"
+              value={care.dietText || (care.feeding?.length ? formatFeeding(care.feeding) : "Chưa có khẩu phần.")}
+              stacked
+            />
           </dl>
         </section>
 

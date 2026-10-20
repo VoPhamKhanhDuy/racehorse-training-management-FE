@@ -1,138 +1,232 @@
-// TODO: thay bằng gọi API thật khi BE xong
-// Mock API hồ sơ ngựa (bảng HORSE) — dùng chung cho Club Manager (thêm/sửa/xóa) và Head Trainer (xem).
-// Dữ liệu lưu bền: SEED (data/horses.js, data/healthStatuses.js) + lớp thay đổi trong localStorage (services/persistedStore.js).
-import horses from "../data/horses";
 import healthStatuses from "../data/healthStatuses";
-import { getUsers } from "./accountService";
 import { createPersistedList } from "./persistedStore";
-import { toUserID } from "../utils/userId";
-import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../data/horseOptions";
-import { getHorseAge, todayISO } from "../utils/date";
+import { apiRequest, apiUploadForm } from "./apiClient";
+import { getHorseAge } from "../utils/date";
+import { DUPLICATE_HORSE_NAME, INVALID_BIRTH_DATE } from "../data/horseOptions";
 
-const NETWORK_DELAY_MS = 400;
-
-function delay(ms = NETWORK_DELAY_MS) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const horseList = createPersistedList("horses", horses, "HorseID");
 const healthList = createPersistedList("healthStatuses", healthStatuses, "HorseID");
-const horseStore = horseList.items;
 const healthStore = healthList.items;
-
-const nextHorseId = () => horseStore.reduce((max, h) => Math.max(max, h.HorseID), 0) + 1;
 
 const collapseSpaces = (text) => text.trim().replace(/\s+/g, " ");
 
-// "quarter HORSE" → "Quarter Horse"
-const toTitleCase = (text) =>
-  collapseSpaces(text)
-    .toLocaleLowerCase("vi")
-    .split(" ")
-    .map((word) => word.charAt(0).toLocaleUpperCase("vi") + word.slice(1))
-    .join(" ");
-
-// Giống trùng (không phân biệt hoa thường) với giống đã có → dùng đúng cách viết đã có; giống mới → viết hoa chữ cái đầu mỗi từ
-function normalizeBreed(breed) {
-  const key = collapseSpaces(breed).toLocaleLowerCase("vi");
-  return horseStore.find((h) => h.Giong.toLocaleLowerCase("vi") === key)?.Giong ?? toTitleCase(breed);
-}
-
-// Tên ngựa không trùng (không phân biệt hoa thường) — BE cũng phải ràng buộc
-function assertUniqueName(name, exceptHorseId = null) {
-  const key = name.toLocaleLowerCase("vi");
-  if (horseStore.some((h) => h.HorseID !== exceptHorseId && h.Ten.toLocaleLowerCase("vi") === key)) {
-    throw new Error(DUPLICATE_HORSE_NAME);
+function pick(obj, ...keys) {
+  for (const key of keys) {
+    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
   }
+  return undefined;
 }
 
-// Màu lông trùng gợi ý/màu đã có (không phân biệt hoa thường) → dùng đúng cách viết đó; màu mới → viết hoa chữ cái đầu ("nâu đỏ" → "Nâu đỏ")
-function normalizeCoatColor(color) {
-  const text = collapseSpaces(color);
-  const key = text.toLocaleLowerCase("vi");
-  const known = [...COAT_COLORS, ...horseStore.map((h) => h.MauLong).filter(Boolean)];
-  return known.find((c) => c.toLocaleLowerCase("vi") === key) ?? key.charAt(0).toLocaleUpperCase("vi") + key.slice(1);
+export function extractHorseId(raw) {
+  const id = pick(raw, "horseID", "horseId", "HorseID", "HorseId", "id");
+  const n = Number(id);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// Ràng buộc NgaySinh / GioiTinh — BE cũng phải kiểm tra lại
-function assertValidProfile(record) {
-  const age = getHorseAge(record.NgaySinh);
-  if (record.NgaySinh > todayISO() || age === null || age < HORSE_LIMITS.Age.min || age > HORSE_LIMITS.Age.max) {
-    throw new Error(INVALID_BIRTH_DATE);
-  }
-  if (!HORSE_GENDERS.includes(record.GioiTinh)) throw new Error("Giới tính không hợp lệ");
+function resolvePhotoUrl(url) {
+  if (!url) return null;
+  if (url.startsWith("/media/")) return url;
+  return url;
 }
 
-// Chuẩn hóa dữ liệu từ form theo kiểu cột trong ERD (tuổi không lưu, tính từ NgaySinh)
-function toHorseRecord(data) {
+/** Chuẩn hóa HorseDto từ API → shape FE (photo, HorseID, …). */
+export function mapHorseFromApi(raw) {
+  if (!raw) return null;
   return {
-    Ten: collapseSpaces(data.Ten),
-    Giong: normalizeBreed(data.Giong),
-    NgaySinh: data.NgaySinh,
-    GioiTinh: data.GioiTinh,
-    MauLong: normalizeCoatColor(data.MauLong),
-    CanNang: Number(data.CanNang),
-    DongDoi: collapseSpaces(data.DongDoi),
-    OwnerID: Number(data.OwnerID),
-    // Ảnh: đường dẫn ảnh có sẵn hoặc data URL vừa chọn ở form; null = dùng placeholder
-    photo: data.photo || null,
+    HorseID: extractHorseId(raw) ?? 0,
+    Ten: pick(raw, "ten", "Ten") ?? "",
+    Giong: pick(raw, "giong", "Giong") ?? "",
+    Tuoi: pick(raw, "tuoi", "Tuoi") ?? 0,
+    CanNang: Number(pick(raw, "canNang", "CanNang") ?? 0),
+    DongDoi: pick(raw, "dongDoi", "DongDoi") ?? "",
+    OwnerID: pick(raw, "ownerID", "OwnerID"),
+    photo: resolvePhotoUrl(pick(raw, "photoUrl", "PhotoUrl") ?? null),
+    GioiTinh: pick(raw, "gioiTinh", "GioiTinh") ?? "",
+    MauLong: pick(raw, "mauLong", "MauLong") ?? "",
+    NgaySinh: pick(raw, "ngaySinh", "NgaySinh") ?? "",
+    ChieuCao: pick(raw, "chieuCao", "ChieuCao"),
   };
 }
 
+function mapHealthFromApi(raw) {
+  return {
+    HorseID: extractHorseId(raw) ?? 0,
+    TrangThai: pick(raw, "trangThai", "TrangThai") ?? "",
+    NgayCapNhat: pick(raw, "ngayCapNhat", "NgayCapNhat") ?? "",
+  };
+}
+
+function isStoredPhotoUrl(value) {
+  if (!value || typeof value !== "string") return false;
+  return (
+    value.startsWith("https://")
+    || value.startsWith("http://")
+    || value.startsWith("/media/")
+  );
+}
+
+/** Quyết định photoUrl gửi kèm JSON (tránh xóa ảnh Cloudinary khi sẽ upload file mới). */
+export function resolvePhotoUrlForSave(form, { photoFile, originalPhotoUrl, isEdit }) {
+  if (photoFile && form.photo?.startsWith("data:")) {
+    return form.photo;
+  }
+  if (photoFile) {
+    return isEdit ? originalPhotoUrl ?? null : null;
+  }
+  if (form.photo?.startsWith("data:")) {
+    return form.photo;
+  }
+  if (isStoredPhotoUrl(form.photo)) {
+    return form.photo;
+  }
+  return null;
+}
+
+function toSaveHorseBody(data, photoUrl) {
+  const age = getHorseAge(data.NgaySinh);
+  return {
+    ten: collapseSpaces(data.Ten),
+    giong: collapseSpaces(data.Giong),
+    tuoi: age ?? 0,
+    canNang: Number(data.CanNang),
+    dongDoi: collapseSpaces(data.DongDoi),
+    ownerID: Number(data.OwnerID),
+    photoUrl: photoUrl ?? null,
+    gioiTinh: data.GioiTinh || null,
+    mauLong: data.MauLong ? collapseSpaces(data.MauLong) : null,
+    ngaySinh: data.NgaySinh || null,
+    chieuCao: data.ChieuCao != null && data.ChieuCao !== "" ? Number(data.ChieuCao) : null,
+    trangThaiSucKhoe: data.TrangThaiSucKhoe || null,
+  };
+}
+
+/** Lưu hồ sơ + upload ảnh (multipart → Cloudinary qua BE). */
+export async function saveHorseWithPhoto({ horseId, form, photoFile, originalPhotoUrl }) {
+  const isEdit = Boolean(horseId);
+  const photoUrl = resolvePhotoUrlForSave(form, { photoFile, originalPhotoUrl, isEdit });
+  const body = toSaveHorseBody(form, photoUrl);
+
+  try {
+    const saved = isEdit
+      ? await apiRequest(`/manager/horses/${horseId}`, { method: "PUT", body })
+      : await apiRequest("/manager/horses", { method: "POST", body });
+
+    let result = mapHorseFromApi(saved);
+    const horseIdForPhoto =
+      extractHorseId(saved) ?? extractHorseId(result) ?? (isEdit ? Number(horseId) : null);
+
+    const photoSentInJson = typeof photoUrl === "string" && photoUrl.startsWith("data:");
+    if (photoFile && horseIdForPhoto && !photoSentInJson) {
+      try {
+        result = await uploadHorsePhoto(horseIdForPhoto, photoFile);
+      } catch (uploadErr) {
+        if (uploadErr.status === 404 && form.photo?.startsWith("data:")) {
+          const patched = await apiRequest(`/manager/horses/${horseIdForPhoto}`, {
+            method: "PUT",
+            body: toSaveHorseBody(form, form.photo),
+          });
+          result = mapHorseFromApi(patched);
+        } else {
+          throw uploadErr;
+        }
+      }
+    }
+    return result;
+  } catch (err) {
+    if (isEdit && err.status === 404) throw new Error("Không tìm thấy ngựa");
+    mapApiError(err);
+  }
+}
+
+function mapApiError(err) {
+  if (err?.message?.includes("tên") || err?.message?.toLowerCase().includes("trùng")) {
+    throw new Error(DUPLICATE_HORSE_NAME);
+  }
+  if (err?.message?.includes("ngày sinh") || err?.message?.includes("NgaySinh")) {
+    throw new Error(INVALID_BIRTH_DATE);
+  }
+  if (
+    err?.message?.includes("Cloudinary")
+    || err?.message?.includes("Ảnh")
+    || err?.message?.includes("upload")
+  ) {
+    const photoErr = new Error(err.message);
+    photoErr.field = "photo";
+    throw photoErr;
+  }
+  throw err;
+}
+
+/** Upload file ảnh (multipart) — ưu tiên khi tạo/sửa có file mới. */
+export async function uploadHorsePhoto(horseId, file) {
+  const form = new FormData();
+  form.append("file", file, file.name || "horse-photo.jpg");
+  try {
+    const payload = await apiUploadForm(`/manager/horses/${horseId}/photo`, form);
+    return mapHorseFromApi(payload);
+  } catch (err) {
+    const photoErr = new Error(err.message ?? "Không upload được ảnh.");
+    photoErr.field = "photo";
+    photoErr.status = err.status;
+    throw photoErr;
+  }
+}
+
 export async function getHorses() {
-  await delay();
-  return horseStore.map((h) => ({ ...h }));
+  const data = await apiRequest("/horses");
+  return (data ?? []).map(mapHorseFromApi);
 }
 
-// Trả về null nếu không tìm thấy
 export async function getHorseById(horseId) {
-  await delay();
-  const horse = horseStore.find((h) => h.HorseID === Number(horseId));
-  return horse ? { ...horse } : null;
+  try {
+    const data = await apiRequest(`/horses/${horseId}`);
+    return mapHorseFromApi(data);
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
 }
 
-export async function createHorse(data) {
-  await delay();
-  const record = toHorseRecord(data);
-  assertUniqueName(record.Ten);
-  assertValidProfile(record);
-  const newHorse = { HorseID: nextHorseId(), ...record };
-  horseStore.push(newHorse);
-  horseList.save();
-  return { ...newHorse };
+export async function createHorse(data, photoUrlOverride) {
+  try {
+    const url = photoUrlOverride !== undefined ? photoUrlOverride : resolvePhotoUrlForSave(data, { photoFile: null, originalPhotoUrl: null, isEdit: false });
+    const created = await apiRequest("/manager/horses", {
+      method: "POST",
+      body: toSaveHorseBody(data, url),
+    });
+    return mapHorseFromApi(created);
+  } catch (err) {
+    mapApiError(err);
+  }
 }
 
-export async function updateHorse(horseId, data) {
-  await delay();
-  const index = horseStore.findIndex((h) => h.HorseID === Number(horseId));
-  if (index === -1) throw new Error("Không tìm thấy ngựa");
-  const current = horseStore[index];
-  const record = toHorseRecord(data);
-  assertUniqueName(record.Ten, current.HorseID);
-  assertValidProfile(record);
-  // Vị trí cắt ảnh chỉ đúng với ảnh cũ — đổi ảnh thì bỏ, quay về mặc định
-  const photoPosition = record.photo === current.photo ? current.photoPosition : undefined;
-  horseStore[index] = { HorseID: current.HorseID, ...record, ...(photoPosition && { photoPosition }) };
-  horseList.save();
-  return { ...horseStore[index] };
+export async function updateHorse(horseId, data, photoUrlOverride) {
+  try {
+    const url =
+      photoUrlOverride !== undefined
+        ? photoUrlOverride
+        : resolvePhotoUrlForSave(data, { photoFile: null, originalPhotoUrl: data.photo, isEdit: true });
+    const updated = await apiRequest(`/manager/horses/${horseId}`, {
+      method: "PUT",
+      body: toSaveHorseBody(data, url),
+    });
+    return mapHorseFromApi(updated);
+  } catch (err) {
+    if (err.status === 404) throw new Error("Không tìm thấy ngựa");
+    mapApiError(err);
+  }
 }
 
-// Chỉ gọi sau khi đã kiểm tra ngựa không có dữ liệu liên quan — dùng deleteHorseIfUnused (horseUsageService)
 export async function deleteHorse(horseId) {
-  await delay();
-  horseList.remove((h) => h.HorseID === Number(horseId));
+  await apiRequest(`/manager/horses/${horseId}`, { method: "DELETE" });
 }
 
-// Trạng thái sức khỏe hiện tại (bảng HEALTHSTATUS) — ngựa mới thêm sẽ chưa có bản ghi
 export async function getHealthStatuses() {
-  await delay();
-  return healthStore.map((h) => ({ ...h }));
+  const data = await apiRequest("/horses/health-statuses");
+  return (data ?? []).map(mapHealthFromApi);
 }
 
-// Cập nhật tình trạng sức khỏe sau khám bệnh (bác sĩ thú y). Chỉ ghi khi ngày khám >= NgayCapNhat hiện tại,
-// để bệnh án nhập bù cho ngày cũ không đè tình trạng mới hơn. Trả về true nếu đã cập nhật. BE cũng phải kiểm tra lại.
+/** Vet mock — chưa có API cập nhật sức khỏe; giữ local để màn bác sĩ không vỡ luồng. */
 export async function updateHealthStatus(horseId, trangThai, ngay) {
-  await delay();
   const current = healthStore.find((h) => h.HorseID === Number(horseId));
   if (current && ngay < current.NgayCapNhat) return false;
   if (current) Object.assign(current, { TrangThai: trangThai, NgayCapNhat: ngay });
@@ -141,11 +235,12 @@ export async function updateHealthStatus(horseId, trangThai, ngay) {
   return true;
 }
 
-// Chủ ngựa đã được duyệt (USER có roleId "horse_owner") theo field ERD, không kèm mật khẩu.
-// Gồm cả tài khoản đã bị khóa (isActive = false) để vẫn hiện tên chủ của ngựa cũ; form chỉ cho chọn tài khoản đang hoạt động.
 export async function getHorseOwners() {
-  const users = await getUsers();
-  return users
-    .filter((u) => u.roleId === "horse_owner" && u.status === "approved")
-    .map((u) => ({ UserID: toUserID(u.id), HoTen: u.fullName, Email: u.email, isActive: u.isActive }));
+  const data = await apiRequest("/manager/horses/owners");
+  return (data ?? []).map((o) => ({
+    UserID: pick(o, "userID", "UserID"),
+    HoTen: pick(o, "hoTen", "HoTen") ?? "",
+    Email: pick(o, "email", "Email") ?? "",
+    isActive: true,
+  }));
 }

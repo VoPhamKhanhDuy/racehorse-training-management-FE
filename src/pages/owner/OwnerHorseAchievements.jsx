@@ -23,18 +23,18 @@ export default function OwnerHorseAchievements({ achievements }) {
         <p className={styles.empty}>Chưa tham gia giải nào</p>
       ) : (
         <ul className={styles.raceList}>
-          {entries.map(({ race, registration, state }) => (
+          {entries.map(({ race, registration, state, resultLabel }) => (
             <li key={race.RaceID} className={styles.raceRow}>
-              <span className={styles.raceDate}>{formatDayMonth(race.Ngay)}</span>
+              <span className={styles.raceDate}>{race.Ngay?.includes("/") ? race.Ngay : formatDayMonth(race.Ngay)}</span>
               <span className={styles.raceName} title={race.TenGiai}>
                 {race.TenGiai}
               </span>
-              {state === "ranked" ? (
+              {state === "ranked" && registration.ThuHang ? (
                 <span className={`${styles.raceRank} ${registration.ThuHang === 1 ? styles.raceRankFirst : ""}`}>
                   {rankWord(registration.ThuHang)}
                 </span>
               ) : (
-                <span className={styles.raceState}>{STATE_TEXT[state]}</span>
+                <span className={styles.raceState}>{resultLabel ?? STATE_TEXT[state]}</span>
               )}
             </li>
           ))}

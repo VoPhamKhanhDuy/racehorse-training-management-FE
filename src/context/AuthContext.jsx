@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { changePassword as changePasswordApi, findUserByEmail, findUserById } from "../services/accountService";
-import { apiRequest } from "../services/apiClient";
+import { apiRequest, setAccessToken } from "../services/apiClient";
 import { clearApiSession, getApiSession, saveApiSession, setUnauthorizedHandler } from "../services/apiSession";
 
 export const AuthContext = createContext(null);
@@ -43,6 +43,7 @@ function saveSession(user) {
 
 function clearSession() {
   clearApiSession();
+  setAccessToken(null); // token kiểu cũ của authApi.js
   try {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem("equitrack.session"); // phiên kiểu cũ (localStorage) — dọn đi

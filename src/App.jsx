@@ -79,6 +79,10 @@ function App() {
         <Route path="/trainer/plans/:planId/sessions/new" element={<TrainingSessionForm />} />
         <Route path="/trainer/schedule" element={<Schedule />} />
         <Route path="/trainer/sessions" element={<TrainingSessions />} />
+        {/* URL cũ (luồng mock) — thay bằng luồng giáo án nối API: thêm buổi tập qua /trainer/plans/:planId/sessions/new */}
+        <Route path="/trainer/schedule/new" element={<Navigate to="/trainer/schedule" replace />} />
+        <Route path="/trainer/schedule/:id/edit" element={<Navigate to="/trainer/schedule" replace />} />
+        <Route path="/trainer/sessions/new" element={<Navigate to="/trainer/sessions" replace />} />
         <Route path="/trainer/sessions/:id/edit" element={<TrainingSessionForm />} />
         <Route path="/trainer/sessions/:id/result" element={<SessionResultForm />} />
         <Route path="/trainer/races" element={<Races />} />

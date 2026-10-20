@@ -13,7 +13,8 @@ export default function HorsePhotoPicker({ photo, horseName, error, onChange, on
     e.target.value = ""; // cho phép chọn lại đúng file vừa bỏ
     if (!file) return;
     // Ảnh không hợp lệ: báo lỗi dưới ô ảnh, giữ nguyên ảnh đang có (không lưu file vừa chọn)
-    if (!HORSE_PHOTO_TYPES.includes(file.type)) {
+    const mime = file.type === "image/pjpeg" ? "image/jpeg" : file.type;
+    if (!HORSE_PHOTO_TYPES.includes(mime)) {
       onError("Chỉ nhận ảnh JPG, PNG hoặc WebP.");
       return;
     }
@@ -21,9 +22,9 @@ export default function HorsePhotoPicker({ photo, horseName, error, onChange, on
       onError(`Ảnh vượt quá ${MAX_PHOTO_SIZE_MB} MB, vui lòng chọn ảnh nhỏ hơn.`);
       return;
     }
-    // TODO: thay bằng upload lên server khi BE xong — hiện đọc thành data URL, chỉ giữ trong phiên làm việc
     const reader = new FileReader();
-    reader.onload = () => onChange(reader.result);
+    const fileForUpload = mime === file.type ? file : new File([file], file.name, { type: mime });
+    reader.onload = () => onChange(reader.result, fileForUpload);
     reader.onerror = () => onError("Không đọc được file ảnh, vui lòng thử lại");
     reader.readAsDataURL(file);
   };
@@ -57,7 +58,7 @@ export default function HorsePhotoPicker({ photo, horseName, error, onChange, on
           {photo && (
             <button
               type="button"
-              onClick={() => onChange(null)}
+              onClick={() => onChange(null, null)}
               className="inline-flex cursor-pointer items-center gap-1 text-sm text-stone hover:text-alert"
             >
               <X className="h-4 w-4" aria-hidden="true" />

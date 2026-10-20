@@ -66,8 +66,9 @@ File nào đặt sai vị trí (vd component dùng chung mà để trong `pages/
 ## Cấu trúc mock data (bắt buộc theo đúng field, khớp ERD — để tránh mỗi người đặt tên field khác nhau)
 
 ```js
-// data/horses.js — khớp bảng HORSE
-{ HorseID: 1, Ten: "Thunder", Giong: "Thoroughbred", Tuoi: 4, CanNang: 450, DongDoi: "A", OwnerID: 4 }
+// data/horses.js — khớp bảng HORSE (KHÔNG lưu tuổi — tính từ NgaySinh bằng getHorseAge trong utils/date.js)
+// GioiTinh chỉ nhận: "Ngựa đực" | "Ngựa cái" | "Ngựa thiến"
+{ HorseID: 1, Ten: "Thunder", Giong: "Thoroughbred", NgaySinh: "2022-07-11", GioiTinh: "Ngựa thiến", MauLong: "Hạt dẻ", CanNang: 450, DongDoi: "Northern Dancer", OwnerID: 4 }
 
 // data/trainingPlans.js — khớp bảng TRAININGPLAN
 { PlanID: 1, HorseID: 1, CuLy: 1200, KhoiLuong: 80, MatSan: "Đường đất", GiaiDoan: "Nền tảng", CreatedBy: 1 }

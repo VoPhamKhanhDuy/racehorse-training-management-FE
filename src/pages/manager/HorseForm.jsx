@@ -4,7 +4,7 @@ import FormField from "../../components/FormField";
 import LoadingState from "../../components/LoadingState";
 import SelectField from "../../components/SelectField";
 import HorsePhotoPicker from "./HorsePhotoPicker";
-import { createHorse, getHorseById, getHorseOwners, getHorses, updateHorse } from "../../services/horseService";
+import { getHorseById, getHorseOwners, getHorses, saveHorseWithPhoto } from "../../services/horseService";
 import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../../data/horseOptions";
 import { getHorseAge, todayISO } from "../../utils/date";
 import GenderChips from "./GenderChips";
@@ -67,8 +67,9 @@ export default function HorseForm() {
   const [notFound, setNotFound] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [originalPhotoUrl, setOriginalPhotoUrl] = useState(null);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock horseService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getHorseOwners(), getHorses(), isEdit ? getHorseById(id) : null]).then(([ownerList, horseList, horse]) => {
@@ -88,6 +89,8 @@ export default function HorseForm() {
             OwnerID: String(horse.OwnerID),
             photo: horse.photo ?? null,
           });
+          setOriginalPhotoUrl(horse.photo ?? null);
+          setPhotoFile(null);
           setOriginalOwnerId(String(horse.OwnerID));
         } else {
           setNotFound(true);
@@ -129,8 +132,9 @@ export default function HorseForm() {
     setErrors((prev) => ({ ...prev, GioiTinh: undefined }));
   };
 
-  const handlePhotoChange = (photo) => {
+  const handlePhotoChange = (photo, file = null) => {
     setForm((prev) => ({ ...prev, photo }));
+    setPhotoFile(file);
     setErrors((prev) => ({ ...prev, photo: undefined }));
   };
 
@@ -144,15 +148,21 @@ export default function HorseForm() {
     }
     setSubmitting(true);
     try {
-      const saved = isEdit ? await updateHorse(id, form) : await createHorse(form);
+      const saved = await saveHorseWithPhoto({
+        horseId: isEdit ? id : null,
+        form,
+        photoFile,
+        originalPhotoUrl,
+      });
+
       navigate("/manager/horses", {
         state: { message: isEdit ? `Đã cập nhật hồ sơ ngựa "${saved.Ten}".` : `Đã thêm ngựa "${saved.Ten}".` },
       });
     } catch (err) {
-      // Service cũng chặn trùng tên / ngày sinh sai — báo đúng dưới ô tương ứng
       if (err.message === DUPLICATE_HORSE_NAME) setErrors({ Ten: err.message });
       else if (err.message === INVALID_BIRTH_DATE) setErrors({ NgaySinh: err.message });
-      else setErrors({ form: "Không lưu được hồ sơ ngựa, vui lòng thử lại." });
+      else if (err.field === "photo") setErrors({ photo: err.message });
+      else setErrors({ form: err.message ?? "Không lưu được hồ sơ ngựa, vui lòng thử lại." });
       setSubmitting(false);
     }
   };
