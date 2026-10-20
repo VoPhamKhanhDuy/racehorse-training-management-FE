@@ -1,85 +1,83 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, SearchX } from "lucide-react";
+import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
-import HorsePlanDetail from "./HorsePlanDetail";
-import HorsePlanList from "./HorsePlanList";
-import useAuth from "../../hooks/useAuth";
-import {
-  getActiveTrainingLocks,
-  getHealthStatuses,
-  getHorses,
-  getTrainingPlans,
-  getTrainingSessions,
-  getUsers,
-} from "../../services/trainerService";
-import { toUserID } from "../../utils/userId";
+import { DataCell, DataRow, DataTable } from "../../components/DataTable";
+import IntensityText from "../../components/IntensityText";
+import StatusText from "../../components/StatusText";
+import { statusDisplayLabel } from "../../utils/statusLabels";
+import TabFilter from "../../components/TabFilter";
+import useApiResource from "../../hooks/useApiResource";
+import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { getHorses, getTrainingPlans } from "../../services/trainingApi";
+import { formatDate } from "../../utils/date";
+import { formatNumber } from "../../utils/trainingFormat";
 
-// Giáo án tập luyện dạng danh sách + chi tiết: trái là ngựa, phải là 4 mốc giai đoạn của ngựa đang chọn.
-// Ngựa đang chọn nằm trên URL (?horse=ID) — dưới lg chỉ hiện 1 màn: chưa chọn → danh sách, đã chọn → chi tiết.
+const PLAN_GRID = "minmax(260px,2.2fr) 150px 190px 130px 170px 130px";
+const COLUMNS = [
+  { key: "plan", label: "Giáo án" },
+  { key: "horse", label: "Ngựa" },
+  { key: "time", label: "Thời gian" },
+  { key: "intensity", label: "Cường độ cao nhất" },
+  { key: "progress", label: "Tiến độ" },
+  { key: "status", label: "Trạng thái" },
+];
+
+// Danh sách giáo án (GET /api/trainer/training-plans) — lọc theo ngựa + trạng thái phía BE (?horse=&status= trên URL),
+// tìm theo tên giáo án phía FE. Bấm 1 dòng → chi tiết giáo án.
 export default function TrainingPlans() {
-  const { user } = useAuth();
-  const currentUserId = toUserID(user.id);
-  const { state } = useLocation(); // thông báo do form thêm/sửa/xóa gửi sang
+  const { state } = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [plans, setPlans] = useState([]);
-  const [horses, setHorses] = useState([]);
-  const [locks, setLocks] = useState([]); // TRAININGLOCK chưa gỡ
-  const [healthStatuses, setHealthStatuses] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { options, label } = useTrainingOptions();
+  const horseFilter = searchParams.get("horse") ?? "";
+  const statusFilter = searchParams.get("status") ?? "";
+
   const [keyword, setKeyword] = useState("");
-  const [onlyMissing, setOnlyMissing] = useState(false);
   const [message, setMessage] = useState(state?.message ?? "");
+  // Danh sách ngựa chỉ để lọc — lỗi thì bộ lọc ngựa trống, lỗi chính hiện ở danh sách giáo án
+  const horsesResource = useApiResource(getHorses, "horses");
+  const plansResource = useApiResource(
+    () => getTrainingPlans({ horseId: horseFilter || undefined, status: statusFilter || undefined }),
+    `${horseFilter}|${statusFilter}`
+  );
+  const horses = horsesResource.data ?? [];
+  const plans = plansResource.data ?? [];
+  const { loading, error } = plansResource;
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
-  useEffect(() => {
-    let ignore = false;
-    Promise.all([
-      getTrainingPlans(),
-      getHorses(),
-      getActiveTrainingLocks(),
-      getHealthStatuses(),
-      getTrainingSessions(),
-      getUsers(),
-    ]).then(([planList, horseList, lockList, healthList, sessionList, userList]) => {
-      if (ignore) return;
-      setPlans(planList);
-      setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-      setLocks(lockList);
-      setHealthStatuses(healthList);
-      setSessions(sessionList);
-      setUsers(userList);
-      setLoading(false);
-    });
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const retry = () => {
+    horsesResource.reload();
+    plansResource.reload();
+  };
 
-  const userNameById = Object.fromEntries(users.map((u) => [u.UserID, u.HoTen]));
-  const plansByHorse = plans.reduce((acc, p) => ({ ...acc, [p.HorseID]: [...(acc[p.HorseID] ?? []), p] }), {});
-  // "Còn thiếu giáo án" = chưa có giáo án nào (0/4 giai đoạn)
-  const hasNoPlan = (horse) => !plansByHorse[horse.HorseID]?.length;
+  const updateFilter = (name, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(name, value);
+    else next.delete(name);
+    setSearchParams(next, { replace: true });
+  };
 
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const visibleHorses = horses.filter(
-    (h) => h.Ten.toLowerCase().includes(normalizedKeyword) && (!onlyMissing || hasNoPlan(h))
+  const visiblePlans = plans.filter(
+    (p) => p.planName.toLowerCase().includes(normalizedKeyword) || (p.horseName ?? "").toLowerCase().includes(normalizedKeyword)
   );
-
-  // Ngựa chọn trên URL — chỉ tính khi ngựa đó còn trong danh sách đang hiển thị.
-  // Chưa chọn (hoặc bộ lọc làm ngựa đang chọn biến mất): chọn ngựa đầu tiên còn lại,
-  // ưu tiên ngựa đã có giáo án khi công tắc đang tắt.
-  const paramHorse = visibleHorses.find((h) => String(h.HorseID) === searchParams.get("horse"));
-  const defaultHorse = (!onlyMissing && visibleHorses.find((h) => !hasNoPlan(h))) || visibleHorses[0];
-  const selectedHorse = paramHorse ?? defaultHorse;
-  const showDetailOnMobile = Boolean(paramHorse);
-  const selectedLock = selectedHorse ? locks.find((l) => l.HorseID === selectedHorse.HorseID) ?? null : null;
+  const newPlanLink = horseFilter ? `/trainer/plans/new?horse=${horseFilter}` : "/trainer/plans/new";
 
   return (
     <div>
-      <h1 className="mb-6 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Giáo án tập luyện</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">Giáo án tập luyện</h1>
+          <p className="mt-1 text-sm text-[#6b6055]">Theo dõi giáo án, cường độ và tiến độ của từng ngựa.</p>
+        </div>
+        <Link
+          to={newPlanLink}
+          className="inline-flex h-10 items-center rounded bg-[#c2570c] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#a8480a]"
+        >
+          Lập giáo án
+        </Link>
+      </div>
 
       {message && (
         <div className="mb-4 flex items-center justify-between gap-4 rounded-sm border-l-2 border-green-700 bg-white/60 px-4 py-3 text-sm text-green-800">
@@ -90,89 +88,112 @@ export default function TrainingPlans() {
         </div>
       )}
 
+      {/* Lọc trạng thái dạng tab chữ — "Tất cả" + 4 trạng thái giáo án */}
+      <TabFilter
+        ariaLabel="Lọc theo trạng thái"
+        options={[{ code: "", label: "Tất cả" }, ...options.planStatuses.map((o) => ({ ...o, label: statusDisplayLabel(o.code, o.label) }))]}
+        value={statusFilter}
+        onChange={(code) => updateFilter("status", code)}
+      />
+
+      <div className="mt-4 mb-4 flex flex-wrap items-center gap-3">
+        <label htmlFor="planHorse" className="sr-only">
+          Lọc theo ngựa
+        </label>
+        <select
+          id="planHorse"
+          value={horseFilter}
+          onChange={(e) => updateFilter("horse", e.target.value)}
+          className="h-10 cursor-pointer rounded border border-[#d9d0bf] bg-white px-3 text-sm text-[#2b2118] outline-none focus:border-[#c2570c]"
+        >
+          <option value="">Tất cả ngựa</option>
+          {horses.map((horse) => (
+            <option key={horse.horseId} value={horse.horseId}>
+              {horse.name}
+            </option>
+          ))}
+        </select>
+        <div className="relative w-full sm:ml-auto sm:w-80">
+          <label htmlFor="planKeyword" className="sr-only">
+            Tìm theo tên giáo án hoặc tên ngựa
+          </label>
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" />
+          <input
+            id="planKeyword"
+            type="search"
+            placeholder="Tìm giáo án, ngựa..."
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            className="h-10 w-full rounded border border-[#d9d0bf] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
+          />
+        </div>
+      </div>
+
       {loading ? (
         <LoadingState />
-      ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-          {/* Cột trái: tìm kiếm + công tắc + danh sách ngựa */}
-          <div className={`space-y-4 lg:sticky lg:top-24 ${showDetailOnMobile ? "hidden lg:block" : ""}`}>
-            <div className="relative">
-              <label htmlFor="planKeyword" className="sr-only">
-                Tìm theo tên ngựa
-              </label>
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" />
-              <input
-                id="planKeyword"
-                type="search"
-                placeholder="Tìm theo tên ngựa..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
-              />
-            </div>
-
-            {/* Công tắc bật/tắt: track cam khi bật, xám khi tắt */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={onlyMissing}
-              onClick={() => setOnlyMissing((prev) => !prev)}
-              className="flex cursor-pointer items-center gap-2.5 text-sm text-ink"
-            >
-              <span
-                aria-hidden="true"
-                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${onlyMissing ? "bg-brass" : "bg-stone/25"}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                    onlyMissing ? "translate-x-4" : ""
-                  }`}
-                />
-              </span>
-              Chỉ hiện ngựa còn thiếu giáo án
-            </button>
-
-            <div className="overflow-hidden rounded-lg border border-stone/15 bg-white">
-              <p className="border-b border-stone/15 px-4 py-2 text-xs font-medium text-stone">{visibleHorses.length} ngựa</p>
-              {visibleHorses.length === 0 ? (
-                <div className="px-4 py-10 text-center text-sm text-stone">
-                  <SearchX className="mx-auto mb-2 h-8 w-8 text-stone/40" />
-                  {onlyMissing && !normalizedKeyword ? "Tất cả ngựa đều đã có giáo án" : "Không tìm thấy ngựa phù hợp"}
-                </div>
-              ) : (
-                <HorsePlanList
-                  horses={visibleHorses}
-                  plansByHorse={plansByHorse}
-                  selectedId={selectedHorse?.HorseID}
-                  defaultSelection={!paramHorse}
-                  onSelect={(horseId) => setSearchParams({ horse: horseId })}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Cột phải: chi tiết ngựa đang chọn. Dưới lg chỉ hiện khi đã chọn ngựa, kèm nút quay lại danh sách */}
-          <div className={showDetailOnMobile ? "" : "hidden lg:block"}>
-            <Link to="/trainer/plans" className="mb-4 inline-block text-sm font-medium text-brass-deep hover:underline lg:hidden">
-              ← Danh sách ngựa
+      ) : error ? (
+        <ApiErrorNotice variant="page" error={error} onRetry={retry} />
+      ) : visiblePlans.length === 0 ? (
+        <div className="border-y border-[#ece5d6] py-16 text-center text-[#6b6055]">
+          <SearchX className="mx-auto mb-3 h-10 w-10 text-[#6b6055]/40" />
+          {plans.length === 0 ? "Chưa có giáo án nào phù hợp bộ lọc." : "Không tìm thấy giáo án phù hợp."}
+          <div className="mt-4">
+            <Link to={newPlanLink} className="text-sm font-semibold text-[#c2570c] hover:underline">
+              Lập giáo án mới →
             </Link>
-            <div className="rounded-lg border border-stone/15 bg-white px-5 py-5 sm:px-6">
-              {selectedHorse ? (
-                <HorsePlanDetail
-                  horse={selectedHorse}
-                  plans={plansByHorse[selectedHorse.HorseID] ?? []}
-                  healthStatus={healthStatuses.find((h) => h.HorseID === selectedHorse.HorseID)?.TrangThai}
-                  lock={selectedLock}
-                  lockedByName={selectedLock ? userNameById[selectedLock.VetID] : undefined}
-                  sessions={sessions.filter((s) => s.HorseID === selectedHorse.HorseID)}
-                  currentUserId={currentUserId}
-                />
-              ) : (
-                <p className="py-10 text-center text-sm text-stone">Chọn một ngựa để xem giáo án.</p>
-              )}
-            </div>
           </div>
         </div>
+      ) : (
+        <DataTable columns={COLUMNS} template={PLAN_GRID} minWidth={1100} footer={`${visiblePlans.length} giáo án`}>
+          {visiblePlans.map((plan) => {
+            const progress = plan.progress ?? {};
+            const rate = Math.min(100, Number(progress.completionRate) || 0);
+            const subtitle = `${plan.trainingType ? label("planTypes", plan.trainingType) : "Chưa chọn loại"}${plan.objective ? ` · ${plan.objective}` : ""}`;
+            return (
+              <DataRow key={plan.planId} template={PLAN_GRID} onClick={() => navigate(`/trainer/plans/${plan.planId}`)}>
+                <DataCell>
+                  <Link
+                    to={`/trainer/plans/${plan.planId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    title={plan.planName}
+                    className="block truncate font-serif font-semibold text-[#2b2118] hover:text-[#c2570c]"
+                  >
+                    {plan.planName}
+                  </Link>
+                  <p className="mt-0.5 truncate text-[13px] text-[#6b6055]" title={subtitle}>
+                    {subtitle}
+                  </p>
+                </DataCell>
+                <DataCell className="truncate font-medium whitespace-nowrap text-[#2b2118]" title={plan.horseName}>
+                  {plan.horseName}
+                </DataCell>
+                <DataCell className="whitespace-nowrap">
+                  {formatDate(plan.startDate)} – {formatDate(plan.endDate)}
+                  <span className="block text-xs text-[#6b6055]">{plan.phaseCount} giai đoạn</span>
+                </DataCell>
+                <DataCell>
+                  {plan.intensityLevel ? (
+                    <IntensityText code={plan.intensityLevel}>{label("intensityLevels", plan.intensityLevel)}</IntensityText>
+                  ) : (
+                    "—"
+                  )}
+                </DataCell>
+                <DataCell>
+                  <div className="h-1 overflow-hidden rounded-sm bg-[#ece5d6]">
+                    <div className="h-full rounded-sm bg-[#6b7a3a]" style={{ width: `${rate}%` }} />
+                  </div>
+                  <p className="mt-1 truncate text-xs whitespace-nowrap text-[#6b6055]">
+                    {progress.completedSessions ?? 0}/{(progress.totalSessions ?? 0) - (progress.cancelledSessions ?? 0)} buổi
+                    {progress.averagePerformanceScore != null && ` · TB ${formatNumber(progress.averagePerformanceScore)}`}
+                  </p>
+                </DataCell>
+                <DataCell>
+                  <StatusText code={plan.status}>{label("planStatuses", plan.status)}</StatusText>
+                </DataCell>
+              </DataRow>
+            );
+          })}
+        </DataTable>
       )}
     </div>
   );

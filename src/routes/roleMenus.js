@@ -1,4 +1,5 @@
 import {
+  CalendarCheck,
   CalendarDays,
   ChartColumn,
   ClipboardList,
@@ -24,7 +25,7 @@ const roleMenus = {
   head_trainer: [
     { label: "Giáo án tập luyện", path: "/trainer/plans", icon: ClipboardList },
     { label: "Lịch tập", path: "/trainer/schedule", icon: CalendarDays },
-    { label: "Kết quả buổi tập", path: "/trainer/sessions", icon: TrendingUp },
+    { label: "Buổi tập", path: "/trainer/sessions", icon: TrendingUp },
     { label: "Đăng ký thi đấu", path: "/trainer/races", icon: Trophy },
     { label: "Hồ sơ ngựa", path: "/trainer/horses", icon: FolderOpen },
   ],
@@ -36,6 +37,7 @@ const roleMenus = {
   ],
   groom: [
     { label: "Công việc hôm nay", path: "/groom/tasks", icon: ListChecks },
+    { label: "Lịch tập được giao", path: "/groom/training", icon: CalendarCheck },
     { label: "Chuồng trại", path: "/groom/stable", icon: LayoutGrid },
     { label: "Báo cáo sự cố", path: "/groom/incidents", icon: TriangleAlert },
     { label: "Vật tư", path: "/groom/supplies", icon: Package },

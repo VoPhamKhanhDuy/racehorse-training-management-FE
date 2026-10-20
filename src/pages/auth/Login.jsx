@@ -29,6 +29,7 @@ export default function Login() {
   const blockedPath = location.state?.from?.pathname;
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -36,10 +37,9 @@ export default function Login() {
     setErrors((prev) => ({ ...prev, [name]: undefined, form: undefined }));
   };
 
-  const [submitting, setSubmitting] = useState(false);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     const newErrors = {};
     if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
     else if (!isValidEmail(form.email)) newErrors.email = "Email không hợp lệ";
@@ -49,6 +49,7 @@ export default function Login() {
       return;
     }
 
+    // Đăng nhập thử qua BE trước (có độ trễ mạng) → khóa nút trong lúc chờ
     setSubmitting(true);
     const result = await login(form.email, form.password);
     setSubmitting(false);

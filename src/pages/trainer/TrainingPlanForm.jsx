@@ -1,359 +1,442 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import ConfirmDialog from "../../components/ConfirmDialog";
+import { Sparkles } from "lucide-react";
+import ApiErrorNotice from "../../components/ApiErrorNotice";
 import FormField from "../../components/FormField";
 import LoadingState from "../../components/LoadingState";
 import SelectField from "../../components/SelectField";
-import PlanFormContext from "./PlanFormContext";
-import useAuth from "../../hooks/useAuth";
-import { PLAN_UNITS, TRACK_SURFACES, TRAINING_PHASES } from "../../data/trainingPlanOptions";
+import TextAreaField from "../../components/TextAreaField";
+import HorseFitnessPanel from "./HorseFitnessPanel";
+import PlanPhaseEditor from "./PlanPhaseEditor";
+import PlanPhaseTable from "./PlanPhaseTable";
+import { createPhase, hasPhaseErrors, phaseToForm, phaseToPayload, validatePhases } from "./planPhaseForm";
+import { PLAN_RULES } from "../../data/trainingCodes";
+import useHorseFitness from "../../hooks/useHorseFitness";
+import useTrainingOptions from "../../hooks/useTrainingOptions";
 import {
   createTrainingPlan,
-  deleteTrainingPlan,
-  getActiveTrainingLocks,
-  getHealthStatuses,
   getHorses,
-  getTrainingPlans,
-  getUsers,
+  getPlanSuggestion,
+  getTrainingPlan,
   updateTrainingPlan,
-} from "../../services/trainerService";
-import { toUserID } from "../../utils/userId";
+} from "../../services/trainingApi";
+import { formatDate, todayISO } from "../../utils/date";
+import { nextMondayISO } from "../../utils/trainingFormat";
 
-const emptyForm = { HorseID: "", GiaiDoan: "", CuLy: "", KhoiLuong: "", MatSan: "" };
+const emptyForm = { horseId: "", planName: "", objective: "", trainingType: "", notes: "" };
+const SECTION_TITLE = "font-serif text-lg font-semibold text-ink";
 
-// Nút chọn 1 trong nhiều (giai đoạn, mặt sân) — cùng kiểu pill lọc ở các trang danh sách
-const choiceClass = (active, disabled) =>
-  `w-full rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
-    disabled
-      ? "cursor-not-allowed border-stone/15 bg-white text-stone/45"
-      : active
-        ? "cursor-pointer border-brass bg-brass/15 font-medium text-brass-deep"
-        : "cursor-pointer border-stone/25 bg-white text-ink hover:border-stone/40"
-  }`;
-const LEGEND = "mb-1.5 block font-serif text-sm font-semibold text-stone";
-
-// Form giáo án, dùng chung cho /trainer/plans/new (lập mới) và /trainer/plans/:id/edit (sửa).
-// - Lập từ liên kết "Lập" ở một mốc (?horse=&phase=): ngựa + giai đoạn điền sẵn, ngựa bị khóa không đổi.
-// - Mỗi ngựa tối đa 1 giáo án cho mỗi giai đoạn: giai đoạn đã lập thì mờ, không chọn được (trừ giai đoạn đang sửa).
-// - Chỉ người tạo giáo án (CreatedBy) được sửa/xóa.
+// Lập giáo án (/trainer/plans/new, ?horse= điền sẵn ngựa) và sửa giáo án (/trainer/plans/:id/edit).
+// - Bên phải: thể trạng hiện tại của ngựa → mức cường độ tối đa; giai đoạn vượt mức bị chặn ngay trên form (BE trả 422).
+// - "Gợi ý theo thể trạng": điền sẵn các giai đoạn từ API gợi ý, HLV chỉnh lại trước khi lưu.
+// - Giáo án Nháp sửa được cả giai đoạn; đang áp dụng chỉ sửa thông tin chung; đã kết thúc / hủy thì không sửa được.
 export default function TrainingPlanForm() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
-  const currentUserId = toUserID(user.id);
-  const [form, setForm] = useState(emptyForm);
-  const [horseLocked, setHorseLocked] = useState(false); // vào từ liên kết "Lập" của một ngựa cụ thể
-  const [horses, setHorses] = useState([]);
-  const [plans, setPlans] = useState([]);
-  const [healthStatuses, setHealthStatuses] = useState([]);
-  const [locks, setLocks] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [blockedReason, setBlockedReason] = useState(""); // không tìm thấy / không phải người tạo
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const { options, label } = useTrainingOptions();
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
+  const [horses, setHorses] = useState([]);
+  const [plan, setPlan] = useState(null); // giáo án đang sửa
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const [form, setForm] = useState(emptyForm);
+  const [phases, setPhases] = useState([]);
+  const [errors, setErrors] = useState({ phases: [] });
+  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [suggestStart, setSuggestStart] = useState(nextMondayISO);
+  const [suggestWeeks, setSuggestWeeks] = useState(String(PLAN_RULES.suggestionWeeks.default));
+  const [suggestion, setSuggestion] = useState(null);
+  const [suggestError, setSuggestError] = useState(null);
+  const [suggesting, setSuggesting] = useState(false);
+
+  const fitnessState = useHorseFitness(form.horseId);
+  const fitness = fitnessState.fitness;
+  const maxIntensity = fitness?.canTrain ? fitness.maxAllowedIntensity : null;
+  const phasesEditable = !isEdit || plan?.status === "Draft";
+
   useEffect(() => {
     let ignore = false;
-    Promise.all([getHorses(), getTrainingPlans(), getHealthStatuses(), getActiveTrainingLocks(), getUsers()]).then(
-      ([horseList, planList, healthList, lockList, userList]) => {
+    Promise.all([getHorses(), isEdit ? getTrainingPlan(id) : Promise.resolve(null)])
+      .then(([horseList, planDetail]) => {
         if (ignore) return;
-        setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-        setPlans(planList);
-        setHealthStatuses(healthList);
-        setLocks(lockList);
-        setUsers(userList);
-        if (!isEdit) {
-          // Điền sẵn từ liên kết "Lập" (chỉ nhận giá trị hợp lệ, giai đoạn chưa được lập)
-          const horseParam = searchParams.get("horse");
-          const phaseParam = searchParams.get("phase");
-          const validHorse = horseList.some((h) => String(h.HorseID) === horseParam);
-          const phaseTaken = planList.some((p) => String(p.HorseID) === horseParam && p.GiaiDoan === phaseParam);
-          if (validHorse) {
-            setHorseLocked(true);
-            setForm((prev) => ({
-              ...prev,
-              HorseID: horseParam,
-              GiaiDoan: TRAINING_PHASES.includes(phaseParam) && !phaseTaken ? phaseParam : "",
-            }));
-          }
+        setHorses(horseList);
+        if (planDetail) {
+          setPlan(planDetail);
+          setForm({
+            horseId: String(planDetail.horseId),
+            planName: planDetail.planName ?? "",
+            objective: planDetail.objective ?? "",
+            trainingType: planDetail.trainingType ?? "",
+            notes: planDetail.notes ?? "",
+          });
+          setPhases(planDetail.phases.map(phaseToForm));
         } else {
-          const plan = planList.find((p) => p.PlanID === Number(id));
-          if (!plan) {
-            setBlockedReason("Giáo án này không tồn tại hoặc đã bị xóa.");
-          } else if (plan.CreatedBy !== currentUserId) {
-            setBlockedReason("Bạn chỉ được sửa giáo án do chính mình tạo.");
-          } else {
-            setForm({
-              HorseID: String(plan.HorseID),
-              GiaiDoan: plan.GiaiDoan,
-              CuLy: String(plan.CuLy),
-              KhoiLuong: String(plan.KhoiLuong),
-              MatSan: plan.MatSan,
-            });
-          }
+          const horseParam = searchParams.get("horse");
+          const validHorse = horseList.some((h) => String(h.horseId) === horseParam);
+          setForm({ ...emptyForm, horseId: validHorse ? horseParam : "" });
+          setPhases([createPhase(null, null)]);
         }
         setLoading(false);
-      }
-    );
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err);
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
-  }, [id, isEdit, currentUserId, searchParams]);
+  }, [id, isEdit, searchParams, reloadKey]);
 
-  const selectedHorse = horses.find((h) => h.HorseID === Number(form.HorseID));
-  const horsePlans = plans.filter((p) => p.HorseID === Number(form.HorseID));
-  // Giai đoạn đã có giáo án của ngựa đang chọn (bỏ qua chính giáo án đang sửa)
-  const takenPhases = new Set(horsePlans.filter((p) => p.PlanID !== Number(id)).map((p) => p.GiaiDoan));
-  const selectedLock = selectedHorse ? locks.find((l) => l.HorseID === selectedHorse.HorseID) ?? null : null;
-  const lockedByName = selectedLock ? users.find((u) => u.UserID === selectedLock.VetID)?.HoTen : undefined;
-  // Quay về danh sách và giữ ngựa đang làm việc được chọn
-  const backToList = form.HorseID ? `/trainer/plans?horse=${form.HorseID}` : "/trainer/plans";
+  const selectedHorse = horses.find((h) => String(h.horseId) === form.horseId);
+  const backTo = isEdit ? `/trainer/plans/${id}` : "/trainer/plans";
 
   const setField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  // Đổi ngựa: nếu giai đoạn đang chọn đã được ngựa mới lập thì bỏ chọn để HLV chọn lại
   const handleHorseChange = (e) => {
-    const horseId = e.target.value;
-    const taken = plans.some(
-      (p) => p.HorseID === Number(horseId) && p.GiaiDoan === form.GiaiDoan && p.PlanID !== Number(id)
-    );
-    setForm((prev) => ({ ...prev, HorseID: horseId, GiaiDoan: taken ? "" : prev.GiaiDoan }));
-    setErrors((prev) => ({ ...prev, HorseID: undefined, GiaiDoan: undefined }));
+    setField("horseId", e.target.value);
+    setSuggestion(null);
+    setSuggestError(null);
+  };
+
+  const handlePhaseChange = (index, field, value) => {
+    setPhases((prev) => prev.map((phase, i) => (i === index ? { ...phase, [field]: value } : phase)));
+    setErrors((prev) => ({
+      ...prev,
+      phasesForm: undefined,
+      phases: prev.phases.map((phaseErrors, i) => (i === index ? { ...phaseErrors, [field]: undefined } : phaseErrors)),
+    }));
+  };
+
+  const handleAddPhase = () => {
+    setPhases((prev) => [...prev, createPhase(prev[prev.length - 1], maxIntensity)]);
+  };
+
+  const handleRemovePhase = (index) => {
+    setPhases((prev) => prev.filter((_, i) => i !== index));
+    setErrors((prev) => ({ ...prev, phasesForm: undefined, phases: prev.phases.filter((_, i) => i !== index) }));
+  };
+
+  // Gợi ý giáo án theo thể trạng → thay các giai đoạn đang nhập, điền tên + loại giáo án nếu còn trống
+  const handleSuggest = async () => {
+    if (!form.horseId) {
+      setErrors((prev) => ({ ...prev, horseId: "Chọn ngựa trước khi lấy gợi ý" }));
+      return;
+    }
+    const weeks = Number(suggestWeeks);
+    const { min, max } = PLAN_RULES.suggestionWeeks;
+    if (!Number.isInteger(weeks) || weeks < min || weeks > max) {
+      setSuggestError({ message: `Số tuần phải từ ${min} đến ${max}.` });
+      return;
+    }
+    if (!suggestStart || suggestStart < todayISO()) {
+      setSuggestError({ message: "Ngày bắt đầu không được ở quá khứ." });
+      return;
+    }
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const result = await getPlanSuggestion(form.horseId, { startDate: suggestStart, weeks });
+      setSuggestion(result);
+      if (result.canCreatePlan && result.phases.length > 0) {
+        setPhases(result.phases.map(phaseToForm));
+        setForm((prev) => ({
+          ...prev,
+          planName: prev.planName.trim() ? prev.planName : result.suggestedPlanName ?? "",
+          trainingType: prev.trainingType || result.suggestedTrainingType || "",
+        }));
+        setErrors((prev) => ({ ...prev, planName: undefined, phases: [], phasesForm: undefined }));
+      }
+    } catch (err) {
+      setSuggestError(err);
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const validate = () => {
-    const newErrors = {};
-    if (!form.HorseID) newErrors.HorseID = "Vui lòng chọn ngựa";
-    if (!form.GiaiDoan) newErrors.GiaiDoan = "Vui lòng chọn giai đoạn";
-    else if (takenPhases.has(form.GiaiDoan))
-      newErrors.GiaiDoan = `Ngựa này đã có giáo án giai đoạn "${form.GiaiDoan}" — hãy sửa giáo án đó hoặc chọn giai đoạn khác`;
-    if (!(Number(form.CuLy) > 0)) newErrors.CuLy = "Cự ly phải là số lớn hơn 0";
-    if (!(Number(form.KhoiLuong) > 0)) newErrors.KhoiLuong = "Khối lượng phải là số lớn hơn 0";
-    if (!form.MatSan) newErrors.MatSan = "Vui lòng chọn mặt sân";
+    const newErrors = { phases: [] };
+    if (!form.horseId) newErrors.horseId = "Vui lòng chọn ngựa";
+    const name = form.planName.trim();
+    if (!name) newErrors.planName = "Vui lòng nhập tên giáo án";
+    else if (name.length > PLAN_RULES.planNameMax) newErrors.planName = `Tối đa ${PLAN_RULES.planNameMax} ký tự`;
+    if (form.objective.trim().length > PLAN_RULES.objectiveMax) newErrors.objective = `Tối đa ${PLAN_RULES.objectiveMax} ký tự`;
+    if (form.notes.trim().length > PLAN_RULES.notesMax) newErrors.notes = `Tối đa ${PLAN_RULES.notesMax} ký tự`;
+    if (phasesEditable) {
+      const { phaseErrors, formError } = validatePhases(phases, {
+        maxIntensity,
+        intensityLabel: (code) => label("intensityLevels", code),
+      });
+      newErrors.phases = phaseErrors;
+      if (formError) newErrors.phasesForm = formError;
+    }
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
+    const { phases: phaseErrors, ...fieldErrors } = newErrors;
+    if (Object.values(fieldErrors).some(Boolean) || hasPhaseErrors(phaseErrors)) {
       setErrors(newErrors);
       return;
     }
     setSubmitting(true);
+    setSubmitError(null);
+    const body = {
+      planName: form.planName.trim(),
+      objective: form.objective.trim() || null,
+      trainingType: form.trainingType || null,
+      notes: form.notes.trim() || null,
+      // Giáo án không còn Nháp: null = giữ nguyên giai đoạn
+      phases: phasesEditable ? phases.map(phaseToPayload) : null,
+    };
     try {
-      if (isEdit) await updateTrainingPlan(id, form, currentUserId);
-      else await createTrainingPlan({ ...form, CreatedBy: currentUserId });
-      const horseName = selectedHorse?.Ten ?? "ngựa";
-      navigate(backToList, {
+      const saved = isEdit ? await updateTrainingPlan(id, body) : await createTrainingPlan({ horseId: Number(form.horseId), ...body });
+      navigate(`/trainer/plans/${saved.planId}`, {
         state: {
           message: isEdit
-            ? `Đã cập nhật giáo án "${form.GiaiDoan}" của ${horseName}.`
-            : `Đã lập giáo án "${form.GiaiDoan}" cho ${horseName}.`,
+            ? `Đã cập nhật giáo án "${saved.planName}".`
+            : `Đã lập giáo án "${saved.planName}" ở trạng thái Nháp. Xem trước lịch tuần rồi bấm Áp dụng để bắt đầu.`,
         },
       });
     } catch (err) {
-      setErrors({ form: err.message || "Không lưu được giáo án, vui lòng thử lại." });
+      setSubmitError(err);
       setSubmitting(false);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteTrainingPlan(id, currentUserId);
-      navigate(backToList, {
-        state: { message: `Đã xóa giáo án "${form.GiaiDoan}" của ${selectedHorse?.Ten ?? "ngựa"}.` },
-      });
-    } catch (err) {
-      setErrors({ form: err.message || "Không xóa được giáo án, vui lòng thử lại." });
-      setDeleting(false);
-      setConfirmDelete(false);
-    }
+  // Thử lại sau lỗi tải: hiện màn chờ ngay rồi gọi lại (effect phía trên chạy lại theo reloadKey)
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    setReloadKey((k) => k + 1);
   };
 
   if (loading) return <LoadingState />;
+  if (loadError) return <ApiErrorNotice variant="page" error={loadError} onRetry={retryLoad} />;
 
-  if (blockedReason) {
+  if (isEdit && plan && !["Draft", "Active"].includes(plan.status)) {
     return (
       <div className="mx-auto max-w-2xl border-y border-stone/40 px-6 py-16 text-center">
         <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Không thể sửa giáo án</h1>
-        <p className="mt-2 text-stone">{blockedReason}</p>
-        <Link to="/trainer/plans" className="mt-6 inline-block font-semibold text-brass-deep hover:underline">
-          ← Quay lại danh sách
+        <p className="mt-2 text-stone">
+          Giáo án "{plan.planName}" đã {label("planStatuses", plan.status).toLowerCase()} nên không sửa được nữa.
+        </p>
+        <Link to={backTo} className="mt-6 inline-block font-semibold text-brass-deep hover:underline">
+          ← Quay lại giáo án
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <Link to={backToList} className="text-sm font-medium text-brass-deep hover:underline">
-        ← Quay lại danh sách
+    <div className="mx-auto max-w-6xl">
+      <Link to={backTo} className="text-sm font-medium text-brass-deep hover:underline">
+        ← {isEdit ? "Quay lại giáo án" : "Quay lại danh sách"}
       </Link>
       <h1 className="mt-3 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
         {isEdit ? "Sửa giáo án" : "Lập giáo án mới"}
       </h1>
 
-      {/* 2 cột: form bên trái, ngữ cảnh ngựa bên phải (dính khi cuộn). Dưới lg ngữ cảnh xuống dưới form. */}
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10">
-        <form onSubmit={handleSubmit} noValidate className="space-y-6 border-t border-stone/20 pt-6">
-          {errors.form && (
-            <p className="rounded-sm border-l-2 border-alert bg-alert/5 px-4 py-3 text-sm text-alert">{errors.form}</p>
+      {/* 2 cột: form bên trái, thể trạng ngựa bên phải (dính khi cuộn). Dưới lg thể trạng lên trên form. */}
+      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
+        <form onSubmit={handleSubmit} noValidate className="order-2 space-y-8 lg:order-1">
+          <section className="space-y-5 border-t border-stone/20 pt-6">
+            <h2 className={SECTION_TITLE}>Thông tin chung</h2>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SelectField
+                variant="outline"
+                label="Ngựa"
+                id="horseId"
+                value={form.horseId}
+                onChange={handleHorseChange}
+                disabled={isEdit}
+                error={errors.horseId}
+              >
+                <option value="">Chọn ngựa</option>
+                {horses.map((horse) => (
+                  <option key={horse.horseId} value={horse.horseId}>
+                    {horse.name}
+                    {horse.breed ? ` — ${horse.breed}` : ""}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                variant="outline"
+                label="Loại giáo án"
+                id="trainingType"
+                value={form.trainingType}
+                onChange={(e) => setField("trainingType", e.target.value)}
+              >
+                <option value="">Không chọn</option>
+                {options.planTypes.map((type) => (
+                  <option key={type.code} value={type.code}>
+                    {type.label}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+            <FormField
+              variant="outline"
+              label="Tên giáo án"
+              id="planName"
+              value={form.planName}
+              maxLength={PLAN_RULES.planNameMax}
+              placeholder="VD: Giáo án chuẩn bị giải mùa đông"
+              onChange={(e) => setField("planName", e.target.value)}
+              error={errors.planName}
+            />
+            <TextAreaField
+              label="Mục tiêu"
+              id="objective"
+              rows={2}
+              value={form.objective}
+              maxLength={PLAN_RULES.objectiveMax}
+              placeholder="VD: Chuẩn bị cho giải đua tháng 12"
+              onChange={(e) => setField("objective", e.target.value)}
+              error={errors.objective}
+            />
+            <TextAreaField
+              label="Ghi chú"
+              id="notes"
+              rows={2}
+              value={form.notes}
+              maxLength={PLAN_RULES.notesMax}
+              placeholder="VD: Theo dõi nhịp tim sau mỗi buổi phi nước đại"
+              onChange={(e) => setField("notes", e.target.value)}
+              error={errors.notes}
+            />
+          </section>
+
+          {phasesEditable && (
+            <section className="rounded-lg border border-brass/30 bg-brass/5 px-4 py-4 sm:px-5">
+              <h2 className="flex items-center gap-2 font-serif text-base font-semibold text-ink">
+                <Sparkles className="h-4 w-4 text-brass-deep" aria-hidden="true" />
+                Gợi ý theo thể trạng
+              </h2>
+              <p className="mt-1 text-sm text-stone">
+                Hệ thống chia giai đoạn theo mức cường độ khuyến nghị của ngựa. Các giai đoạn đang nhập bên dưới sẽ được thay bằng gợi
+                ý.
+              </p>
+              <div className="mt-4 flex flex-wrap items-end gap-4">
+                <div className="w-44">
+                  <FormField
+                    variant="outline"
+                    label="Bắt đầu từ"
+                    id="suggestStart"
+                    type="date"
+                    min={todayISO()}
+                    value={suggestStart}
+                    onChange={(e) => setSuggestStart(e.target.value)}
+                  />
+                </div>
+                <div className="w-32">
+                  <FormField
+                    variant="outline"
+                    label="Số tuần"
+                    id="suggestWeeks"
+                    type="number"
+                    inputMode="numeric"
+                    min={PLAN_RULES.suggestionWeeks.min}
+                    max={PLAN_RULES.suggestionWeeks.max}
+                    value={suggestWeeks}
+                    onChange={(e) => setSuggestWeeks(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSuggest}
+                  disabled={suggesting}
+                  className="h-[46px] cursor-pointer rounded-md border border-brass-deep/40 bg-white px-4 text-sm font-semibold text-brass-deep transition-colors hover:border-brass-deep hover:bg-brass/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {suggesting ? "Đang gợi ý..." : "Lấy gợi ý"}
+                </button>
+              </div>
+              {suggestError && (
+                <div className="mt-3">
+                  <ApiErrorNotice error={suggestError} />
+                </div>
+              )}
+              {suggestion && (
+                <div className="mt-3 text-sm">
+                  {suggestion.canCreatePlan ? (
+                    <p className="text-green-800">
+                      Đã điền {suggestion.phases.length} giai đoạn
+                      {suggestion.endDate && ` từ ${formatDate(suggestion.startDate)} đến ${formatDate(suggestion.endDate)}`}
+                      {suggestion.suggestedTrainingType && ` (${label("planTypes", suggestion.suggestedTrainingType)})`} — có thể chỉnh lại
+                      trước khi lưu.
+                    </p>
+                  ) : (
+                    <p className="text-alert">Ngựa hiện không được phép tập nên chưa thể lập giáo án.</p>
+                  )}
+                  {suggestion.rationale?.length > 0 && (
+                    <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-stone">
+                      {suggestion.rationale.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
           )}
 
-          <div className="sm:max-w-sm">
-            <SelectField
-              variant="outline"
-              label="Ngựa"
-              id="HorseID"
-              name="HorseID"
-              value={form.HorseID}
-              onChange={handleHorseChange}
-              disabled={horseLocked}
-              error={errors.HorseID}
-            >
-              <option value="">Chọn ngựa</option>
-              {horses.map((horse) => (
-                <option key={horse.HorseID} value={horse.HorseID}>
-                  {horse.Ten} — {horse.Giong}
-                </option>
-              ))}
-            </SelectField>
-            {horseLocked && <p className="mt-1.5 text-xs text-stone">Lập từ lộ trình của {selectedHorse?.Ten}.</p>}
-          </div>
-
-          <fieldset>
-            <legend className={LEGEND}>Giai đoạn</legend>
-            <div role="radiogroup" aria-label="Giai đoạn" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {TRAINING_PHASES.map((phase) => {
-                const taken = takenPhases.has(phase);
-                const active = form.GiaiDoan === phase;
-                return (
-                  <div key={phase} className="text-center">
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      disabled={taken}
-                      onClick={() => setField("GiaiDoan", phase)}
-                      className={choiceClass(active, taken)}
-                    >
-                      {phase}
-                    </button>
-                    {taken && <span className="mt-1 block text-xs text-stone">Đã lập</span>}
-                  </div>
-                );
-              })}
+          <section className="space-y-4 border-t border-stone/20 pt-6">
+            <div>
+              <h2 className={SECTION_TITLE}>Các giai đoạn</h2>
+              <p className="mt-1 text-sm text-stone">
+                {phasesEditable
+                  ? `Tối đa ${PLAN_RULES.maxPhases} giai đoạn, không trùng ngày, cả giáo án không quá ${PLAN_RULES.maxTotalDays} ngày.`
+                  : "Giáo án đang áp dụng: chỉ sửa được thông tin chung, các giai đoạn giữ nguyên."}
+              </p>
             </div>
-            {errors.GiaiDoan && <p className="mt-1.5 text-sm text-alert">{errors.GiaiDoan}</p>}
-          </fieldset>
-
-          <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
-            <FormField
-              variant="outline"
-              label="Cự ly"
-              id="CuLy"
-              name="CuLy"
-              type="number"
-              min="1"
-              step="100"
-              inputMode="numeric"
-              suffix={PLAN_UNITS.CuLy}
-              value={form.CuLy}
-              onChange={(e) => setField("CuLy", e.target.value)}
-              error={errors.CuLy}
-            />
-            <FormField
-              variant="outline"
-              label="Khối lượng"
-              id="KhoiLuong"
-              name="KhoiLuong"
-              type="number"
-              min="1"
-              step="1"
-              inputMode="decimal"
-              suffix={PLAN_UNITS.KhoiLuong}
-              value={form.KhoiLuong}
-              onChange={(e) => setField("KhoiLuong", e.target.value)}
-              error={errors.KhoiLuong}
-            />
-          </div>
-
-          <fieldset>
-            <legend className={LEGEND}>Mặt sân</legend>
-            <div role="radiogroup" aria-label="Mặt sân" className="grid grid-cols-3 gap-2 sm:max-w-sm">
-              {TRACK_SURFACES.map((surface) => (
-                <button
-                  key={surface}
-                  type="button"
-                  role="radio"
-                  aria-checked={form.MatSan === surface}
-                  onClick={() => setField("MatSan", surface)}
-                  className={choiceClass(form.MatSan === surface, false)}
-                >
-                  {surface}
-                </button>
-              ))}
-            </div>
-            {errors.MatSan && <p className="mt-1.5 text-sm text-alert">{errors.MatSan}</p>}
-          </fieldset>
-
-          {/* Hàng nút: Xóa (chữ, chỉ khi sửa) bên trái; Hủy + nút chính căn phải */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-stone/20 pt-5">
-            {isEdit && (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="cursor-pointer text-sm font-medium text-stone underline-offset-2 hover:text-alert hover:underline"
-              >
-                Xóa giáo án
-              </button>
+            {errors.phasesForm && <p className="text-sm text-alert">{errors.phasesForm}</p>}
+            {phasesEditable ? (
+              <PlanPhaseEditor
+                phases={phases}
+                errors={errors.phases}
+                maxIntensity={maxIntensity}
+                onChange={handlePhaseChange}
+                onAdd={handleAddPhase}
+                onRemove={handleRemovePhase}
+              />
+            ) : (
+              <PlanPhaseTable phases={plan?.phases} markCurrent />
             )}
-            <div className="ml-auto flex items-center gap-5">
-              <Link to={backToList} className="text-sm font-medium text-stone underline-offset-2 hover:text-ink hover:underline">
+          </section>
+
+          <div className="space-y-4 border-t border-stone/20 pt-5">
+            <ApiErrorNotice error={submitError} />
+            <div className="flex items-center justify-end gap-5">
+              <Link to={backTo} className="text-sm font-medium text-stone underline-offset-2 hover:text-ink hover:underline">
                 Hủy
               </Link>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="btn-primary"
-              >
-                {submitting ? "Đang lưu..." : isEdit ? "Lưu thay đổi" : "Lập giáo án"}
+              <button type="submit" disabled={submitting} className="btn-primary">
+                {submitting ? "Đang lưu..." : isEdit ? "Lưu thay đổi" : "Lập giáo án (Nháp)"}
               </button>
             </div>
           </div>
         </form>
 
-        <aside className="rounded-lg border border-stone/15 bg-white px-5 py-5 lg:sticky lg:top-24">
-          <PlanFormContext
-            horse={selectedHorse}
-            healthStatus={healthStatuses.find((h) => h.HorseID === selectedHorse?.HorseID)?.TrangThai}
-            lock={selectedLock}
-            lockedByName={lockedByName}
-            plans={horsePlans}
-            editingPlanId={isEdit ? Number(id) : undefined}
+        <aside className="order-1 rounded-lg border border-stone/15 bg-white px-5 py-5 lg:sticky lg:top-24 lg:order-2">
+          <HorseFitnessPanel
+            fitness={fitness}
+            loading={fitnessState.loading}
+            error={fitnessState.error}
+            onRefresh={selectedHorse ? fitnessState.reload : undefined}
           />
         </aside>
       </div>
-
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Xóa giáo án"
-        message={`Bạn có chắc muốn xóa giáo án "${form.GiaiDoan}" của ${selectedHorse?.Ten ?? "ngựa này"}? Thao tác này không thể hoàn tác.`}
-        loading={deleting}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </div>
   );
 }

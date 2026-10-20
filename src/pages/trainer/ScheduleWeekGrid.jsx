@@ -2,28 +2,18 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import HorseIcon from "../../components/HorseIcon";
-import { formatDate, weekdayName } from "../../utils/date";
-import { LOCK_CONFLICT_SCHEDULE } from "../../utils/trainingLock";
-
-const SHORT_WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-const shortWeekday = (isoDate) => {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return SHORT_WEEKDAYS[new Date(year, month - 1, day).getDay()];
-};
-// Tên rút gọn trên chip: nhân viên lấy tên gọi (chữ cuối), ngựa giữ nguyên tên
-const givenName = (fullName) => fullName.trim().split(/\s+/).pop();
+import { chipClass } from "./sessionChipStyles";
+import { formatDate, shortWeekdayName, weekdayName } from "../../utils/date";
 
 // Viền ô: hairline rất nhạt (stone/10) — nhạt hơn viền chip để chip nổi lên trên lưới.
 // Cột ngày đầu tiên không có viền trái vì cột dính đã có vạch ngăn bên phải (tránh viền đôi).
 const CELL = "border-b border-stone/10 px-1.5 py-1.5 align-top";
 const dayBorder = (index) => (index === 0 ? "" : "border-l border-l-stone/10");
-// Nhãn khóa tập: chữ + viền hổ phách trầm (cùng màu nút Khóa ở /manager/staff)
-const LOCK_LABEL = "rounded-sm border border-[#946330]/40 px-1 py-px text-[10px] font-medium text-[#946330] whitespace-nowrap";
 
-// Lưới tuần kiểu bảng xếp ca: hàng = ngựa (mode "horse") hoặc nhân viên (mode "groom"), cột = 7 ngày T2 → CN.
-// rows: [{ key, kind, entity, isLocked, count }]. Cột đầu dính trái; màn hẹp phần 7 ngày cuộn ngang.
-// lockedHorseIds: ngựa đang bị khóa — buổi sắp tới của các ngựa này viền nâu đỏ + tooltip "cần đổi lịch" (không tự xóa).
-export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedulesByCell, horseById, groomNameById, lockedHorseIds }) {
+// Lưới tuần kiểu bảng xếp ca: hàng = ngựa (mode "horse") hoặc người phụ trách (mode "staff"), cột = 7 ngày T2 → CN.
+// rows: [{ key, kind, title, subtitle, photoUrl }]; sessionsByCell: "<row.key>|<ngày>" → buổi tập.
+// chipText(session): chữ trên chip; addLink(row, date): link thêm buổi cho ô trống (null = không cho thêm).
+export default function ScheduleWeekGrid({ rows, weekDays, today, sessionsByCell, chipText, chipTitle, onSelectSession, onSelectRow, addLink }) {
   const scrollRef = useRef(null);
   const weekKey = weekDays[0];
 
@@ -33,12 +23,11 @@ export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedule
     const todayHeader = container?.querySelector("[data-today]");
     const firstHeader = container?.querySelector("th");
     if (!container || !todayHeader || !firstHeader) return;
-    // Đo theo vị trí thật trên màn hình (có tính viền ô) để mép trái cột hôm nay khớp mép phải cột dính
     container.scrollLeft = Math.max(
       0,
       container.scrollLeft + todayHeader.getBoundingClientRect().left - firstHeader.getBoundingClientRect().right
     );
-  }, [weekKey, mode]);
+  }, [weekKey]);
 
   return (
     <div ref={scrollRef} className="overflow-x-auto rounded-lg border border-stone/15 bg-white">
@@ -46,8 +35,8 @@ export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedule
       <table className="w-full min-w-[56rem] table-fixed border-separate border-spacing-0 text-left text-sm">
         <thead>
           <tr>
-            <th className="sticky left-0 z-10 w-32 border-r border-b border-stone/15 bg-white px-3 py-2.5 text-xs font-medium text-stone sm:w-44">
-              {mode === "horse" ? "Ngựa" : "Nhân viên chăm sóc"}
+            <th className="sticky left-0 z-10 w-36 border-r border-b border-stone/15 bg-white px-3 py-2.5 text-xs font-medium text-stone sm:w-48">
+              {rows[0]?.kind === "staff" ? "Người phụ trách" : "Ngựa"}
             </th>
             {weekDays.map((date, index) => {
               const isToday = date === today;
@@ -61,7 +50,7 @@ export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedule
                     isToday ? "border-t-2 border-t-brass bg-brass/5" : ""
                   }`}
                 >
-                  <span className={`block text-xs font-medium ${isPast ? "text-stone/60" : "text-stone"}`}>{shortWeekday(date)}</span>
+                  <span className={`block text-xs font-medium ${isPast ? "text-stone/60" : "text-stone"}`}>{shortWeekdayName(date)}</span>
                   <span
                     className={`inline-flex items-center gap-1 font-serif text-base font-semibold ${
                       isPast ? "text-stone/60" : isToday ? "text-brass-deep" : "text-ink"
@@ -78,100 +67,60 @@ export default function ScheduleWeekGrid({ mode, rows, weekDays, today, schedule
         <tbody>
           {rows.map((row) => (
             <tr key={row.key}>
-              {/* Cột đầu: đối tượng của hàng + số buổi trong tuần */}
-              <th
-                scope="row"
-                className={`sticky left-0 z-10 border-r border-b border-stone/10 border-r-stone/15 px-3 py-2 align-top font-normal ${
-                  // Cột dính cần nền đặc: hàng khóa tập dùng stone pha 5% trên nền trắng (cùng tông bg-stone/5 của các ô)
-                  row.isLocked ? "bg-[color-mix(in_srgb,var(--color-stone)_5%,white)]" : "bg-white"
-                }`}
-              >
-                <div className="flex items-center gap-2">
+              <th scope="row" className="sticky left-0 z-10 border-r border-b border-stone/10 border-r-stone/15 bg-white px-3 py-2 align-top font-normal">
+                <button
+                  type="button"
+                  onClick={onSelectRow ? () => onSelectRow(row) : undefined}
+                  disabled={!onSelectRow}
+                  title={onSelectRow ? "Xem lịch 7 ngày + tổng kết tuần" : undefined}
+                  className="flex w-full items-center gap-2 rounded-sm text-left enabled:cursor-pointer enabled:hover:text-brass-deep"
+                >
                   {row.kind === "horse" ? (
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone/10 text-stone">
-                      {row.entity.photo ? (
-                        <img src={row.entity.photo} alt="" className="h-full w-full object-cover object-[center_25%]" />
+                      {row.photoUrl ? (
+                        <img src={row.photoUrl} alt="" className="h-full w-full object-cover object-[center_25%]" />
                       ) : (
                         <HorseIcon className="h-3.5 w-3.5" />
                       )}
                     </span>
                   ) : (
-                    // Avatar chữ cái, cùng kiểu trung tính ở bảng nhân sự
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone/15 font-serif text-xs font-semibold text-stone">
-                      {row.entity.HoTen.trim().charAt(0).toUpperCase()}
+                      {row.title.trim().charAt(0).toUpperCase() || "?"}
                     </span>
                   )}
-                  <div className="min-w-0">
-                    <p className="truncate font-serif text-sm font-semibold text-ink">
-                      {row.kind === "horse" ? row.entity.Ten : row.entity.HoTen}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-1 text-[11px] text-stone">
-                      {row.count ? `${row.count} buổi` : "Chưa có buổi"}
-                      {row.isLocked && <span className={LOCK_LABEL}>Đang khóa tập</span>}
-                    </p>
-                  </div>
-                </div>
+                  <span className="min-w-0">
+                    <span className="block truncate font-serif text-sm font-semibold">{row.title}</span>
+                    <span className="block truncate text-[11px] text-stone">{row.subtitle}</span>
+                  </span>
+                </button>
               </th>
 
               {weekDays.map((date, index) => {
-                const isPast = date < today;
-                const cellSchedules = schedulesByCell[`${row.key}|${date}`] ?? [];
-                const canAdd = !isPast && !row.isLocked;
-                const prefill = new URLSearchParams({ date, [row.kind]: row.kind === "horse" ? row.entity.HorseID : row.entity.UserID });
+                const cellSessions = sessionsByCell[`${row.key}|${date}`] ?? [];
+                const link = cellSessions.length === 0 && addLink ? addLink(row, date) : null;
                 return (
-                  <td
-                    key={date}
-                    className={`${CELL} ${dayBorder(index)} ${date === today ? "bg-brass/5" : ""} ${row.isLocked ? "bg-stone/5" : ""}`}
-                  >
-                    {cellSchedules.length > 0 ? (
+                  <td key={date} className={`${CELL} ${dayBorder(index)} ${date === today ? "bg-brass/5" : ""}`}>
+                    {cellSessions.length > 0 ? (
                       <div className="flex flex-col gap-1">
-                        {cellSchedules.map((s) => {
-                          const otherName =
-                            mode === "horse"
-                              ? givenName(groomNameById[s.GroomID] ?? `#${s.GroomID}`)
-                              : horseById[s.HorseID]?.Ten ?? `#${s.HorseID}`;
-                          const detail = `${s.Gio} ${weekdayName(s.Ngay)} ${formatDate(s.Ngay)} · ${
-                            horseById[s.HorseID]?.Ten ?? "Ngựa"
-                          } · ${groomNameById[s.GroomID] ?? "Nhân viên"}`;
-                          const label = (
-                            <>
-                              <span className="font-semibold tabular-nums">{s.Gio}</span> · {otherName}
-                            </>
-                          );
-                          // Buổi đã qua: chỉ xem (tooltip chi tiết), không mở form sửa
-                          return isPast ? (
-                            <span key={s.ScheduleID} title={`Đã qua — ${detail}`} className="truncate rounded-sm bg-stone/10 px-1.5 py-0.5 text-xs text-stone">
-                              {label}
-                            </span>
-                          ) : lockedHorseIds.has(s.HorseID) ? (
-                            // Ngựa đang bị khóa nhưng buổi đã xếp từ trước: HLV tự đổi lịch (bấm để sửa)
-                            <Link
-                              key={s.ScheduleID}
-                              to={`/trainer/schedule/${s.ScheduleID}/edit`}
-                              title={`${LOCK_CONFLICT_SCHEDULE} — ${detail}`}
-                              aria-label={`${LOCK_CONFLICT_SCHEDULE}: ${detail}`}
-                              className="truncate rounded-sm border border-rust/60 bg-rust/5 px-1.5 py-0.5 text-xs text-rust transition-colors hover:border-rust hover:bg-rust/10"
-                            >
-                              {label}
-                            </Link>
-                          ) : (
-                            <Link
-                              key={s.ScheduleID}
-                              to={`/trainer/schedule/${s.ScheduleID}/edit`}
-                              title={`Sửa buổi tập — ${detail}`}
-                              className="truncate rounded-sm border border-brass/50 bg-white px-1.5 py-0.5 text-xs text-ink transition-colors hover:border-brass hover:bg-brass/10"
-                            >
-                              {label}
-                            </Link>
-                          );
-                        })}
+                        {cellSessions.map((session) => (
+                          <button
+                            key={session.sessionId}
+                            type="button"
+                            onClick={() => onSelectSession(session.sessionId)}
+                            title={chipTitle(session)}
+                            className={`cursor-pointer truncate rounded-sm px-1.5 py-0.5 text-left text-xs transition-colors ${chipClass(session.status)}`}
+                          >
+                            <span className="font-semibold tabular-nums">{session.startTime}</span> · {chipText(session)}
+                          </button>
+                        ))}
                       </div>
-                    ) : canAdd ? (
-                      // Ô trống hôm nay/sắp tới: dấu "+" ẩn (trong suốt), chỉ hiện khi rê chuột hoặc focus bàn phím; bấm mở form điền sẵn
+                    ) : link ? (
+                      // Ô trống hôm nay/sắp tới: dấu "+" ẩn, chỉ hiện khi rê chuột hoặc focus bàn phím
                       <Link
-                        to={`/trainer/schedule/new?${prefill}`}
-                        aria-label={`Xếp lịch ${formatDate(date)} cho ${row.kind === "horse" ? row.entity.Ten : row.entity.HoTen}`}
-                        className="group flex h-full min-h-7 items-center justify-center rounded-sm text-stone/0 transition-colors hover:bg-brass/10 hover:text-brass-deep focus-visible:text-brass-deep"
+                        to={link.to}
+                        state={link.state}
+                        aria-label={`Thêm buổi tập ${formatDate(date)} cho ${row.title}`}
+                        className="flex h-full min-h-7 items-center justify-center rounded-sm text-stone/0 transition-colors hover:bg-brass/10 hover:text-brass-deep focus-visible:text-brass-deep"
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />
                       </Link>

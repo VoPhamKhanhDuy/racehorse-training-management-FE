@@ -24,10 +24,12 @@ import AuditLog from "./pages/manager/AuditLog";
 import ManagerFinance from "./pages/manager/ManagerFinance";
 import TrainingPlans from "./pages/trainer/TrainingPlans";
 import TrainingPlanForm from "./pages/trainer/TrainingPlanForm";
+import TrainingPlanDetail from "./pages/trainer/TrainingPlanDetail";
+import WeeklyScheduleGenerator from "./pages/trainer/WeeklyScheduleGenerator";
 import Schedule from "./pages/trainer/Schedule";
-import ScheduleForm from "./pages/trainer/ScheduleForm";
 import TrainingSessions from "./pages/trainer/TrainingSessions";
 import TrainingSessionForm from "./pages/trainer/TrainingSessionForm";
+import SessionResultForm from "./pages/trainer/SessionResultForm";
 import Races from "./pages/trainer/Races";
 import HorseProfiles from "./pages/trainer/HorseProfiles";
 import HorseProfile from "./pages/trainer/HorseProfile";
@@ -39,6 +41,7 @@ import StableMap from "./pages/groom/StableMap";
 import IncidentReports from "./pages/groom/IncidentReports";
 import IncidentReportForm from "./pages/groom/IncidentReportForm";
 import GroomSupplies from "./pages/groom/GroomSupplies";
+import TrainingAssignments from "./pages/groom/TrainingAssignments";
 import TrainingLocks from "./pages/vet/TrainingLocks";
 import TrainingLockForm from "./pages/vet/TrainingLockForm";
 import Vaccinations from "./pages/vet/Vaccinations";
@@ -67,15 +70,21 @@ function App() {
         }
       >
         <Route path="/trainer" element={<Navigate to="/trainer/plans" replace />} />
+        {/* Giáo án, lịch tập, buổi tập: nối API thật (services/trainingApi.js) */}
         <Route path="/trainer/plans" element={<TrainingPlans />} />
         <Route path="/trainer/plans/new" element={<TrainingPlanForm />} />
+        <Route path="/trainer/plans/:id" element={<TrainingPlanDetail />} />
         <Route path="/trainer/plans/:id/edit" element={<TrainingPlanForm />} />
+        <Route path="/trainer/plans/:id/weekly-schedule" element={<WeeklyScheduleGenerator />} />
+        <Route path="/trainer/plans/:planId/sessions/new" element={<TrainingSessionForm />} />
         <Route path="/trainer/schedule" element={<Schedule />} />
-        <Route path="/trainer/schedule/new" element={<ScheduleForm />} />
-        <Route path="/trainer/schedule/:id/edit" element={<ScheduleForm />} />
         <Route path="/trainer/sessions" element={<TrainingSessions />} />
-        <Route path="/trainer/sessions/new" element={<TrainingSessionForm />} />
+        {/* URL cũ (luồng mock) — thay bằng luồng giáo án nối API: thêm buổi tập qua /trainer/plans/:planId/sessions/new */}
+        <Route path="/trainer/schedule/new" element={<Navigate to="/trainer/schedule" replace />} />
+        <Route path="/trainer/schedule/:id/edit" element={<Navigate to="/trainer/schedule" replace />} />
+        <Route path="/trainer/sessions/new" element={<Navigate to="/trainer/sessions" replace />} />
         <Route path="/trainer/sessions/:id/edit" element={<TrainingSessionForm />} />
+        <Route path="/trainer/sessions/:id/result" element={<SessionResultForm />} />
         <Route path="/trainer/races" element={<Races />} />
         {/* Hồ sơ ngựa: chỉ xem */}
         <Route path="/trainer/horses" element={<HorseProfiles />} />
@@ -120,6 +129,7 @@ function App() {
         <Route path="/groom/incidents" element={<IncidentReports />} />
         <Route path="/groom/incidents/new" element={<IncidentReportForm />} />
         <Route path="/groom/supplies" element={<GroomSupplies />} />
+        <Route path="/groom/training" element={<TrainingAssignments />} />
         <Route path="/groom/*" element={<PlaceholderPage />} />
       </Route>
 

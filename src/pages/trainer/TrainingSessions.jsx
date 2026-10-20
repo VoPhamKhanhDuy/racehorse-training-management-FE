@@ -1,68 +1,99 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { Search, SearchX } from "lucide-react";
-import HorseIcon from "../../components/HorseIcon";
+import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
-import Sparkline from "../../components/Sparkline";
-import SessionDetail from "./SessionDetail";
-import { getActiveTrainingLocks, getHorses, getTrainingSessions } from "../../services/trainerService";
-import { formatDayMonth } from "../../utils/date";
+import SessionDrawer from "./SessionDrawer";
+import SessionTable from "./SessionTable";
+import { SESSION_QUERY_MAX_DAYS } from "../../data/trainingCodes";
+import useApiResource from "../../hooks/useApiResource";
+import useAuth from "../../hooks/useAuth";
+import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
+import { addDays, daysBetween, startOfWeek, todayISO } from "../../utils/date";
+import { formatKm, formatNumber } from "../../utils/trainingFormat";
 
-const LOCK_LABEL = "rounded-sm border border-stone/30 px-1 py-px text-[10px] font-medium text-stone whitespace-nowrap";
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const FILTER_SELECT =
+  "w-full cursor-pointer rounded-md border border-stone/25 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brass";
+const FILTER_LABEL = "mb-1 block text-xs font-medium text-stone";
 
-function HorseAvatar({ horse, size = "h-8 w-8" }) {
+// Khoảng ngày nhanh — tính theo hôm nay
+const quickRanges = (today) => [
+  { key: "week", label: "Tuần này", from: startOfWeek(today), to: addDays(startOfWeek(today), 6) },
+  { key: "lastWeek", label: "Tuần trước", from: addDays(startOfWeek(today), -7), to: addDays(startOfWeek(today), -1) },
+  { key: "next7", label: "7 ngày tới", from: today, to: addDays(today, 6) },
+  { key: "last30", label: "30 ngày qua", from: addDays(today, -29), to: today },
+];
+
+function SummaryItem({ label, value }) {
   return (
-    <span className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone/10 text-stone`}>
-      {horse.photo ? (
-        <img src={horse.photo} alt="" className="h-full w-full object-cover object-[center_25%]" />
-      ) : (
-        <HorseIcon className="h-4 w-4" />
-      )}
-    </span>
+    <div>
+      <p className="text-xs text-stone">{label}</p>
+      <p className="font-serif text-lg font-semibold text-ink tabular-nums">{value}</p>
+    </div>
   );
 }
 
-// Kết quả buổi tập (TRAININGSESSION) dạng danh sách ngựa + chi tiết.
-// Ngựa đang chọn nằm trên URL (?horse=ID) để quay lại từ form vẫn đúng ngựa.
-// Desktop: danh sách dọc bên trái (cuộn riêng); điện thoại: thanh chip ngang cuộn được phía trên.
+// Tra cứu buổi tập theo khoảng ngày (tối đa 62 ngày) + lọc ngựa / giáo án / người phụ trách / trạng thái
+// (GET /api/trainer/training-sessions). Bộ lọc nằm trên URL; bấm 1 dòng → ngăn chi tiết (bắt đầu, ghi kết quả, hủy...).
 export default function TrainingSessions() {
-  const { state } = useLocation(); // thông báo do form gửi sang
+  const { state } = useLocation();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [sessions, setSessions] = useState([]);
-  const [horses, setHorses] = useState([]);
-  const [lockedHorseIds, setLockedHorseIds] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-  const [keyword, setKeyword] = useState("");
+  const { options } = useTrainingOptions();
+  const today = todayISO();
+  const defaultRange = quickRanges(today)[0];
+
+  const param = (name) => searchParams.get(name) ?? "";
+  const from = DATE_PATTERN.test(param("from")) ? param("from") : defaultRange.from;
+  const to = DATE_PATTERN.test(param("to")) ? param("to") : defaultRange.to;
+  const filters = {
+    horseId: param("horse"),
+    planId: param("plan"),
+    assignedToUserId: param("staff"),
+    status: param("status"),
+  };
+  const rangeError =
+    to < from
+      ? "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu."
+      : daysBetween(from, to) + 1 > SESSION_QUERY_MAX_DAYS
+        ? `Mỗi lần tra cứu tối đa ${SESSION_QUERY_MAX_DAYS} ngày.`
+        : "";
+
   const [message, setMessage] = useState(state?.message ?? "");
+  const [openSessionId, setOpenSessionId] = useState(null);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
-  useEffect(() => {
-    let ignore = false;
-    Promise.all([getTrainingSessions(), getHorses(), getActiveTrainingLocks()]).then(([sessionList, horseList, lockList]) => {
-      if (ignore) return;
-      setSessions(sessionList);
-      setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-      setLockedHorseIds(new Set(lockList.map((l) => l.HorseID)));
-      setLoading(false);
+  // Danh sách cho bộ lọc — lỗi thì bộ lọc trống, lỗi chính hiện ở kết quả tra cứu
+  const filterResource = useApiResource(() => Promise.all([getHorses(), getTrainingPlans(), getAssignableStaff()]), "filters");
+  const [horses = [], plans = [], staffList = []] = filterResource.data ?? [];
+  const staff = [...staffList].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
+
+  const { horseId, planId, assignedToUserId, status } = filters;
+  const query = { from, to, horseId, planId, assignedToUserId, status };
+  // Khoảng ngày sai → không gọi API (key = null), chỉ báo lỗi
+  const sessionsResource = useApiResource(() => searchTrainingSessions(query), rangeError ? null : JSON.stringify(query));
+  const sessions = sessionsResource.data ?? [];
+  const { loading, error } = sessionsResource;
+
+  const updateParams = (changes) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(changes).forEach(([name, value]) => {
+      if (value) next.set(name, value);
+      else next.delete(name);
     });
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    setSearchParams(next, { replace: true });
+  };
 
-  const sessionsByHorse = sessions.reduce((acc, s) => ({ ...acc, [s.HorseID]: [...(acc[s.HorseID] ?? []), s] }), {});
-  const latestDate = (horseId) => (sessionsByHorse[horseId] ?? []).reduce((max, s) => (s.Ngay > max ? s.Ngay : max), "");
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  const visibleHorses = horses.filter((h) => h.Ten.toLowerCase().includes(normalizedKeyword));
-
-  // Ngựa chọn trên URL; chưa chọn thì ngựa đầu tiên (theo tên) có buổi tập
-  const paramHorse = horses.find((h) => String(h.HorseID) === searchParams.get("horse"));
-  const selectedHorse = paramHorse ?? horses.find((h) => sessionsByHorse[h.HorseID]?.length) ?? horses[0];
-  const selectHorse = (horseId) => setSearchParams({ horse: horseId });
+  const completed = sessions.filter((s) => s.status === "Completed");
+  const scored = completed.filter((s) => s.performanceScore != null);
+  const averageScore = scored.length ? scored.reduce((sum, s) => sum + Number(s.performanceScore), 0) / scored.length : null;
+  const actualKm = completed.reduce((sum, s) => sum + Number(s.actualDistanceKm ?? 0), 0);
+  const activeRange = quickRanges(today).find((r) => r.from === from && r.to === to)?.key;
+  const hasFilters = Object.values(filters).some(Boolean);
 
   return (
     <div>
-      <h1 className="mb-5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Kết quả buổi tập</h1>
+      <h1 className="mb-5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Buổi tập</h1>
 
       {message && (
         <div className="mb-4 flex items-center justify-between gap-4 rounded-sm border-l-2 border-green-700 bg-white/60 px-4 py-3 text-sm text-green-800">
@@ -73,133 +104,154 @@ export default function TrainingSessions() {
         </div>
       )}
 
-      {loading ? (
-        <LoadingState />
-      ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-6">
-          <div className="min-w-0 space-y-3 lg:sticky lg:top-24">
-            <div className="relative">
-              <label htmlFor="sessionKeyword" className="sr-only">
-                Tìm theo tên ngựa
-              </label>
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" />
-              <input
-                id="sessionKeyword"
-                type="search"
-                placeholder="Tìm theo tên ngựa..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
-              />
-            </div>
-
-            {visibleHorses.length === 0 ? (
-              <p className="rounded-lg border border-stone/15 bg-white px-4 py-8 text-center text-sm text-stone">
-                <SearchX className="mx-auto mb-2 h-8 w-8 text-stone/40" />
-                Không tìm thấy ngựa phù hợp
-              </p>
-            ) : (
-              <>
-                {/* Điện thoại / máy tính bảng: thanh chip ngang cuộn được */}
-                <div className="-mx-4 overflow-x-auto px-4 lg:hidden">
-                  <div className="flex w-max gap-2 pb-1">
-                    {visibleHorses.map((horse) => {
-                      const selected = horse.HorseID === selectedHorse?.HorseID;
-                      const locked = lockedHorseIds.has(horse.HorseID);
-                      return (
-                        <button
-                          key={horse.HorseID}
-                          type="button"
-                          onClick={() => selectHorse(horse.HorseID)}
-                          aria-pressed={selected}
-                          className={`flex cursor-pointer items-center gap-2 rounded-full border py-1 pr-3.5 pl-1 text-sm transition-colors ${
-                            selected
-                              ? "border-brass bg-brass/15 font-medium text-brass-deep"
-                              : `border-stone/25 bg-white hover:border-stone/40 ${locked ? "text-stone/60" : "text-ink"}`
-                          }`}
-                        >
-                          <HorseAvatar horse={horse} size="h-6 w-6" />
-                          {horse.Ten}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Desktop: danh sách dọc, cuộn riêng khi dài */}
-                <ul className="hidden max-h-[calc(100vh-11rem)] overflow-y-auto rounded-lg border border-stone/15 bg-white lg:block">
-                  {visibleHorses.map((horse) => {
-                    const selected = horse.HorseID === selectedHorse?.HorseID;
-                    const locked = lockedHorseIds.has(horse.HorseID);
-                    const count = sessionsByHorse[horse.HorseID]?.length ?? 0;
-                    const latest = latestDate(horse.HorseID);
-                    // Chỉ số tập các buổi gần đây (cũ → mới) cho sparkline + số gần nhất
-                    const recentIndexes = [...(sessionsByHorse[horse.HorseID] ?? [])]
-                      .sort((a, b) => a.Ngay.localeCompare(b.Ngay))
-                      .slice(-8)
-                      .map((sess) => sess.ChiSoTap);
-                    return (
-                      <li key={horse.HorseID} className="border-b border-stone/15 last:border-b-0">
-                        <button
-                          type="button"
-                          onClick={() => selectHorse(horse.HorseID)}
-                          aria-current={selected ? "true" : undefined}
-                          className={`relative flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                            selected
-                              ? "bg-brass/10 before:absolute before:inset-y-1.5 before:left-0 before:w-[2px] before:bg-brass"
-                              : "hover:bg-black/[0.03]"
-                          }`}
-                        >
-                          <span className={locked ? "opacity-60" : ""}>
-                            <HorseAvatar horse={horse} />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-center gap-1.5">
-                              <span className={`truncate font-serif text-base leading-snug font-semibold ${locked ? "text-stone" : "text-ink"}`}>
-                                {horse.Ten}
-                              </span>
-                              {locked && <span className={LOCK_LABEL}>Đang khóa tập</span>}
-                            </span>
-                            <span className="block truncate text-xs text-stone">
-                              {count ? `${count} buổi · gần nhất ${formatDayMonth(latest)}` : "Chưa có buổi tập"}
-                            </span>
-                          </span>
-                          {/* Bên phải: chỉ số tập gần nhất + sparkline (ngựa đang khóa tập: không có sparkline) */}
-                          {recentIndexes.length > 0 && (
-                            <span className="flex shrink-0 flex-col items-end">
-                              <span className={`font-serif text-[20px] leading-none font-semibold tabular-nums ${locked ? "text-stone/60" : "text-bark"}`}>
-                                {recentIndexes[recentIndexes.length - 1]}
-                              </span>
-                              {!locked && (
-                                <span className="mt-1">
-                                  <Sparkline values={recentIndexes} />
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            )}
+      <section className="mb-5 space-y-4 rounded-lg border border-stone/15 bg-white px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="sessionFrom" className={FILTER_LABEL}>
+              Từ ngày
+            </label>
+            <input
+              id="sessionFrom"
+              type="date"
+              value={from}
+              onChange={(e) => e.target.value && updateParams({ from: e.target.value, to })}
+              className="rounded-md border border-stone/25 bg-white px-3 py-1.5 text-sm text-ink outline-none focus:border-brass"
+            />
           </div>
-
-          <div className="min-w-0 rounded-lg border border-stone/15 bg-white px-4 py-5 sm:px-6">
-            {selectedHorse ? (
-              <SessionDetail
-                key={selectedHorse.HorseID}
-                horse={selectedHorse}
-                sessions={sessionsByHorse[selectedHorse.HorseID] ?? []}
-                isLocked={lockedHorseIds.has(selectedHorse.HorseID)}
-              />
-            ) : (
-              <p className="py-10 text-center text-sm text-stone">Chưa có ngựa nào.</p>
-            )}
+          <div>
+            <label htmlFor="sessionTo" className={FILTER_LABEL}>
+              Đến ngày
+            </label>
+            <input
+              id="sessionTo"
+              type="date"
+              value={to}
+              min={from}
+              onChange={(e) => e.target.value && updateParams({ from, to: e.target.value })}
+              className="rounded-md border border-stone/25 bg-white px-3 py-1.5 text-sm text-ink outline-none focus:border-brass"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {quickRanges(today).map((range) => (
+              <button
+                key={range.key}
+                type="button"
+                onClick={() => updateParams({ from: range.from, to: range.to })}
+                className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                  activeRange === range.key
+                    ? "border-brass bg-brass/15 font-medium text-brass-deep"
+                    : "border-stone/25 bg-white text-ink hover:border-stone/40"
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
         </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label htmlFor="filterHorse" className={FILTER_LABEL}>
+              Ngựa
+            </label>
+            <select id="filterHorse" value={horseId} onChange={(e) => updateParams({ horse: e.target.value })} className={FILTER_SELECT}>
+              <option value="">Tất cả ngựa</option>
+              {horses.map((horse) => (
+                <option key={horse.horseId} value={horse.horseId}>
+                  {horse.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="filterPlan" className={FILTER_LABEL}>
+              Giáo án
+            </label>
+            <select id="filterPlan" value={planId} onChange={(e) => updateParams({ plan: e.target.value })} className={FILTER_SELECT}>
+              <option value="">Tất cả giáo án</option>
+              {plans
+                .filter((p) => !horseId || String(p.horseId) === horseId || String(p.planId) === planId)
+                .map((plan) => (
+                  <option key={plan.planId} value={plan.planId}>
+                    {plan.planName} — {plan.horseName}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="filterStaff" className={FILTER_LABEL}>
+              Người phụ trách
+            </label>
+            <select
+              id="filterStaff"
+              value={assignedToUserId}
+              onChange={(e) => updateParams({ staff: e.target.value })}
+              className={FILTER_SELECT}
+            >
+              <option value="">Tất cả</option>
+              {staff.map((person) => (
+                <option key={person.userId} value={person.userId}>
+                  {person.fullName}
+                  {person.userId === user.apiUserId ? " (tôi)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="filterStatus" className={FILTER_LABEL}>
+              Trạng thái
+            </label>
+            <select id="filterStatus" value={status} onChange={(e) => updateParams({ status: e.target.value })} className={FILTER_SELECT}>
+              <option value="">Tất cả trạng thái</option>
+              {options.sessionStatuses.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={() => updateParams({ horse: "", plan: "", staff: "", status: "" })}
+            className="cursor-pointer text-sm font-medium text-brass-deep underline-offset-2 hover:underline"
+          >
+            Xóa bộ lọc
+          </button>
+        )}
+      </section>
+
+      {rangeError ? (
+        <p className="rounded-sm border-l-2 border-alert bg-alert/5 px-4 py-3 text-sm text-alert">{rangeError}</p>
+      ) : loading ? (
+        <LoadingState />
+      ) : error ? (
+        <ApiErrorNotice variant="page" error={error} onRetry={sessionsResource.reload} />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 rounded-lg border border-stone/15 bg-white px-5 py-4 sm:grid-cols-4">
+            <SummaryItem label="Số buổi" value={sessions.length} />
+            <SummaryItem label="Hoàn thành" value={completed.length} />
+            <SummaryItem label="Điểm phong độ TB" value={averageScore != null ? formatNumber(averageScore) : "—"} />
+            <SummaryItem label="Cự ly thực tế" value={formatKm(actualKm)} />
+          </div>
+          <SessionTable
+            sessions={sessions}
+            onSelect={setOpenSessionId}
+            showHorse
+            showPlan
+            emptyText="Không có buổi tập nào trong khoảng ngày và bộ lọc đã chọn."
+          />
+        </div>
       )}
+
+      <SessionDrawer
+        key={openSessionId ?? "closed"}
+        sessionId={openSessionId}
+        onClose={() => setOpenSessionId(null)}
+        onChanged={sessionsResource.refresh}
+      />
     </div>
   );
 }

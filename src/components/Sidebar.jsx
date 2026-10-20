@@ -23,7 +23,7 @@ export default function Sidebar({ isOpen = false, onClose }) {
       >
         <div className="flex h-16 items-center border-b border-stone/15 px-6">
           <Link to={roleHomePaths[user.roleId] || "/"} className="font-serif text-2xl font-semibold tracking-tight text-ink">
-            Equi<span className="text-brass">Track</span>
+            Equi<span className="text-[#c2570c]">Track</span>
           </Link>
         </div>
 

@@ -1,151 +1,162 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, SearchX } from "lucide-react";
+import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
+import HorseWeekDrawer from "./HorseWeekDrawer";
 import ScheduleWeekGrid from "./ScheduleWeekGrid";
-import TrainingLockNotice from "../../components/TrainingLockNotice";
-import { LOCK_CONFLICT_SCHEDULE } from "../../utils/trainingLock";
-import { getActiveTrainingLocks, getGrooms, getHorses, getSchedules } from "../../services/trainerService";
-import { addDays, formatDayMonth, startOfWeek, todayISO } from "../../utils/date";
+import SessionDrawer from "./SessionDrawer";
+import { CHIP_STATUSES, chipClass } from "./sessionChipStyles";
+import useApiResource from "../../hooks/useApiResource";
+import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
+import { addDays, formatDate, formatDayMonth, startOfWeek, todayISO, weekdayName } from "../../utils/date";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const NAV_BUTTON =
   "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-stone/25 bg-white text-ink transition-colors hover:border-stone/40";
 const VIEW_MODES = [
   { value: "horse", label: "Theo ngựa" },
-  { value: "groom", label: "Theo nhân viên" },
+  { value: "staff", label: "Theo người phụ trách" },
 ];
+const UNASSIGNED_KEY = "staff-none";
+// Tên rút gọn trên chip: người phụ trách lấy tên gọi (chữ cuối)
+const givenName = (fullName) => (fullName ?? "").trim().split(/\s+/).pop();
 
-// Lịch tập dạng lưới tuần (bảng xếp ca): hàng = ngựa hoặc nhân viên chăm sóc, cột = T2 → CN.
-// Tuần đang xem (?week=<Thứ Hai>) và chế độ xem (?view=groom) nằm trên URL để quay lại từ form vẫn đúng.
+// Lịch tập dạng lưới tuần: hàng = ngựa hoặc người phụ trách, cột = T2 → CN.
+// Dữ liệu: GET /api/trainer/training-sessions?from=<Thứ Hai>&to=<Chủ Nhật>. Bấm chip → chi tiết buổi tập (bắt đầu, phân công,
+// hủy...); bấm tên ngựa → lịch 7 ngày + tổng kết tuần của ngựa đó; ô trống của ngựa có giáo án đang áp dụng → thêm buổi.
+// Tuần (?week=<Thứ Hai>) và chế độ xem (?view=staff) nằm trên URL để quay lại từ form vẫn đúng.
 export default function Schedule() {
-  const { state } = useLocation(); // thông báo do form gửi sang
+  const { state } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { label } = useTrainingOptions();
   const today = todayISO();
   const currentWeekStart = startOfWeek(today);
   const weekParam = searchParams.get("week");
   const weekStart = weekParam && DATE_PATTERN.test(weekParam) ? startOfWeek(weekParam) : currentWeekStart;
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const mode = searchParams.get("view") === "groom" ? "groom" : "horse";
+  const weekEnd = weekDays[6];
+  const mode = searchParams.get("view") === "staff" ? "staff" : "horse";
 
-  const [schedules, setSchedules] = useState([]);
-  const [horses, setHorses] = useState([]);
-  const [grooms, setGrooms] = useState([]);
-  const [locks, setLocks] = useState([]); // lệnh khóa đang hiệu lực
-  const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
   const [message, setMessage] = useState(state?.message ?? "");
+  const [openSessionId, setOpenSessionId] = useState(null);
+  const [weekHorse, setWeekHorse] = useState(null); // ngựa đang xem lịch 7 ngày
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
-  useEffect(() => {
-    let ignore = false;
-    Promise.all([getSchedules(), getHorses(), getGrooms(), getActiveTrainingLocks()]).then(
-      ([scheduleList, horseList, groomList, lockList]) => {
-        if (ignore) return;
-        setSchedules(scheduleList);
-        setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-        setGrooms([...groomList].sort((a, b) => a.HoTen.localeCompare(b.HoTen, "vi")));
-        setLocks(lockList);
-        setLoading(false);
-      }
-    );
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  // Ngựa, người phụ trách, giáo án đang áp dụng: nạp 1 lần; buổi tập: theo tuần đang xem
+  const baseResource = useApiResource(
+    () => Promise.all([getHorses(), getAssignableStaff(), getTrainingPlans({ status: "Active" })]),
+    "base"
+  );
+  const sessionsResource = useApiResource(() => searchTrainingSessions({ from: weekStart, to: weekEnd }), weekStart);
+  const [horses = [], staffList = [], activePlans = []] = baseResource.data ?? [];
+  const staff = [...staffList].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
+  const sessions = sessionsResource.data ?? [];
+  const error = baseResource.error ?? sessionsResource.error;
+  const loading = baseResource.loading || sessionsResource.loading;
 
   const updateParams = (changes) => {
     const next = { week: weekStart, view: mode, ...changes };
     const params = {};
     if (next.week !== currentWeekStart) params.week = next.week;
-    if (next.view === "groom") params.view = "groom";
+    if (next.view === "staff") params.view = "staff";
     setSearchParams(params);
   };
 
-  const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
-  const lockedHorseIds = new Set(locks.map((l) => l.HorseID));
-  // Ngựa đang bị khóa nhưng còn buổi tập sắp tới (đã xếp trước khi khóa): không tự xóa, nhắc HLV tự đổi lịch
-  const lockConflicts = locks
-    .map((lock) => ({
-      lock,
-      horse: horseById[lock.HorseID],
-      upcoming: schedules.filter((s) => s.HorseID === lock.HorseID && s.Ngay >= today).sort((a, b) => a.Ngay.localeCompare(b.Ngay) || a.Gio.localeCompare(b.Gio)),
-    }))
-    .filter((c) => c.horse && c.upcoming.length > 0);
-  const groomNameById = Object.fromEntries(grooms.map((g) => [g.UserID, g.HoTen]));
+  const retry = () => {
+    if (baseResource.error) baseResource.reload();
+    if (sessionsResource.error) sessionsResource.reload();
+  };
 
-  // Buổi trong tuần, lọc theo tên ngựa (ở cả 2 chế độ)
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const weekSchedules = schedules
-    .filter(
-      (s) =>
-        s.Ngay >= weekDays[0] &&
-        s.Ngay <= weekDays[6] &&
-        (horseById[s.HorseID]?.Ten ?? "").toLowerCase().includes(normalizedKeyword)
-    )
-    .sort((a, b) => a.Gio.localeCompare(b.Gio));
+  const weekSessions = sessions.filter((s) => (s.horseName ?? "").toLowerCase().includes(normalizedKeyword));
+  const activeCount = (list) => list.filter((s) => s.status !== "Cancelled").length;
+  const countLabel = (list) => (activeCount(list) ? `${activeCount(list)} buổi` : "Chưa có buổi");
 
-  // Hàng của lưới. Theo ngựa: ngựa khớp ô tìm kiếm. Theo nhân viên: người đang hoạt động + người có buổi trong tuần.
-  const rows =
-    mode === "horse"
-      ? horses
-          .filter((h) => h.Ten.toLowerCase().includes(normalizedKeyword))
-          .map((h) => ({
-            key: `horse-${h.HorseID}`,
-            kind: "horse",
-            entity: h,
-            isLocked: lockedHorseIds.has(h.HorseID),
-            count: weekSchedules.filter((s) => s.HorseID === h.HorseID).length,
-          }))
-      : grooms
-          .filter((g) => g.isActive || weekSchedules.some((s) => s.GroomID === g.UserID))
-          .map((g) => ({
-            key: `groom-${g.UserID}`,
-            kind: "groom",
-            entity: g,
-            isLocked: false,
-            count: weekSchedules.filter((s) => s.GroomID === g.UserID).length,
-          }));
+  // Giáo án đang áp dụng của từng ngựa → ô trống trong khoảng giáo án được thêm buổi
+  const activePlanByHorse = Object.fromEntries(activePlans.map((p) => [p.horseId, p]));
 
-  // Gom buổi vào ô "<hàng>|<ngày>"
-  const schedulesByCell = weekSchedules.reduce((acc, s) => {
-    const key = `${mode === "horse" ? `horse-${s.HorseID}` : `groom-${s.GroomID}`}|${s.Ngay}`;
-    return { ...acc, [key]: [...(acc[key] ?? []), s] };
+  let rows;
+  let rowKeyOf;
+  if (mode === "horse") {
+    rowKeyOf = (s) => `horse-${s.horseId}`;
+    rows = horses
+      .filter((h) => h.name.toLowerCase().includes(normalizedKeyword))
+      .map((h) => {
+        const plan = activePlanByHorse[h.horseId];
+        const horseSessions = weekSessions.filter((s) => s.horseId === h.horseId);
+        return {
+          key: `horse-${h.horseId}`,
+          kind: "horse",
+          horse: h,
+          title: h.name,
+          photoUrl: h.photoUrl,
+          subtitle: `${countLabel(horseSessions)}${plan ? "" : " · chưa có giáo án áp dụng"}`,
+        };
+      });
+  } else {
+    rowKeyOf = (s) => (s.assignedToUserId ? `staff-${s.assignedToUserId}` : UNASSIGNED_KEY);
+    // Người phụ trách hợp lệ + người có buổi trong tuần nhưng không còn trong danh sách (vd tài khoản bị khóa)
+    const people = new Map(staff.map((p) => [p.userId, p.fullName]));
+    weekSessions.forEach((s) => {
+      if (s.assignedToUserId && !people.has(s.assignedToUserId)) people.set(s.assignedToUserId, s.assignedToName ?? `#${s.assignedToUserId}`);
+    });
+    rows = [...people.entries()].map(([userId, fullName]) => ({
+      key: `staff-${userId}`,
+      kind: "staff",
+      title: fullName,
+      subtitle: countLabel(weekSessions.filter((s) => s.assignedToUserId === userId)),
+    }));
+    const unassigned = weekSessions.filter((s) => !s.assignedToUserId);
+    if (unassigned.length > 0) rows.unshift({ key: UNASSIGNED_KEY, kind: "staff", title: "Chưa phân công", subtitle: countLabel(unassigned) });
+  }
+
+  const sessionsByCell = weekSessions.reduce((acc, s) => {
+    const key = `${rowKeyOf(s)}|${s.trainingDate}`;
+    (acc[key] ??= []).push(s);
+    return acc;
   }, {});
+
+  const chipText = (s) => (mode === "horse" ? label("trainingTypes", s.trainingType) : s.horseName);
+  const chipTitle = (s) =>
+    `${label("sessionStatuses", s.status)} — ${s.sessionTitle} · ${s.horseName} · ${weekdayName(s.trainingDate)} ${formatDate(
+      s.trainingDate
+    )} ${s.startTime} · ${s.assignedToName ? givenName(s.assignedToName) : "chưa phân công"}`;
+
+  // Ô trống từ hôm nay, trong khoảng ngày của giáo án đang áp dụng → mở form thêm buổi điền sẵn ngày
+  const addLink = (row, date) => {
+    if (row.kind !== "horse" || date < today) return null;
+    const plan = activePlanByHorse[row.horse.horseId];
+    if (!plan || date < plan.startDate || date > plan.endDate) return null;
+    const from = `/trainer/schedule${weekStart !== currentWeekStart ? `?week=${weekStart}` : ""}`;
+    return { to: `/trainer/plans/${plan.planId}/sessions/new?date=${date}`, state: { from } };
+  };
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Lịch tập</h1>
-          {/* Điều hướng tuần: ‹ khoảng ngày › */}
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => updateParams({ week: addDays(weekStart, -7) })} aria-label="Tuần trước" className={NAV_BUTTON}>
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Lịch tập</h1>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => updateParams({ week: addDays(weekStart, -7) })} aria-label="Tuần trước" className={NAV_BUTTON}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <span className="min-w-[7.5rem] text-center text-sm font-medium text-ink tabular-nums">
+            {formatDayMonth(weekStart)} – {formatDayMonth(weekEnd)}
+          </span>
+          <button type="button" onClick={() => updateParams({ week: addDays(weekStart, 7) })} aria-label="Tuần sau" className={NAV_BUTTON}>
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+          {weekStart !== currentWeekStart && (
+            <button
+              type="button"
+              onClick={() => updateParams({ week: currentWeekStart })}
+              className="ml-1 cursor-pointer text-sm font-medium text-brass-deep underline-offset-2 hover:underline"
+            >
+              Về tuần này
             </button>
-            <span className="min-w-[7.5rem] text-center text-sm font-medium text-ink tabular-nums">
-              {formatDayMonth(weekDays[0])} – {formatDayMonth(weekDays[6])}
-            </span>
-            <button type="button" onClick={() => updateParams({ week: addDays(weekStart, 7) })} aria-label="Tuần sau" className={NAV_BUTTON}>
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-            {weekStart !== currentWeekStart && (
-              <button
-                type="button"
-                onClick={() => updateParams({ week: currentWeekStart })}
-                className="ml-1 cursor-pointer text-sm font-medium text-brass-deep underline-offset-2 hover:underline"
-              >
-                Về tuần này
-              </button>
-            )}
-          </div>
+          )}
         </div>
-        <Link
-          to="/trainer/schedule/new"
-          className="btn-primary"
-        >
-          + Xếp lịch tập
-        </Link>
       </div>
 
       {message && (
@@ -157,12 +168,13 @@ export default function Schedule() {
         </div>
       )}
 
-      {loading ? (
+      {error ? (
+        <ApiErrorNotice variant="page" error={error} onRetry={retry} />
+      ) : loading ? (
         <LoadingState />
       ) : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Công tắc 2 nút chọn chế độ xem — cùng màu pill đang chọn */}
             <div role="radiogroup" aria-label="Chế độ xem" className="inline-flex rounded-full border border-stone/25 bg-white p-0.5">
               {VIEW_MODES.map((option) => (
                 <button
@@ -195,39 +207,54 @@ export default function Schedule() {
             </div>
           </div>
 
-          {lockConflicts.map(({ lock, horse, upcoming }) => (
-            <TrainingLockNotice
-              key={lock.LockID}
-              lock={lock}
-              horseName={horse.Ten}
-              hint={`${LOCK_CONFLICT_SCHEDULE}: ${upcoming.map((s) => `${formatDayMonth(s.Ngay)} ${s.Gio}`).join(", ")}.`}
-            />
-          ))}
-
           {/* Chú giải màu chip — dùng đúng các kiểu chip trong lưới */}
-          <p className="-mt-1 text-xs text-stone">
-            Xám: đã diễn ra · Viền cam: sắp tới{lockConflicts.length > 0 && " · Viền nâu đỏ: ngựa đang bị khóa, cần đổi lịch"}
-          </p>
+          <div className="-mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-stone">
+            {CHIP_STATUSES.map((status) => (
+              <span key={status} className="inline-flex items-center gap-1.5">
+                <span className={`h-3 w-5 rounded-sm ${chipClass(status)}`} aria-hidden="true" />
+                {label("sessionStatuses", status)}
+              </span>
+            ))}
+            {mode === "horse" && <span>· Bấm tên ngựa để xem tổng kết tuần</span>}
+          </div>
 
           {rows.length === 0 ? (
             <div className="border-y border-stone/20 py-16 text-center text-stone">
               <SearchX className="mx-auto mb-3 h-10 w-10 text-stone/40" />
-              Không tìm thấy ngựa phù hợp
+              {mode === "horse" ? "Không tìm thấy ngựa phù hợp" : "Tuần này chưa có buổi tập nào"}
             </div>
           ) : (
             <ScheduleWeekGrid
-              mode={mode}
               rows={rows}
               weekDays={weekDays}
               today={today}
-              schedulesByCell={schedulesByCell}
-              horseById={horseById}
-              groomNameById={groomNameById}
-              lockedHorseIds={lockedHorseIds}
+              sessionsByCell={sessionsByCell}
+              chipText={chipText}
+              chipTitle={chipTitle}
+              onSelectSession={setOpenSessionId}
+              onSelectRow={mode === "horse" ? (row) => setWeekHorse(row.horse) : undefined}
+              addLink={addLink}
             />
           )}
         </div>
       )}
+
+      <HorseWeekDrawer
+        horse={weekHorse}
+        weekStart={weekStart}
+        onClose={() => setWeekHorse(null)}
+        onSelectSession={(sessionId) => {
+          setWeekHorse(null);
+          setOpenSessionId(sessionId);
+        }}
+      />
+      {/* Sau thao tác trong ngăn chi tiết: tải lại ngầm tuần đang xem */}
+      <SessionDrawer
+        key={openSessionId ?? "closed"}
+        sessionId={openSessionId}
+        onClose={() => setOpenSessionId(null)}
+        onChanged={sessionsResource.refresh}
+      />
     </div>
   );
 }
