@@ -3,10 +3,11 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, SearchX } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
+import TabFilter from "../../components/TabFilter";
 import HorseWeekDrawer from "./HorseWeekDrawer";
 import ScheduleWeekGrid from "./ScheduleWeekGrid";
 import SessionDrawer from "./SessionDrawer";
-import { CHIP_STATUSES, chipClass } from "./sessionChipStyles";
+import { CHIP_STATUSES, swatchClass } from "./sessionChipStyles";
 import useApiResource from "../../hooks/useApiResource";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
@@ -14,10 +15,10 @@ import { addDays, formatDate, formatDayMonth, startOfWeek, todayISO, weekdayName
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const NAV_BUTTON =
-  "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-stone/25 bg-white text-ink transition-colors hover:border-stone/40";
+  "flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[#cfc4ad] bg-white text-[#2b2118] transition-colors hover:bg-[#f0efec]";
 const VIEW_MODES = [
-  { value: "horse", label: "Theo ngựa" },
-  { value: "staff", label: "Theo người phụ trách" },
+  { code: "horse", label: "Theo ngựa" },
+  { code: "staff", label: "Theo người phụ trách" },
 ];
 const UNASSIGNED_KEY = "staff-none";
 // Tên rút gọn trên chip: người phụ trách lấy tên gọi (chữ cuối)
@@ -160,9 +161,9 @@ export default function Schedule() {
       </div>
 
       {message && (
-        <div className="mb-4 flex items-center justify-between gap-4 rounded-sm border-l-2 border-green-700 bg-white/60 px-4 py-3 text-sm text-green-800">
+        <div className="mb-4 flex min-h-11 items-center justify-between gap-4 rounded-sm border border-[#cfd8b4] border-l-[3px] border-l-[#6b7a3a] bg-[#f6f8ee] px-4 py-2 text-sm text-[#3f5420]">
           {message}
-          <button type="button" onClick={() => setMessage("")} className="cursor-pointer font-semibold text-green-700 hover:underline">
+          <button type="button" onClick={() => setMessage("")} className="cursor-pointer font-medium text-[#3f5420] hover:underline">
             Đóng
           </button>
         </div>
@@ -174,53 +175,38 @@ export default function Schedule() {
         <LoadingState />
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div role="radiogroup" aria-label="Chế độ xem" className="inline-flex rounded-full border border-stone/25 bg-white p-0.5">
-              {VIEW_MODES.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === option.value}
-                  onClick={() => updateParams({ view: option.value })}
-                  className={`cursor-pointer rounded-full px-3.5 py-1.5 text-sm transition-colors ${
-                    mode === option.value ? "bg-brass/15 font-medium text-brass-deep" : "text-ink hover:bg-black/[0.03]"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <div className="relative w-full sm:w-64">
+          {/* 1 hàng: tab chế độ xem bên trái, tìm kiếm bên phải; đường kẻ chạy hết chiều rộng bên dưới cả hàng */}
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-[#ece5d6]">
+            <TabFilter ariaLabel="Chế độ xem" options={VIEW_MODES} value={mode} onChange={(code) => updateParams({ view: code })} />
+            <div className="relative w-full pb-2 sm:w-64">
               <label htmlFor="scheduleKeyword" className="sr-only">
                 Tìm theo tên ngựa
               </label>
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" />
+              <Search className="pointer-events-none absolute top-[18px] left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" />
               <input
                 id="scheduleKeyword"
                 type="search"
                 placeholder="Tìm theo tên ngựa..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+                className="h-9 w-full rounded border border-[#cfc4ad] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
               />
             </div>
           </div>
 
-          {/* Chú giải màu chip — dùng đúng các kiểu chip trong lưới */}
-          <div className="-mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-stone">
+          {/* Chú giải màu thẻ — ô vuông đặc cùng màu vạch trái của thẻ trong lưới */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-[#4a3f33]">
             {CHIP_STATUSES.map((status) => (
               <span key={status} className="inline-flex items-center gap-1.5">
-                <span className={`h-3 w-5 rounded-sm ${chipClass(status)}`} aria-hidden="true" />
+                <span className={`h-2.5 w-2.5 rounded-[2px] ${swatchClass(status)}`} aria-hidden="true" />
                 {label("sessionStatuses", status)}
               </span>
             ))}
-            {mode === "horse" && <span>· Bấm tên ngựa để xem tổng kết tuần</span>}
           </div>
 
           {rows.length === 0 ? (
-            <div className="border-y border-stone/20 py-16 text-center text-stone">
-              <SearchX className="mx-auto mb-3 h-10 w-10 text-stone/40" />
+            <div className="rounded border border-[#b9ab90] bg-white py-16 text-center text-[#6b6055]">
+              <SearchX className="mx-auto mb-3 h-10 w-10 text-[#6b6055]/40" />
               {mode === "horse" ? "Không tìm thấy ngựa phù hợp" : "Tuần này chưa có buổi tập nào"}
             </div>
           ) : (

@@ -5,7 +5,7 @@ import LoadingState from "../../components/LoadingState";
 import SelectField from "../../components/SelectField";
 import HorsePhotoPicker from "./HorsePhotoPicker";
 import { getHorseById, getHorseOwners, getHorses, saveHorseWithPhoto } from "../../services/horseService";
-import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../../data/horseOptions";
+import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_GENDER_LABELS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../../data/horseOptions";
 import { getHorseAge, todayISO } from "../../utils/date";
 import GenderChips from "./GenderChips";
 
@@ -253,7 +253,7 @@ export default function HorseForm() {
             />
             {birthAge !== null && <p className="mt-1 text-xs text-stone">= {birthAge} tuổi</p>}
           </div>
-          <GenderChips value={form.GioiTinh} options={HORSE_GENDERS} error={errors.GioiTinh} onChange={handleGenderChange} />
+          <GenderChips value={form.GioiTinh} options={HORSE_GENDERS} labels={HORSE_GENDER_LABELS} error={errors.GioiTinh} onChange={handleGenderChange} />
         </div>
 
         <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">

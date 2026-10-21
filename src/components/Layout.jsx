@@ -6,7 +6,25 @@ import Header from "./Header";
 // Khung chung cho mọi trang sau đăng nhập: Sidebar trái + Header trên + nội dung route con
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sidebarCollapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
   const { pathname } = useLocation();
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      try {
+        localStorage.setItem("sidebarCollapsed", prev ? "0" : "1");
+      } catch {
+        // không lưu được thì thôi, chỉ mất ghi nhớ
+      }
+      return !prev;
+    });
+  };
 
   // Chuyển trang thì cuộn về đầu — SPA giữ nguyên vị trí cuộn của trang trước, làm tiêu đề trang mới
   // bị đẩy lên khuất sau Header dính (vd đang cuộn giữa /manager/staff rồi bấm sang Quản lý vật tư)
@@ -16,7 +34,7 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen bg-parchment text-ink">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6 lg:px-8 lg:pt-6">

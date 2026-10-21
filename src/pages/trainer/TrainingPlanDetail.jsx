@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
+import { ChevronDown } from "lucide-react";
+import ActionMenu from "../../components/ActionMenu";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
-import TrainingBadge from "../../components/TrainingBadge";
+import ReadinessText from "../../components/ReadinessText";
+import StatusText from "../../components/StatusText";
+import TabFilter from "../../components/TabFilter";
 import HorseFitnessPanel from "./HorseFitnessPanel";
+import PlanInfoTable from "./PlanInfoTable";
 import PlanPhaseTable from "./PlanPhaseTable";
 import SessionDrawer from "./SessionDrawer";
 import SessionTable from "./SessionTable";
@@ -18,29 +23,17 @@ import {
   deleteTrainingPlan,
   getTrainingPlan,
 } from "../../services/trainingApi";
-import { formatDate } from "../../utils/date";
-import { formatDateTime, formatKm, formatNumber } from "../../utils/trainingFormat";
+import { formatKm, formatNumber } from "../../utils/trainingFormat";
 
-const SECONDARY_BUTTON =
-  "inline-flex h-10 cursor-pointer items-center rounded-sm border border-stone/25 bg-white px-4 text-sm font-semibold whitespace-nowrap text-ink transition-colors hover:border-stone/50";
-const SECTION_TITLE = "font-serif text-lg font-semibold text-ink";
+const SECTION_TITLE = "font-serif text-xl font-semibold text-[#2b2118]";
 const SESSION_FILTERS = [
-  { value: "upcoming", label: "Sắp tới" },
-  { value: "all", label: "Tất cả" },
+  { code: "upcoming", label: "Sắp tới" },
+  { code: "all", label: "Tất cả" },
 ];
 
-function Stat({ label, value, hint }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-stone">{label}</p>
-      <p className="mt-0.5 font-serif text-xl font-semibold text-ink tabular-nums">{value}</p>
-      {hint && <p className="text-xs text-stone">{hint}</p>}
-    </div>
-  );
-}
-
-// Chi tiết giáo án (GET /api/trainer/training-plans/{id}): thông tin chung, tiến độ, giai đoạn, buổi tập + thao tác theo trạng thái.
-// Nháp → Sửa, Xem trước lịch tuần, Áp dụng, Hủy, Xóa. Đang áp dụng → Xếp lịch tuần, Thêm buổi tập, Sửa thông tin, Kết thúc, Hủy.
+// Chi tiết giáo án (GET /api/trainer/training-plans/{id}): thông tin chung, tiến độ, buổi tập, giai đoạn, thể trạng + thao tác theo trạng thái.
+// Nút chính: Nháp → Áp dụng; Đang áp dụng → Xếp lịch tuần. Menu ⋯: Nháp → Xem trước lịch tuần, Sửa, Hủy giáo án, Xóa nháp;
+// Đang áp dụng → Thêm buổi tập, Sửa thông tin, Kết thúc, Hủy giáo án.
 export default function TrainingPlanDetail() {
   const { id } = useParams();
   const { state } = useLocation();
@@ -52,6 +45,7 @@ export default function TrainingPlanDetail() {
   const [busy, setBusy] = useState(false);
   const [sessionFilter, setSessionFilter] = useState("upcoming");
   const [openSessionId, setOpenSessionId] = useState(null);
+  const [fitnessOpen, setFitnessOpen] = useState(false);
   const planResource = useApiResource(() => getTrainingPlan(id), id);
   const { data: plan, loading, error: loadError } = planResource;
   const fitnessState = useHorseFitness(plan?.horseId);
@@ -122,179 +116,149 @@ export default function TrainingPlanDetail() {
     }
   };
 
+  const menuItems =
+    status === "Draft"
+      ? [
+          { key: "preview", label: "Xem trước lịch tuần", to: `/trainer/plans/${plan.planId}/weekly-schedule` },
+          { key: "edit", label: "Sửa", to: `/trainer/plans/${plan.planId}/edit` },
+          { key: "cancel", label: "Hủy giáo án", onClick: () => setConfirmAction("cancel"), danger: true },
+          { key: "delete", label: "Xóa nháp", onClick: () => setConfirmAction("delete"), danger: true },
+        ]
+      : [
+          { key: "addSession", label: "Thêm buổi tập", to: `/trainer/plans/${plan.planId}/sessions/new` },
+          { key: "edit", label: "Sửa thông tin", to: `/trainer/plans/${plan.planId}/edit` },
+          { key: "complete", label: "Kết thúc", onClick: () => setConfirmAction("complete") },
+          { key: "cancel", label: "Hủy giáo án", onClick: () => setConfirmAction("cancel"), danger: true },
+        ];
+
+  // Dòng tiến độ: "x/y buổi · z km" luôn hiện; sắp tới / đã hủy / điểm TB chỉ hiện khi khác 0 / có giá trị
+  const progressParts = [
+    `${progress.completedSessions ?? 0}/${progress.totalSessions ?? 0} buổi`,
+    progress.upcomingSessions > 0 && `${progress.upcomingSessions} sắp tới`,
+    progress.cancelledSessions > 0 && `${progress.cancelledSessions} đã hủy`,
+    progress.averagePerformanceScore != null && `Điểm TB ${formatNumber(progress.averagePerformanceScore)}`,
+    formatKm(progress.totalActualDistanceKm ?? 0),
+  ].filter(Boolean);
+
+  const fitness = fitnessState.fitness;
+  // Chỉ hiển thị: tiến độ ẩn với giáo án nháp chưa có buổi nào; tab lọc buổi tập ẩn với giáo án nháp chưa có buổi nào
+  const draftWithoutSessions = status === "Draft" && plan.sessions.length === 0;
+  const showProgress = status !== "Draft" || (progress.totalSessions ?? 0) > 0;
+
   return (
-    <div className="mx-auto max-w-6xl">
-      <Link to="/trainer/plans" className="text-sm font-medium text-brass-deep hover:underline">
+    <div className="mx-auto max-w-[1100px]">
+      <Link to="/trainer/plans" className="text-sm font-medium text-[#c2570c] hover:underline">
         ← Giáo án tập luyện
       </Link>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">{plan.planName}</h1>
-            <TrainingBadge kind="planStatus" code={status}>
-              {label("planStatuses", status)}
-            </TrainingBadge>
-          </div>
-          <p className="mt-1 text-sm text-stone">
-            <span className="font-medium text-ink">{plan.horseName}</span>
-            {plan.trainingType && ` · ${label("planTypes", plan.trainingType)}`} · {formatDate(plan.startDate)} – {formatDate(plan.endDate)} ·{" "}
-            {plan.phaseCount} giai đoạn
-          </p>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">{plan.planName}</h1>
+          <span className="[&>span]:text-[15px]">
+            <StatusText code={status}>{label("planStatuses", status)}</StatusText>
+          </span>
         </div>
 
         {(status === "Draft" || status === "Active") && (
-          <div className="flex flex-wrap items-center gap-2">
-            {status === "Draft" && (
-              <button
-                type="button"
-                onClick={() => setConfirmAction("delete")}
-                className="mr-2 cursor-pointer text-sm font-medium text-stone underline-offset-2 hover:text-alert hover:underline"
-              >
-                Xóa nháp
-              </button>
-            )}
-            <button type="button" onClick={() => setConfirmAction("cancel")} className={SECONDARY_BUTTON}>
-              Hủy giáo án
-            </button>
-            {status === "Active" && (
-              <button type="button" onClick={() => setConfirmAction("complete")} className={SECONDARY_BUTTON}>
-                Kết thúc
-              </button>
-            )}
-            <Link to={`/trainer/plans/${plan.planId}/edit`} className={SECONDARY_BUTTON}>
-              {status === "Draft" ? "Sửa" : "Sửa thông tin"}
-            </Link>
+          <div className="flex items-center gap-2">
             {status === "Draft" ? (
-              <>
-                <Link to={`/trainer/plans/${plan.planId}/weekly-schedule`} className={SECONDARY_BUTTON}>
-                  Xem trước lịch tuần
-                </Link>
-                <button type="button" onClick={() => setConfirmAction("activate")} className="btn-primary">
-                  Áp dụng
-                </button>
-              </>
+              <button type="button" onClick={() => setConfirmAction("activate")} className="btn-primary">
+                Áp dụng
+              </button>
             ) : (
-              <>
-                <Link to={`/trainer/plans/${plan.planId}/sessions/new`} className={SECONDARY_BUTTON}>
-                  + Thêm buổi tập
-                </Link>
-                <Link to={`/trainer/plans/${plan.planId}/weekly-schedule`} className="btn-primary">
-                  Xếp lịch tuần
-                </Link>
-              </>
+              <Link to={`/trainer/plans/${plan.planId}/weekly-schedule`} className="btn-primary">
+                Xếp lịch tuần
+              </Link>
             )}
+            <ActionMenu items={menuItems} />
           </div>
         )}
       </div>
 
-      <div className="mt-4 space-y-3">
-        {message && (
-          <div className="flex items-center justify-between gap-4 rounded-sm border-l-2 border-green-700 bg-white/60 px-4 py-3 text-sm text-green-800">
-            {message}
-            <button type="button" onClick={() => setMessage("")} className="cursor-pointer font-semibold text-green-700 hover:underline">
-              Đóng
-            </button>
-          </div>
-        )}
-        <ApiErrorNotice error={actionError} />
-      </div>
-
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
-        <div className="min-w-0 space-y-8">
-          {(plan.objective || plan.notes) && (
-            <section className="grid gap-4 rounded-lg border border-stone/15 bg-white px-5 py-4 sm:grid-cols-2">
-              {plan.objective && (
-                <div>
-                  <p className="text-xs font-medium text-stone">Mục tiêu</p>
-                  <p className="mt-1 text-sm whitespace-pre-line text-ink">{plan.objective}</p>
-                </div>
-              )}
-              {plan.notes && (
-                <div>
-                  <p className="text-xs font-medium text-stone">Ghi chú</p>
-                  <p className="mt-1 text-sm whitespace-pre-line text-ink">{plan.notes}</p>
-                </div>
-              )}
-            </section>
+      {(message || actionError) && (
+        <div className="mt-4 space-y-3">
+          {message && (
+            <div className="flex min-h-11 items-center justify-between gap-4 rounded-sm border border-[#cfd8b4] border-l-[3px] border-l-[#6b7a3a] bg-[#f6f8ee] px-4 py-2 text-sm text-[#3f5420]">
+              {message}
+              <button type="button" onClick={() => setMessage("")} className="cursor-pointer font-medium text-[#3f5420] hover:underline">
+                Đóng
+              </button>
+            </div>
           )}
-
-          <section>
-            <h2 className={`${SECTION_TITLE} mb-3`}>Tiến độ</h2>
-            <div className="rounded-lg border border-stone/15 bg-white px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-track">
-                  <div className="h-full rounded-full bg-moss" style={{ width: `${Math.min(100, Number(progress.completionRate) || 0)}%` }} />
-                </div>
-                <span className="text-sm font-semibold text-ink tabular-nums">{formatNumber(progress.completionRate ?? 0)}%</span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                <Stat label="Tổng buổi" value={progress.totalSessions ?? 0} />
-                <Stat label="Hoàn thành" value={progress.completedSessions ?? 0} />
-                <Stat label="Sắp tới" value={progress.upcomingSessions ?? 0} />
-                <Stat label="Đã hủy" value={progress.cancelledSessions ?? 0} />
-                <Stat label="Điểm TB" value={progress.averagePerformanceScore != null ? formatNumber(progress.averagePerformanceScore) : "—"} />
-                <Stat label="Cự ly thực tế" value={formatKm(progress.totalActualDistanceKm ?? 0)} />
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h2 className={`${SECTION_TITLE} mb-3`}>Giai đoạn</h2>
-            <PlanPhaseTable phases={plan.phases} markCurrent={status === "Active"} />
-          </section>
+          <ApiErrorNotice error={actionError} />
         </div>
+      )}
 
-        <aside className="rounded-lg border border-stone/15 bg-white px-5 py-5 lg:sticky lg:top-24">
-          <HorseFitnessPanel
-            fitness={fitnessState.fitness}
-            loading={fitnessState.loading}
-            error={fitnessState.error}
-            onRefresh={fitnessState.reload}
-          />
-        </aside>
+      <div className="mt-6">
+        <PlanInfoTable plan={plan} />
       </div>
 
-      {/* Buổi tập: toàn chiều rộng để bảng đủ cột */}
-      <div className="mt-8 space-y-4">
-        <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className={SECTION_TITLE}>Buổi tập</h2>
-            <div role="radiogroup" aria-label="Lọc buổi tập" className="inline-flex rounded-full border border-stone/25 bg-white p-0.5">
-              {SESSION_FILTERS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={sessionFilter === option.value}
-                  onClick={() => setSessionFilter(option.value)}
-                  className={`cursor-pointer rounded-full px-3.5 py-1.5 text-sm transition-colors ${
-                    sessionFilter === option.value ? "bg-brass/15 font-medium text-brass-deep" : "text-ink hover:bg-black/[0.03]"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+      {showProgress && (
+        <div className="mt-6" aria-label="Tiến độ">
+          <div className="h-1 overflow-hidden rounded-sm bg-[#ece5d6]">
+            <div className="h-full rounded-sm bg-[#6b7a3a]" style={{ width: `${Math.min(100, Number(progress.completionRate) || 0)}%` }} />
           </div>
-          <SessionTable
-            sessions={visibleSessions}
-            onSelect={setOpenSessionId}
-            emptyText={
-              status === "Draft"
-                ? "Giáo án nháp chưa có buổi tập — áp dụng giáo án rồi xếp lịch tuần."
-                : sessionFilter === "upcoming"
-                  ? "Không có buổi tập sắp tới."
-                  : "Chưa có buổi tập nào."
-            }
-          />
-        </section>
+          <p className="mt-2 text-sm text-[#2b2118] tabular-nums">{progressParts.join(" · ")}</p>
+        </div>
+      )}
 
-        <p className="text-xs text-stone">
-          Lập lúc {formatDateTime(plan.createdAt)}
-          {plan.updatedAt && ` · Cập nhật lúc ${formatDateTime(plan.updatedAt)}`}
-        </p>
-      </div>
+      <section className="mt-10">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <h2 className={SECTION_TITLE}>Buổi tập</h2>
+          {!draftWithoutSessions && (
+            <TabFilter ariaLabel="Lọc buổi tập" options={SESSION_FILTERS} value={sessionFilter} onChange={setSessionFilter} />
+          )}
+        </div>
+        <SessionTable
+          sessions={visibleSessions}
+          onSelect={setOpenSessionId}
+          emptyText={
+            status === "Draft"
+              ? "Giáo án nháp chưa có buổi tập — áp dụng giáo án rồi xếp lịch tuần."
+              : sessionFilter === "upcoming"
+                ? "Không có buổi tập sắp tới."
+                : "Chưa có buổi tập nào."
+          }
+        />
+      </section>
+
+      <section className="mt-10">
+        <h2 className={`${SECTION_TITLE} mb-3`}>Giai đoạn</h2>
+        <PlanPhaseTable phases={plan.phases} markCurrent={status === "Active"} variant="framed" />
+      </section>
+
+      <section className="mt-10">
+        <button
+          type="button"
+          onClick={() => setFitnessOpen((prev) => !prev)}
+          aria-expanded={fitnessOpen}
+          aria-controls="plan-fitness"
+          className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded border border-[#b9ab90] bg-white px-4 text-left transition-colors hover:bg-[#f0efec]"
+        >
+          <h2 className="font-serif text-lg font-semibold text-[#2b2118]">Thể trạng hiện tại</h2>
+          {fitnessState.loading ? (
+            <span className="text-sm text-[#6b6055]">Đang đánh giá...</span>
+          ) : (
+            fitness && <ReadinessText code={fitness.readiness}>{fitness.readinessLabel}</ReadinessText>
+          )}
+          <ChevronDown
+            className={`ml-auto h-4 w-4 shrink-0 text-[#6b6055] transition-transform ${fitnessOpen ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+        </button>
+        {fitnessOpen && (
+          <div id="plan-fitness" className="mt-2">
+            <HorseFitnessPanel
+              fitness={fitness}
+              loading={fitnessState.loading}
+              error={fitnessState.error}
+              onRefresh={fitnessState.reload}
+              showHeader={false}
+              layout="table"
+            />
+          </div>
+        )}
+      </section>
 
       {/* Sau thao tác trên 1 buổi: tải lại ngầm (tiến độ + danh sách buổi đổi theo) */}
       <SessionDrawer

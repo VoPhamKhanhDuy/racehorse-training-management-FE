@@ -2,31 +2,31 @@ import HorseProfileSection from "./HorseProfileSection";
 import { formatDate } from "../../utils/date";
 import { getVaccineState } from "../../utils/healthAlerts";
 
-// Màu chữ theo trạng thái hiển thị (getVaccineState: "Quá hạn" tính từ "Chờ tiêm" + NgayHen đã qua) — chữ thường, không nền/không chấm
+// Màu chữ theo trạng thái hiển thị (getVaccineState: "Quá hạn" tính từ "Chờ tiêm" + NgayHen đã qua) — chữ đậm, không nền/không chấm
 const STATUS_TEXT = {
-  "Quá hạn": "text-brass-deep",
-  "Sắp tới": "text-ink/75",
-  "Chờ tiêm": "text-ink/75",
-  "Đã tiêm": "text-bark",
+  "Quá hạn": "text-[#c0262d]",
+  "Sắp tới": "text-[#946330]",
+  "Chờ tiêm": "text-[#946330]",
+  "Đã tiêm": "text-[#4d6b2a]",
 };
 
-// Mục "Vắc-xin" trong hồ sơ ngựa (vaccinations đã sắp NgayHen mới → cũ). Cột phụ hẹp nên mỗi mục 2 dòng.
+// Mục "Vắc-xin" trong hồ sơ ngựa (vaccinations đã sắp NgayHen mới → cũ): mỗi mục trái = tên + ngày hẹn, phải = trạng thái
 export default function HorseProfileVaccinations({ vaccinations, className }) {
   return (
     <HorseProfileSection title="Vắc-xin" className={className}>
       {vaccinations.length === 0 ? (
-        <p className="text-sm text-stone">Chưa có lịch tiêm phòng nào.</p>
+        <p className="text-sm text-[#6b6055]">Chưa có lịch tiêm phòng nào.</p>
       ) : (
         <ul>
           {vaccinations.map((v) => {
             const state = getVaccineState(v);
             return (
-              <li key={v.ScheduleID} className="border-b border-stone/15 py-2.5 text-sm last:border-b-0">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 text-ink">{v.Loai}</span>
-                  <span className={`shrink-0 ${STATUS_TEXT[state] ?? "text-stone"}`}>{state}</span>
+              <li key={v.ScheduleID} className="flex items-start justify-between gap-3 border-b border-[#ece5d6] py-2.5 last:border-b-0">
+                <div className="min-w-0">
+                  <p className="text-sm text-[#2b2118]">{v.Loai}</p>
+                  <p className="text-[13px] text-[#6b6055] tabular-nums">Ngày hẹn {formatDate(v.NgayHen)}</p>
                 </div>
-                <p className="text-xs text-stone tabular-nums">Ngày hẹn {formatDate(v.NgayHen)}</p>
+                <span className={`shrink-0 text-sm font-semibold ${STATUS_TEXT[state] ?? "text-[#6b6055]"}`}>{state}</span>
               </li>
             );
           })}

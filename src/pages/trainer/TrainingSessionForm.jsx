@@ -274,7 +274,7 @@ export default function TrainingSessionForm() {
               return (
                 <option key={type.code} value={type.code} disabled={blocked}>
                   {type.label} — {label("intensityLevels", type.intensityLevel)}
-                  {blocked ? " (vượt mức cho phép)" : ""}
+                  {blocked ? (phase ? " (vượt mức cho phép)" : " (ngày chưa thuộc giai đoạn nào)") : ""}
                 </option>
               );
             })}

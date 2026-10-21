@@ -1,6 +1,7 @@
 // Chọn Giới tính trong form hồ sơ ngựa: chip chọn-một (radio), không dùng dropdown.
 // Dùng input radio thật (ẩn) để bàn phím mũi tên + trình đọc màn hình chạy sẵn.
-export default function GenderChips({ value, options, error, onChange }) {
+// labels (tùy chọn): { giá trị: nhãn hiển thị } — chỉ đổi chữ trên chip, giá trị gửi đi vẫn là giá trị gốc.
+export default function GenderChips({ value, options, labels, error, onChange }) {
   return (
     <fieldset aria-invalid={Boolean(error)}>
       <legend className="mb-1 block font-serif text-sm font-semibold text-stone">Giới tính</legend>
@@ -24,7 +25,7 @@ export default function GenderChips({ value, options, error, onChange }) {
                 onChange={() => onChange(option)}
                 className="sr-only"
               />
-              {option}
+              {labels?.[option] ?? option}
             </label>
           );
         })}
