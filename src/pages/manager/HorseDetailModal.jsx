@@ -4,6 +4,7 @@ import HealthStatusBadge from "../../components/HealthStatusBadge";
 import Modal from "../../components/Modal";
 import HorseRaceRecord from "./HorseRaceRecord";
 import { formatBirthDateWithAge, formatDate } from "../../utils/date";
+import { genderLabel } from "../../utils/horseGender";
 
 // Một dòng thông tin trong modal: nhãn trên, giá trị dưới
 function DetailItem({ label, children, wide = false }) {
@@ -36,7 +37,7 @@ export default function HorseDetailModal({ horse, owner, healthRecord, achieveme
             </DetailItem>
             <DetailItem label="Giống">{horse.Giong || "—"}</DetailItem>
             <DetailItem label="Ngày sinh">{formatBirthDateWithAge(horse.NgaySinh) || "—"}</DetailItem>
-            <DetailItem label="Giới tính">{horse.GioiTinh || "—"}</DetailItem>
+            <DetailItem label="Giới tính">{genderLabel(horse.GioiTinh) || "—"}</DetailItem>
             <DetailItem label="Màu lông">{horse.MauLong || "—"}</DetailItem>
             <DetailItem label="Cân nặng">{horse.CanNang.toLocaleString("vi-VN")} kg</DetailItem>
             <DetailItem label="Dòng dõi" wide>

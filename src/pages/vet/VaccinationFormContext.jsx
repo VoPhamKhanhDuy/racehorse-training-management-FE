@@ -1,5 +1,6 @@
 import HorseAvatar from "../../components/HorseAvatar";
 import { formatDate, formatHorseAge } from "../../utils/date";
+import { genderLabel } from "../../utils/horseGender";
 import { getVaccineState } from "../../utils/healthAlerts";
 
 const RECENT_COUNT = 5;
@@ -12,7 +13,7 @@ export default function VaccinationFormContext({ horse, items, editingId }) {
     return <p className="py-6 text-center text-sm text-stone">Chọn ngựa để xem các lịch tiêm gần nhất.</p>;
   }
 
-  const facts = [horse.Giong, formatHorseAge(horse.NgaySinh), horse.GioiTinh].filter(Boolean);
+  const facts = [horse.Giong, formatHorseAge(horse.NgaySinh), genderLabel(horse.GioiTinh)].filter(Boolean);
   // Gần nhất = NgayHen mới nhất trước
   const recent = [...items].sort((a, b) => b.NgayHen.localeCompare(a.NgayHen)).slice(0, RECENT_COUNT);
 

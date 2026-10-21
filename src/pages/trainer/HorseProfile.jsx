@@ -20,7 +20,7 @@ import {
   getVaccinationSchedules,
 } from "../../services/trainerService";
 
-const BACK_LINK = "text-sm text-stone underline-offset-2 hover:text-ink hover:underline";
+const BACK_LINK = "text-sm text-[#4a3f33] transition-colors hover:text-[#c2570c]";
 
 // Tải toàn bộ dữ liệu hồ sơ 1 ngựa; horse = null nếu id không tồn tại
 async function loadProfile(horseId) {
@@ -62,7 +62,7 @@ async function loadProfile(horseId) {
 }
 
 // Hồ sơ 1 ngựa cho HLV trưởng — CHỈ XEM.
-// Desktop: 2 cột (chính 64% | phụ 36%). Mobile: 1 cột theo thứ tự Sức khỏe → Giáo án → Buổi tập → Vắc-xin → Thi đấu
+// Từ 900px: 2 cột (2fr | 1fr, gap 24px). Dưới 900px: 1 cột theo thứ tự Sức khỏe → Giáo án → Buổi tập → Vắc-xin → Thi đấu
 // (2 khung cột dùng display: contents trên mobile nên các mục xếp lại được bằng order-*).
 export default function HorseProfile() {
   const { id } = useParams();
@@ -85,7 +85,7 @@ export default function HorseProfile() {
   if (!profile.horse) {
     return (
       <div className="py-16 text-center">
-        <p className="text-stone">Không tìm thấy hồ sơ ngựa này.</p>
+        <p className="text-[#6b6055]">Không tìm thấy hồ sơ ngựa này.</p>
         <Link to="/trainer/horses" className={`mt-2 inline-block ${BACK_LINK}`}>
           ← Về danh sách hồ sơ ngựa
         </Link>
@@ -96,7 +96,7 @@ export default function HorseProfile() {
   const { horse } = profile;
 
   return (
-    <div>
+    <div className="mx-auto max-w-[1200px]">
       <Link to="/trainer/horses" className={BACK_LINK}>
         ← Hồ sơ ngựa
       </Link>
@@ -105,17 +105,18 @@ export default function HorseProfile() {
         <HorseProfileIdentity
           horse={horse}
           ownerName={profile.ownerName}
+          health={profile.health}
           lock={profile.lock}
           lockedByName={profile.lockedByName}
         />
       </div>
 
-      <div className="mt-6 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,64fr)_minmax(0,36fr)] lg:items-start lg:gap-x-12">
-        <div className="contents lg:flex lg:flex-col lg:gap-8">
+      <div className="mt-6 flex flex-col gap-6 min-[900px]:grid min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] min-[900px]:items-start">
+        <div className="contents min-[900px]:flex min-[900px]:flex-col min-[900px]:gap-6">
           <HorseProfilePlans horseId={horse.HorseID} plans={profile.plans} className="order-2" />
           <HorseProfileSessions horseId={horse.HorseID} sessions={profile.sessions} className="order-3" />
         </div>
-        <div className="contents lg:flex lg:flex-col lg:gap-8">
+        <div className="contents min-[900px]:flex min-[900px]:flex-col min-[900px]:gap-6">
           <HorseProfileHealth health={profile.health} latestCheckup={profile.latestCheckup} className="order-1" />
           <HorseProfileVaccinations vaccinations={profile.vaccinations} className="order-4" />
           <HorseProfileRaces entries={profile.raceEntries} className="order-5" />

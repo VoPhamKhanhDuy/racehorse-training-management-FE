@@ -9,20 +9,20 @@ export default function HorseProfileHealth({ health, latestCheckup, className })
     <HorseProfileSection title="Sức khỏe" className={className}>
       {health ? (
         <p className="text-sm">
-          <span className={`font-medium ${getHealthStyle(health.TrangThai).text}`}>{health.TrangThai}</span>
-          <span className="text-stone"> · cập nhật {formatDate(health.NgayCapNhat)}</span>
+          <span className={`font-semibold ${getHealthStyle(health.TrangThai).text}`}>{health.TrangThai}</span>
+          <span className="text-[#6b6055]"> · cập nhật {formatDate(health.NgayCapNhat)}</span>
         </p>
       ) : (
-        <p className="text-sm text-stone">Bác sĩ thú y chưa cập nhật tình trạng sức khỏe.</p>
+        <p className="text-sm text-[#6b6055]">Bác sĩ thú y chưa cập nhật tình trạng sức khỏe.</p>
       )}
-      <p className="mt-1.5 text-sm text-ink">
+      <p className="mt-2 text-sm text-[#2b2118]">
         {latestCheckup ? (
           `Ngày khám gần nhất: ${formatDate(latestCheckup.Ngay)}`
         ) : (
-          <span className="text-stone">Chưa có lần khám nào được ghi nhận.</span>
+          <span className="text-[#6b6055]">Chưa có lần khám nào được ghi nhận.</span>
         )}
       </p>
-      <p className="mt-1.5 text-xs text-stone">Chẩn đoán và phác đồ điều trị do bác sĩ thú y quản lý.</p>
+      <p className="mt-2 text-[13px] text-[#6b6055]">Chẩn đoán và phác đồ điều trị do bác sĩ thú y quản lý.</p>
     </HorseProfileSection>
   );
 }

@@ -1,18 +1,29 @@
-import { Fragment } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
-import HorseIcon from "../../components/HorseIcon";
-import { getHealthLabel, getHealthStyle } from "../../utils/healthStatusStyles";
+import { getHealthLabel } from "../../utils/healthStatusStyles";
 import { formatHorseAge } from "../../utils/date";
 
-// Vị trí cắt mặc định khi ảnh vào khung vuông: ưu tiên thân ngựa; ngựa nào cần lệch khung thì khai photoPosition trong data/horses.js
+// Vị trí cắt mặc định khi ảnh vào khung: ưu tiên thân ngựa; ngựa nào cần lệch khung thì khai photoPosition trong data/horses.js
 const DEFAULT_PHOTO_POSITION = "center 30%";
 
-// 1 dòng trong "sổ lý lịch" ngựa: ảnh | tên + giống/tuổi/cân nặng + dòng dõi | chỉ số tập gần nhất | chủ ngựa | sức khỏe.
-// Cả dòng là 1 link nên bấm chuột hoặc Tab + Enter đều mở hồ sơ.
-// Màn hẹp: ảnh nhỏ hơn, ẩn chủ ngựa; cột chỉ số tập chỉ hiện từ xl (đủ chỗ, không chen tên ngựa).
-// latestIndex: ChiSoTap của buổi tập mới nhất (undefined = chưa có buổi tập)
-export default function HorseProfileRow({ horse, healthStatus, ownerName, locked, latestIndex }) {
+// Màu chữ tình trạng sức khỏe trên thẻ (chỉ chữ, không nền): tốt olive, cần theo dõi nâu vàng, điều trị / chấn thương / cách ly đỏ
+const HEALTH_TEXT = {
+  "Tốt": "text-[#4d6b2a]",
+  "Đủ điều kiện": "text-[#4d6b2a]",
+  "Cần theo dõi": "text-[#946330]",
+  "Đang điều trị": "text-[#c0262d]",
+  "Chấn thương": "text-[#c0262d]",
+  "Cách ly": "text-[#c0262d]",
+};
+
+// Nền ảnh chưa có: sọc chéo nhạt
+const PLACEHOLDER_STYLE = {
+  backgroundImage: "repeating-linear-gradient(135deg, #efe9dc 0 10px, #f6f1e7 10px 20px)",
+};
+
+// 1 thẻ ngựa trong lưới hồ sơ: ảnh trên cùng, tên + "Giống · tuổi · cân nặng", rồi các dòng nhãn–giá trị (sức khỏe, chủ ngựa).
+// Cả thẻ là 1 link nên bấm chuột hoặc Tab + Enter đều mở hồ sơ.
+// locked: ngựa đang khóa tập (ghi thêm "Đang khóa tập" sau tình trạng sức khỏe).
+export default function HorseProfileRow({ horse, healthStatus, ownerName, locked }) {
   const facts = [
     horse.Giong,
     formatHorseAge(horse.NgaySinh),
@@ -20,75 +31,43 @@ export default function HorseProfileRow({ horse, healthStatus, ownerName, locked
   ].filter(Boolean);
 
   return (
-    <li className="border-b border-stone/15">
-      <Link
-        to={`/trainer/horses/${horse.HorseID}`}
-        className="group flex min-h-[92px] items-center gap-3 py-2.5 outline-none transition-colors hover:bg-track/50 focus-visible:bg-track/50 sm:gap-5 sm:pr-2"
-      >
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-stone/10 text-stone sm:h-[72px] sm:w-[72px]">
-          {horse.photo ? (
-            <img
-              src={horse.photo}
-              alt=""
-              className="h-full w-full object-cover"
-              style={{ objectPosition: horse.photoPosition ?? DEFAULT_PHOTO_POSITION }}
-            />
-          ) : (
-            <HorseIcon className="h-6 w-6" />
-          )}
-        </span>
+    <Link
+      to={`/trainer/horses/${horse.HorseID}`}
+      className="group flex flex-col overflow-hidden rounded border border-[#d9cfba] bg-white outline-none transition-colors hover:border-[#b9ab90] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+    >
+      <div className="h-[168px] w-full shrink-0 bg-[#efe9dc]">
+        {horse.photo ? (
+          <img
+            src={horse.photo}
+            alt={horse.Ten}
+            className="h-full w-full object-cover"
+            style={{ objectPosition: horse.photoPosition ?? DEFAULT_PHOTO_POSITION }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[13px] text-[#6b6055]" style={PLACEHOLDER_STYLE}>
+            Chưa có ảnh
+          </div>
+        )}
+      </div>
 
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-serif text-2xl leading-tight font-semibold text-bark">{horse.Ten}</span>
-          {/* Màn hẹp: xuống dòng giữa các mục, không cắt đôi "500 kg" */}
-          <span className="block text-sm text-stone sm:truncate">
-            {facts.map((fact, i) => (
-              // Dấu " · " nằm ngoài khối nowrap để trình duyệt được xuống dòng tại đó
-              <Fragment key={fact}>
-                {i > 0 && " · "}
-                <span className="whitespace-nowrap">{fact}</span>
-              </Fragment>
-            ))}
-          </span>
-          {horse.DongDoi && (
-            <span className="block truncate text-[15px]">
-              <span className="text-stone">Dòng dõi: </span>
-              <span className="font-serif text-bark/75 italic">{horse.DongDoi}</span>
-            </span>
-          )}
-        </span>
+      <div className="flex flex-1 flex-col p-4">
+        <h2 className="truncate font-serif text-[19px] leading-snug font-semibold text-[#2b2118]">{horse.Ten}</h2>
+        <p className="mt-0.5 truncate text-[13px] text-[#6b6055]">{facts.join(" · ")}</p>
 
-        {/* Cách cột chủ ngựa ~48px (gap 20px + mr 28px). Ngựa đang khóa tập: vẫn hiện nhưng mờ nhẹ */}
-        <span className={`mr-7 hidden w-[160px] shrink-0 xl:block ${locked ? "opacity-55" : ""}`}>
-          <span className="block text-xs text-stone">Chỉ số tập gần nhất</span>
-          {latestIndex === undefined ? (
-            <span className="mt-1 block text-sm text-stone">Chưa có buổi tập</span>
-          ) : (
-            <span className="block whitespace-nowrap">
-              <span className="font-serif text-[26px] leading-none font-semibold text-bark tabular-nums">{latestIndex}</span>
-              <span className="text-xs text-stone">/100</span>
-            </span>
-          )}
-        </span>
-
-        <span className="hidden w-40 shrink-0 sm:block">
-          <span className="block text-xs text-stone">Chủ ngựa</span>
-          <span className="block truncate text-[15px] text-ink">{ownerName ?? "—"}</span>
-        </span>
-
-        <span className="min-w-24 shrink-0 whitespace-nowrap sm:w-28">
-          <span className="block text-xs text-stone">Sức khỏe</span>
-          <span className={`block text-base ${getHealthStyle(healthStatus).text}`}>{getHealthLabel(healthStatus)}</span>
-          {locked && <span className="block text-xs text-stone">Đang khóa tập</span>}
-        </span>
-
-        {/* Chevron chỉ hiện khi hover/focus; luôn giữ chỗ để dòng không bị xô lệch */}
-        <ChevronRight
-          className="hidden h-4 w-4 shrink-0 text-stone opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:block"
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-      </Link>
-    </li>
+        <dl className="mt-3 divide-y divide-[#ece5d6] border-t border-[#ece5d6] text-[13px]">
+          <div className="flex items-baseline justify-between gap-3 py-2">
+            <dt className="shrink-0 text-[#6b6055]">Sức khỏe</dt>
+            <dd className="min-w-0 text-right font-semibold">
+              <span className={HEALTH_TEXT[healthStatus] ?? "text-[#6b6055]"}>{getHealthLabel(healthStatus)}</span>
+              {locked && <span className="text-[#c0262d]"> · Đang khóa tập</span>}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 py-2">
+            <dt className="shrink-0 text-[#6b6055]">Chủ ngựa</dt>
+            <dd className="min-w-0 truncate text-right text-[#2b2118]">{ownerName ?? "—"}</dd>
+          </div>
+        </dl>
+      </div>
+    </Link>
   );
 }

@@ -30,6 +30,9 @@ export default function WeeklyScheduleGenerator() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(todayISO()));
+  // Ngày người dùng vừa chọn trong ô ngày (hiển thị đúng ngày đó); weekStart là thứ Hai của tuần chứa ngày này.
+  // Tách riêng để ô không bị bẻ về thứ Hai ngay khi chọn/gõ (trước đây khiến không chọn được ngày khác).
+  const [pickedDate, setPickedDate] = useState(() => startOfWeek(todayISO()));
   const [startTime, setStartTime] = useState("06:00");
   const [assignee, setAssignee] = useState("");
   const [replaceExisting, setReplaceExisting] = useState(false);
@@ -47,7 +50,9 @@ export default function WeeklyScheduleGenerator() {
         setStaff(staffList);
         // Tuần mặc định: tuần hiện tại, hoặc tuần đầu của giáo án nếu giáo án chưa bắt đầu
         const today = todayISO();
-        setWeekStart(startOfWeek(planDetail.startDate > today ? planDetail.startDate : today));
+        const initialWeek = startOfWeek(planDetail.startDate > today ? planDetail.startDate : today);
+        setWeekStart(initialWeek);
+        setPickedDate(initialWeek);
         setLoading(false);
       })
       .catch((err) => {
@@ -62,6 +67,7 @@ export default function WeeklyScheduleGenerator() {
 
   const changeWeek = (value) => {
     if (!value) return;
+    setPickedDate(value);
     setWeekStart(startOfWeek(value));
     setResult(null);
     setError(null);
@@ -143,7 +149,7 @@ export default function WeeklyScheduleGenerator() {
                     label="Tuần (chọn 1 ngày bất kỳ)"
                     id="weekStart"
                     type="date"
-                    value={weekStart}
+                    value={pickedDate}
                     onChange={(e) => changeWeek(e.target.value)}
                   />
                 </div>

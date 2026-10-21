@@ -4,6 +4,7 @@ import OwnerHorseAchievements from "./OwnerHorseAchievements";
 import styles from "./OwnerHorseCard.module.css";
 import { FEED_COMPONENTS, FEED_MEALS } from "../../data/feedingOptions";
 import { formatBirthDateWithAge } from "../../utils/date";
+import { genderLabel } from "../../utils/horseGender";
 import { OWNER_HEALTH_COLORS } from "../../utils/ownerHealthText";
 
 // Dòng sức khỏe cho chủ ngựa: chữ thường đậm 600, chỉ cụm trạng thái có màu (không pill/chấm/nền).
@@ -71,7 +72,7 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
             <SectionTitle as="h3">Hồ sơ</SectionTitle>
             <dl className={styles.specs}>
               <OwnerDottedRow label="Giống" value={horse.Giong} />
-              <OwnerDottedRow label="Giới tính" value={horse.GioiTinh} />
+              <OwnerDottedRow label="Giới tính" value={genderLabel(horse.GioiTinh)} />
               <OwnerDottedRow label="Màu lông" value={horse.MauLong} />
               <OwnerDottedRow
                 label="Ngày sinh"

@@ -1,6 +1,7 @@
 import HorseAvatar from "../../components/HorseAvatar";
 import TrainingLockNotice from "../../components/TrainingLockNotice";
 import { formatDate, formatHorseAge } from "../../utils/date";
+import { genderLabel } from "../../utils/horseGender";
 import { getHealthLabel, getHealthStyle } from "../../utils/healthStatusStyles";
 
 const RECENT_COUNT = 3;
@@ -13,7 +14,7 @@ export default function ExamFormContext({ horse, health, lock, lockedByName, rec
     return <p className="py-6 text-center text-sm text-stone">Chọn ngựa để xem tình trạng sức khỏe và các lần khám gần nhất.</p>;
   }
 
-  const facts = [horse.Giong, formatHorseAge(horse.NgaySinh), horse.GioiTinh].filter(Boolean);
+  const facts = [horse.Giong, formatHorseAge(horse.NgaySinh), genderLabel(horse.GioiTinh)].filter(Boolean);
   const recent = records.slice(0, RECENT_COUNT);
 
   return (

@@ -1,9 +1,9 @@
-import TrainingLockNotice from "../../components/TrainingLockNotice";
 import { LOCK_CONFLICT_RACE } from "../../utils/trainingLock";
 import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
+import TabFilter from "../../components/TabFilter";
 import useAuth from "../../hooks/useAuth";
 import RaceMatrix from "./RaceMatrix";
 import RaceResultPopover from "./RaceResultPopover";
@@ -20,7 +20,7 @@ import {
   updateRaceResult,
 } from "../../services/trainerService";
 import { addAuditLog } from "../../services/auditService";
-import { addDays, formatDayMonth, todayISO } from "../../utils/date";
+import { addDays, formatDate, formatDayMonth, todayISO } from "../../utils/date";
 import { NO_RANK, hasResult } from "../../utils/raceResult";
 import { toUserID } from "../../utils/userId";
 
@@ -28,8 +28,8 @@ import { toUserID } from "../../utils/userId";
 const resultText = (rank) => (rank === null ? "chưa có kết quả" : rank === NO_RANK ? "không xếp hạng" : `hạng ${rank}`);
 
 const VIEW_TABS = [
-  { value: "upcoming", label: "Sắp tới" },
-  { value: "past", label: "Đã diễn ra" },
+  { code: "upcoming", label: "Sắp tới" },
+  { code: "past", label: "Đã diễn ra" },
 ];
 const RECENT_TRAINING_DAYS = 14; // tham khảo: ngựa có buổi tập trong 14 ngày gần đây không
 const TOAST_MS = 3500;
@@ -204,81 +204,85 @@ export default function Races() {
     : [];
 
   return (
-    <div>
-      <h1 className="mb-5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Đăng ký thi đấu</h1>
+    <div className="mx-auto max-w-[1400px]">
+      <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">Đăng ký thi đấu</h1>
+      <p className="mt-1 mb-4 text-[13px] text-[#6b6055]">
+        {tab === "upcoming"
+          ? "Chọn ô để đăng ký ngựa vào giải. Ô cam là đã đăng ký."
+          : "Bấm ô ngựa đã đăng ký để nhập hoặc sửa thứ hạng."}
+      </p>
 
       {loading ? (
         <LoadingState />
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative w-full sm:w-96">
+          {/* 1 hàng: tìm kiếm bên trái, tab Sắp tới / Đã diễn ra bên phải; đường kẻ chạy hết chiều rộng bên dưới */}
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-[#d9cfba]">
+            <div className="relative w-full pb-2 sm:w-[280px]">
               <label htmlFor="raceHorseKeyword" className="sr-only">
                 Tìm theo tên ngựa
               </label>
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" aria-hidden="true" />
+              <Search className="pointer-events-none absolute top-[18px] left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" aria-hidden="true" />
               <input
                 id="raceHorseKeyword"
                 type="search"
                 placeholder="Tìm theo tên ngựa..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+                className="h-9 w-full rounded border border-[#cfc4ad] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
               />
             </div>
-            {/* Công tắc chữ "Sắp tới | Đã diễn ra" — cùng kiểu pill lọc */}
-            <div role="radiogroup" aria-label="Thời điểm giải đua" className="inline-flex rounded-full border border-stone/25 bg-white p-0.5">
-              {VIEW_TABS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={tab === option.value}
-                  onClick={() => setTab(option.value)}
-                  className={`cursor-pointer rounded-full px-3.5 py-1.5 text-sm transition-colors ${
-                    tab === option.value ? "bg-brass/15 font-medium text-brass-deep" : "text-ink hover:bg-black/[0.03]"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+            <div className="[&>div]:border-[#d9cfba]">
+              <TabFilter ariaLabel="Thời điểm giải đua" options={VIEW_TABS} value={tab} onChange={setTab} />
             </div>
           </div>
+
           {lockConflicts.length > 0 && (
             <div className="mt-4 space-y-2">
               {lockConflicts.map(({ lock, horse, upcoming }) => (
-                <TrainingLockNotice
+                <div
                   key={lock.LockID}
-                  lock={lock}
-                  horseName={horse.Ten}
-                  hint={`${LOCK_CONFLICT_RACE}: ${upcoming.map((race) => `${race.TenGiai} (${formatDayMonth(race.Ngay)})`).join(", ")}.`}
-                />
+                  role="note"
+                  className="rounded border border-[#d9cfba] border-l-4 border-l-[#c0262d] bg-white px-4 py-2.5"
+                >
+                  <p className="text-sm font-semibold text-[#2b2118]">
+                    {horse.Ten} đang khóa tập từ {formatDate(lock.NgayDat)}
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-[#4a3f33]">
+                    Lý do: {lock.LyDo}. {LOCK_CONFLICT_RACE}:{" "}
+                    {upcoming.map((race, index) => (
+                      <span key={race.RaceID}>
+                        {index > 0 && ", "}
+                        <b className="font-semibold text-[#2b2118]">{race.TenGiai}</b> ({formatDayMonth(race.Ngay)})
+                      </span>
+                    ))}
+                    .
+                  </p>
+                </div>
               ))}
             </div>
           )}
-          <p className="mt-3 mb-4 text-xs text-stone">
-            {tab === "upcoming"
-              ? "Viền cam: đã đăng ký · Bấm + để đăng ký · Bấm ô đã đăng ký để hủy"
-              : "Bấm ô ngựa đã đăng ký để nhập hoặc sửa thứ hạng"}
-          </p>
 
-          {visibleRaces.length === 0 ? (
-            <p className="rounded-lg border border-gridline bg-white px-4 py-12 text-center text-sm text-stone">
-              {tab === "upcoming" ? "Chưa có giải đua sắp tới." : "Chưa có giải đua nào đã diễn ra."}
-            </p>
-          ) : (
-            <RaceMatrix
-              races={visibleRaces}
-              horses={visibleHorses}
-              horseInfoById={horseInfoById}
-              registrationByKey={registrationByKey}
-              savingKey={savingKey}
-              emptyText="Không tìm thấy ngựa nào khớp."
-              onRegister={handleRegister}
-              onCancel={(horse, race) => setCancelTarget({ horse, race })}
-              onOpenResult={(horse, race, anchor) => setResultTarget({ horse, race, anchor })}
-            />
-          )}
+          <div className="mt-4">
+            {visibleRaces.length === 0 ? (
+              <p className="rounded border border-[#b9ab90] bg-white px-4 py-12 text-center text-sm text-[#6b6055]">
+                {tab === "upcoming" ? "Chưa có giải đua sắp tới." : "Chưa có giải đua nào đã diễn ra."}
+              </p>
+            ) : (
+              <RaceMatrix
+                races={visibleRaces}
+                horses={visibleHorses}
+                totalHorses={horses.length}
+                horseInfoById={horseInfoById}
+                registrationByKey={registrationByKey}
+                savingKey={savingKey}
+                emptyText="Không tìm thấy ngựa nào khớp."
+                onRegister={handleRegister}
+                onCancel={(horse, race) => setCancelTarget({ horse, race })}
+                onOpenResult={(horse, race, anchor) => setResultTarget({ horse, race, anchor })}
+              />
+            )}
+          </div>
         </>
       )}
 
