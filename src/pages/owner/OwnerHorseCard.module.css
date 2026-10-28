@@ -5,7 +5,7 @@
    - Tiêu đề mục dùng components/SectionTitle (cách phía trên 56px). */
 
 .page {
-  max-width: 1180px;
+  max-width: 1040px;
 }
 
 /* Phần đầu: 1 cột (màn hẹp); ≥ 900px: ảnh | thông tin */
@@ -18,7 +18,7 @@
 
 .photo {
   width: 100%;
-  max-width: 620px;
+  max-width: 460px;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 2px;
@@ -40,7 +40,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-serif);
-  font-size: 120px;
+  font-size: 96px;
   font-weight: 600;
   line-height: 1;
   color: #d9cdb8;
@@ -85,15 +85,15 @@
 
 /* Mục "Hồ sơ" trong cột thông tin: cách phía trên 56px như mọi mục khác */
 .profile {
-  margin-top: 56px;
+  margin-top: 36px;
 }
 
 /* Hàng dưới: Chăm sóc hằng ngày | Thành tích thi đấu */
 .lower {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  row-gap: 56px;
-  margin-top: 56px;
+  row-gap: 40px;
+  margin-top: 40px;
   align-items: start;
 }
 
@@ -208,12 +208,12 @@
 /* ≥ 900px: ảnh (co theo cột, tối đa 620px) | thông tin, cách 48px */
 @media (min-width: 900px) {
   .top {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    column-gap: 48px;
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+    column-gap: 40px;
   }
 
   .name {
-    font-size: 56px;
+    font-size: 40px;
   }
 }
 
@@ -221,6 +221,6 @@
 @media (min-width: 1100px) {
   .lower {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    column-gap: 48px;
+    column-gap: 40px;
   }
 }

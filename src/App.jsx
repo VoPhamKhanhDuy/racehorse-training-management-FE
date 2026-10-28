@@ -11,6 +11,7 @@ import OwnerHorseProfile from "./pages/owner/OwnerHorseProfile";
 import OwnerHealth from "./pages/owner/OwnerHealth";
 import OwnerSchedule from "./pages/owner/OwnerSchedule";
 import OwnerFinance from "./pages/owner/OwnerFinance";
+import OwnerPayment from "./pages/owner/OwnerPayment";
 import ChangePassword from "./pages/auth/ChangePassword";
 import AccountApprovals from "./pages/manager/AccountApprovals";
 import CreateStaffAccount from "./pages/manager/CreateStaffAccount";
@@ -150,6 +151,7 @@ function App() {
         <Route path="/owner/health" element={<OwnerHealth />} />
         <Route path="/owner/schedule" element={<OwnerSchedule />} />
         <Route path="/owner/finance" element={<OwnerFinance />} />
+        <Route path="/owner/finance/pay/:monthKey" element={<OwnerPayment />} />
         <Route path="/owner/*" element={<PlaceholderPage />} />
       </Route>
 
