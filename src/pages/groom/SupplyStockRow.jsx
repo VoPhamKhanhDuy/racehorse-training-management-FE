@@ -1,25 +1,40 @@
+import { Check, TriangleAlert } from "lucide-react";
 import { SUPPLY_STATES, getSupplyConfig, getSupplyState } from "../../config/supplyConfig";
 
-// Mẫu cột: Tên | Loại (chỉ hiện ở nhóm "Cần bổ sung", ẩn dưới 900px) | Tình trạng | Số lượng tồn (căn phải)
-export const SUPPLY_GRID =
-  "grid grid-cols-[minmax(0,1fr)_72px_96px] items-center gap-x-4 min-[900px]:grid-cols-[minmax(0,1fr)_170px_80px_110px]";
+const CELL = "border-b border-[#d9cfba] px-4 py-3";
 
-// 1 vật tư = 1 hàng ~52px, chỉ xem (không bấm được). showType: hiện Loại (nhóm "Cần bổ sung").
-export default function SupplyStockRow({ item, showType }) {
+// 1 vật tư = 1 hàng bảng, chỉ xem (không bấm được): Tên | Nhóm | Số lượng | Tình trạng.
+// Cần bổ sung (sắp hết / hết hàng): vạch trái 3px cam + nền kem nhạt.
+export default function SupplyStockRow({ item }) {
   const state = getSupplyState(item);
   const { donVi } = getSupplyConfig(item.TenVatTu);
+  const restock = state !== SUPPLY_STATES.OK;
 
   return (
-    <li className={`min-h-[52px] border-b border-stone/15 py-2.5 pr-2 pl-3 text-sm transition-colors hover:bg-[#faf6ee] ${SUPPLY_GRID}`}>
-      <span className="truncate text-[15px] text-ink" title={item.TenVatTu}>
-        {item.TenVatTu}
-      </span>
-      <span className="hidden truncate text-stone min-[900px]:block">{showType ? item.Loai : ""}</span>
-      <span className="text-xs font-semibold text-brass-deep">{state === SUPPLY_STATES.OK ? "" : state}</span>
-      <span className="text-right whitespace-nowrap tabular-nums">
-        <span className="text-ink">{item.SoLuongTon.toLocaleString("vi-VN")}</span>
-        {donVi && <span className="text-stone"> {donVi}</span>}
-      </span>
-    </li>
+    <tr className={`text-[#2b2118] transition-colors hover:bg-[#f0efec] ${restock ? "bg-[#fdf8ef]" : ""}`}>
+      <td className={`${CELL} max-w-0 border-l-[3px] ${restock ? "border-l-[#c2570c]" : "border-l-transparent"}`}>
+        <span className="block truncate text-[15px] font-semibold" title={item.TenVatTu}>
+          {item.TenVatTu}
+        </span>
+      </td>
+      <td className={`${CELL} w-[140px] min-w-[140px] text-sm whitespace-nowrap text-[#4a3f33]`}>{item.Loai}</td>
+      <td className={`${CELL} w-[140px] min-w-[140px] text-right whitespace-nowrap tabular-nums`}>
+        <span className="text-[15px] font-semibold">{item.SoLuongTon.toLocaleString("vi-VN")}</span>
+        {donVi && <span className="text-sm text-[#6b6055]"> {donVi}</span>}
+      </td>
+      <td className={`${CELL} w-[160px] min-w-[160px] text-sm whitespace-nowrap`}>
+        {state === SUPPLY_STATES.OK ? (
+          <span className="flex items-center gap-1.5 font-semibold text-[#4d6b2a]">
+            <Check className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+            Đủ
+          </span>
+        ) : (
+          <span className={`flex items-center gap-1.5 font-semibold ${state === SUPPLY_STATES.OUT ? "text-[#c0262d]" : "text-[#c2570c]"}`}>
+            <TriangleAlert className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+            {state === SUPPLY_STATES.OUT ? state : "Cần bổ sung"}
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }

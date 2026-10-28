@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import FormField from "../../components/FormField";
 import LoadingState from "../../components/LoadingState";
-import SelectField from "../../components/SelectField";
 import useAuth from "../../hooks/useAuth";
-import IncidentFormContext from "./IncidentFormContext";
 import IncidentImageField from "./IncidentImageField";
 import { createIncidentReport, getCareTasks, getHorses, getStableNumbers } from "../../services/careService";
 import { addAuditLog } from "../../services/auditService";
@@ -13,6 +10,14 @@ import { todayISO } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
 const BACK_TO_LIST = "/groom/incidents";
+
+const LABEL = "mb-1.5 block text-[13px] font-semibold text-[#4a3f33]";
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
+const fieldClass = (hasError) =>
+  `h-10 w-full rounded-[4px] border bg-white px-3 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/70 focus:border-[#c2570c] ${
+    hasError ? "border-[#c0262d]" : "border-[#cfc4ad]"
+  }`;
+const ERROR_TEXT = "mt-1.5 text-sm text-[#c0262d]";
 
 // Ngày mặc định hôm nay (tính lúc mở form, không phải lúc tải module)
 const createEmptyForm = () => ({ HorseID: "", LoaiSuCo: "", MoTa: "", Ngay: todayISO(), HinhAnh: "" });
@@ -101,47 +106,53 @@ export default function IncidentReportForm() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <Link to={BACK_TO_LIST} className="text-sm font-medium text-brass-deep hover:underline">
-        ← Quay lại báo cáo sự cố
+    <div className="mx-auto w-full max-w-[1100px] md:px-8">
+      <Link to={BACK_TO_LIST} className={`text-sm text-[#c2570c] hover:underline ${FOCUS_RING}`}>
+        ← Báo cáo sự cố
       </Link>
-      <h1 className="mt-3 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Gửi báo cáo sự cố</h1>
+      <h1 className="mt-3 font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Gửi báo cáo sự cố</h1>
 
-      {/* 2 cột: form bên trái, ngữ cảnh ngựa bên phải (dính khi cuộn). Dưới lg ngữ cảnh xuống dưới form. */}
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10">
-        <form onSubmit={handleSubmit} noValidate className="min-w-0 space-y-6 border-t border-stone/20 pt-6">
-          {errors.form && <p className="rounded-sm border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{errors.form}</p>}
+      <div className="mt-6 max-w-[720px]">
+        <form onSubmit={handleSubmit} noValidate className="min-w-0 space-y-5 rounded-[4px] border border-[#d9cfba] bg-white p-6">
+          {errors.form && (
+            <p className="rounded-[4px] border border-l-4 border-[#d9cfba] border-l-[#c0262d] bg-white px-4 py-3 text-sm text-[#c0262d]">
+              {errors.form}
+            </p>
+          )}
 
-          <div className="sm:max-w-sm">
-            <SelectField
-              variant="line"
-              label="Ngựa"
+          <div>
+            <label htmlFor="HorseID" className={LABEL}>
+              Ngựa
+            </label>
+            <select
               id="HorseID"
               name="HorseID"
               value={form.HorseID}
               onChange={(e) => setField("HorseID", e.target.value)}
-              error={errors.HorseID}
+              aria-invalid={Boolean(errors.HorseID)}
+              className={`${fieldClass(errors.HorseID)} cursor-pointer`}
             >
               <option value="">Chọn ngựa</option>
               {myHorses.length > 0 && <optgroup label="Ngựa bạn phụ trách">{myHorses.map(renderOption)}</optgroup>}
               {otherHorses.length > 0 && (
                 <optgroup label={myHorses.length > 0 ? "Ngựa khác" : "Tất cả ngựa"}>{otherHorses.map(renderOption)}</optgroup>
               )}
-            </SelectField>
+            </select>
+            {errors.HorseID && <p className={ERROR_TEXT}>{errors.HorseID}</p>}
           </div>
 
           <fieldset aria-invalid={Boolean(errors.LoaiSuCo)}>
-            <legend className="mb-1.5 block font-serif text-sm font-semibold text-stone">Loại sự cố</legend>
+            <legend className={LABEL}>Loại sự cố</legend>
             <div className="flex flex-wrap gap-2">
               {INCIDENT_TYPES.map((type) => {
                 const checked = form.LoaiSuCo === type;
                 return (
                   <label
                     key={type}
-                    className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brass/40 ${
+                    className={`flex h-10 cursor-pointer items-center rounded-[4px] border px-4 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#c2570c] ${
                       checked
-                        ? "border-brass bg-brass/15 font-medium text-brass-deep"
-                        : `bg-white text-ink hover:border-stone/40 ${errors.LoaiSuCo ? "border-rust" : "border-stone/25"}`
+                        ? "border-[#c2570c] bg-[#fbf3e6] font-semibold text-[#2b2118]"
+                        : `bg-white text-[#2b2118] hover:bg-[#f0efec] ${errors.LoaiSuCo ? "border-[#c0262d]" : "border-[#cfc4ad]"}`
                     }`}
                   >
                     <input
@@ -157,49 +168,52 @@ export default function IncidentReportForm() {
                 );
               })}
             </div>
-            {errors.LoaiSuCo && <p className="mt-1.5 text-sm text-rust">{errors.LoaiSuCo}</p>}
+            {errors.LoaiSuCo && <p className={ERROR_TEXT}>{errors.LoaiSuCo}</p>}
           </fieldset>
 
           <div>
-            <label htmlFor="MoTa" className="mb-1 block font-serif text-sm font-semibold text-stone">
+            <label htmlFor="MoTa" className={LABEL}>
               Mô tả
             </label>
             <textarea
               id="MoTa"
               name="MoTa"
-              rows={3}
+              rows={4}
               placeholder="Mô tả ngắn điều đã xảy ra"
               aria-invalid={Boolean(errors.MoTa)}
               aria-describedby="MoTa-count"
               value={form.MoTa}
               onChange={(e) => setField("MoTa", e.target.value)}
-              className={`w-full resize-y border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors placeholder:text-stone/50 ${
-                errors.MoTa ? "border-rust" : "border-stone/50 focus:border-brass"
+              className={`min-h-[120px] w-full resize-y rounded-[4px] border bg-white px-3 py-2.5 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/70 focus:border-[#c2570c] ${
+                errors.MoTa ? "border-[#c0262d]" : "border-[#cfc4ad]"
               }`}
             />
             <div className="mt-1 flex items-start justify-between gap-4">
-              {errors.MoTa ? <p className="text-sm text-rust">{errors.MoTa}</p> : <span />}
+              {errors.MoTa ? <p className="text-sm text-[#c0262d]">{errors.MoTa}</p> : <span />}
               <span
                 id="MoTa-count"
-                className={`shrink-0 text-xs tabular-nums ${form.MoTa.trim().length > INCIDENT_DESCRIPTION_MAX ? "text-rust" : "text-stone"}`}
+                className={`shrink-0 text-[13px] tabular-nums ${form.MoTa.trim().length > INCIDENT_DESCRIPTION_MAX ? "text-[#c0262d]" : "text-[#6b6055]"}`}
               >
                 {form.MoTa.trim().length}/{INCIDENT_DESCRIPTION_MAX}
               </span>
             </div>
           </div>
 
-          <div className="sm:max-w-xs">
-            <FormField
-              variant="line"
-              label="Ngày"
+          <div className="w-full sm:w-[220px]">
+            <label htmlFor="Ngay" className={LABEL}>
+              Ngày
+            </label>
+            <input
               id="Ngay"
               name="Ngay"
               type="date"
               max={todayISO()}
               value={form.Ngay}
               onChange={(e) => setField("Ngay", e.target.value)}
-              error={errors.Ngay}
+              aria-invalid={Boolean(errors.Ngay)}
+              className={fieldClass(errors.Ngay)}
             />
+            {errors.Ngay && <p className={ERROR_TEXT}>{errors.Ngay}</p>}
           </div>
 
           <IncidentImageField
@@ -209,26 +223,23 @@ export default function IncidentReportForm() {
             onError={(message) => setErrors((prev) => ({ ...prev, HinhAnh: message }))}
           />
 
-          <div className="flex justify-end gap-3 border-t border-stone/20 pt-5">
+          <div className="flex justify-end gap-3 border-t border-[#d9cfba] pt-5">
             <Link
               to={BACK_TO_LIST}
-              className="rounded-sm border border-stone/30 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-stone/50 hover:bg-black/[0.03]"
+              className={`inline-flex h-10 items-center rounded-[4px] border border-[#cfc4ad] bg-white px-5 text-sm font-semibold text-[#2b2118] transition-colors hover:bg-[#f0efec] ${FOCUS_RING}`}
             >
               Hủy
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="btn-primary"
+              className={`h-10 cursor-pointer rounded-[4px] bg-[#c2570c] px-5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-[#a8480a] disabled:cursor-wait disabled:opacity-60 ${FOCUS_RING}`}
             >
               {submitting ? "Đang gửi..." : "Gửi báo cáo"}
             </button>
           </div>
         </form>
 
-        <aside className="rounded-lg border border-stone/15 bg-white px-5 py-5 lg:sticky lg:top-24">
-          <IncidentFormContext horse={selectedHorse} stable={selectedHorse && stables[selectedHorse.HorseID]} />
-        </aside>
       </div>
     </div>
   );

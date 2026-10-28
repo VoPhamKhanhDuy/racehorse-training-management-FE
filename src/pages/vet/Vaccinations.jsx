@@ -10,8 +10,8 @@ import LoadingState from "../../components/LoadingState";
 import Toast from "../../components/Toast";
 import useAuth from "../../hooks/useAuth";
 import useMediaQuery from "../../hooks/useMediaQuery";
-import HorseSelect from "./HorseSelect";
-import VaccinationRow, { VACCINE_GRID } from "./VaccinationRow";
+import VaccinationLegend from "./VaccinationLegend";
+import VaccinationRow from "./VaccinationRow";
 import MarkVaccinatedDialog from "./MarkVaccinatedDialog";
 import VaccinationMatrix from "./VaccinationMatrix";
 import VaccinationCellDrawer from "./VaccinationCellDrawer";
@@ -34,9 +34,8 @@ const VIEW_MODES = [
   { value: "matrix", label: "Ma trận" },
   { value: "list", label: "Danh sách" },
 ];
-const HEAD_CELL = "text-xs font-medium tracking-wide text-stone uppercase";
-const GROUP_TITLE =
-  "border-b border-stone/15 pt-5 pb-1.5 pl-3 text-xs font-medium tracking-wide text-stone uppercase select-none";
+const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
 
 // Lịch tiêm phòng / tẩy giun (VACCINATIONSCHEDULE) của bác sĩ thú y, 2 chế độ xem:
 // - Ma trận (mặc định): ngựa × loại, mỗi ô 1 lịch đại diện; bấm ô mở ngăn lịch sử. ?horse=ID làm nổi hàng, không ẩn hàng khác.
@@ -192,102 +191,105 @@ export default function Vaccinations() {
     }
   };
 
+  // Danh sách phẳng giữ nguyên thứ tự các nhóm (Quá hạn → Sắp tới → Đã tiêm)
+  const listRows = groups.flatMap((g) => g.rows);
+
   return (
-    <div>
-      {/* Tiêu đề + công tắc chế độ xem (chữ, viền hairline; ẩn ở màn hẹp vì luôn là Danh sách) */}
-      <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
-          Lịch tiêm phòng
-        </h1>
-        {!isNarrow && (
-          <div
-            role="radiogroup"
-            aria-label="Chế độ xem"
-            className="inline-flex rounded-md border border-stone/25 bg-white p-0.5"
-          >
-            {VIEW_MODES.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={view === option.value}
-                onClick={() => setView(option.value)}
-                className={`cursor-pointer rounded px-3 py-1 text-sm transition-colors ${
-                  view === option.value
-                    ? "bg-track font-medium text-bark"
-                    : "text-stone hover:text-ink"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="mx-auto w-full max-w-[1280px] md:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Lịch tiêm phòng</h1>
+        <Link
+          to={`/vet/vaccinations/new${horseFilter ? `?horse=${horseFilter}` : ""}`}
+          className={`inline-flex h-10 items-center rounded-[4px] bg-[#c2570c] px-5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-[#a8480a] ${FOCUS_RING}`}
+        >
+          + Thêm lịch
+        </Link>
       </div>
 
       {loading ? (
         <LoadingState />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Chip trạng thái chỉ dùng cho Danh sách (ma trận đã thể hiện trạng thái bằng ô) */}
-            {effectiveView === "list" && (
-              <div
-                className="flex flex-wrap gap-2"
-                role="group"
-                aria-label="Lọc theo trạng thái"
+          {/* Thanh công cụ: tìm kiếm + chọn ngựa bên trái; chế độ xem (tab chữ) bên phải, ẩn ở màn hẹp vì luôn là Danh sách */}
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-[#d9cfba]">
+            <div className="mb-2 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <div className="relative w-full sm:w-[280px]">
+                <label htmlFor="vaccineKeyword" className="sr-only">
+                  Tìm theo tên ngựa, loại
+                </label>
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" aria-hidden="true" />
+                <input
+                  id="vaccineKeyword"
+                  type="search"
+                  placeholder="Tìm ngựa, loại..."
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  className="h-9 w-full rounded-[4px] border border-[#cfc4ad] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none placeholder:text-[#6b6055]/70 focus:border-[#c2570c]"
+                />
+              </div>
+              <label htmlFor="vaccineHorse" className="sr-only">
+                Lọc theo ngựa
+              </label>
+              <select
+                id="vaccineHorse"
+                value={dropdownHorse ?? ""}
+                onChange={(e) => selectHorse(e.target.value ? Number(e.target.value) : null)}
+                className="h-9 w-full cursor-pointer rounded-[4px] border border-[#cfc4ad] bg-white px-3 text-sm text-[#2b2118] outline-none focus:border-[#c2570c] sm:w-48"
               >
-                {STATUS_FILTERS.map((f) => {
-                  const active = statusFilter === f.value;
+                <option value="">Tất cả ngựa</option>
+                {horses.map((h) => (
+                  <option key={h.HorseID} value={h.HorseID}>
+                    {h.Ten}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!isNarrow && (
+              <div role="radiogroup" aria-label="Chế độ xem" className="flex gap-x-6">
+                {VIEW_MODES.map((option) => {
+                  const active = view === option.value;
                   return (
                     <button
-                      key={f.value}
+                      key={option.value}
                       type="button"
-                      aria-pressed={active}
-                      onClick={() => setStatusFilter(f.value)}
-                      className={`h-9 cursor-pointer rounded-full border px-3.5 text-sm transition-colors ${
-                        active
-                          ? "border-brass bg-brass/15 font-medium text-brass-deep"
-                          : "border-stone/25 bg-white text-ink hover:border-stone/40"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setView(option.value)}
+                      className={`-mb-px cursor-pointer border-b-2 pb-2.5 text-sm transition-colors ${FOCUS_RING} ${
+                        active ? "border-[#c2570c] font-semibold text-[#2b2118]" : "border-transparent text-[#4a3f33] hover:text-[#2b2118]"
                       }`}
                     >
-                      {f.value === "action"
-                        ? `${f.label} · ${actionCount}`
-                        : f.label}
+                      {option.label}
                     </button>
                   );
                 })}
               </div>
             )}
-            <div className="relative w-full sm:w-64">
-              <label htmlFor="vaccineKeyword" className="sr-only">
-                Tìm theo tên ngựa, loại
-              </label>
-              <Search
-                className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone"
-                aria-hidden="true"
-              />
-              <input
-                id="vaccineKeyword"
-                type="search"
-                placeholder="Tìm ngựa, loại..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="h-9 w-full rounded-full border border-stone/20 bg-white pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
-              />
-            </div>
-            <HorseSelect
-              horses={horses}
-              value={dropdownHorse}
-              onChange={selectHorse}
-            />
-            <Link
-              to={`/vet/vaccinations/new${horseFilter ? `?horse=${horseFilter}` : ""}`}
-              className="btn-primary ml-auto"
-            >
-              + Thêm lịch
-            </Link>
           </div>
+
+          {/* Lọc trạng thái chỉ dùng cho Danh sách (ma trận đã thể hiện trạng thái bằng ô) */}
+          {effectiveView === "list" && (
+            <div className="mt-4 flex flex-wrap gap-x-6 border-b border-[#d9cfba]" role="group" aria-label="Lọc theo trạng thái">
+              {STATUS_FILTERS.map((f) => {
+                const active = statusFilter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setStatusFilter(f.value)}
+                    className={`-mb-px cursor-pointer border-b-2 pb-2.5 text-sm transition-colors ${FOCUS_RING} ${
+                      active ? "border-[#c2570c] font-semibold text-[#2b2118]" : "border-transparent text-[#4a3f33] hover:text-[#2b2118]"
+                    }`}
+                  >
+                    {f.value === "action" ? `${f.label} · ${actionCount}` : f.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {effectiveView === "matrix" ? (
             <VaccinationMatrix
               horses={horses}
@@ -295,76 +297,50 @@ export default function Vaccinations() {
               keyword={keyword}
               highlightHorseId={horseFilter}
               today={today}
-              onOpenCell={(horse, type) =>
-                setOpenCell({ horseId: horse.HorseID, type })
-              }
+              onOpenCell={(horse, type) => setOpenCell({ horseId: horse.HorseID, type })}
             />
           ) : (
             <>
-              <p className="mt-2 text-[13px] text-stone">
-                {pendingCount} lịch đang chờ tiêm
-              </p>
+              <p className="mt-3 text-sm text-[#4a3f33]">{pendingCount} lịch đang chờ tiêm</p>
 
-              {groups.length === 0 ? (
-                <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">
+              {listRows.length === 0 ? (
+                <p className="mt-4 rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">
                   Không có lịch tiêm nào khớp bộ lọc.{" "}
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="cursor-pointer font-medium text-brass-deep underline-offset-2 hover:underline"
+                    className={`cursor-pointer font-semibold text-[#c2570c] underline-offset-2 hover:underline ${FOCUS_RING}`}
                   >
                     Xóa bộ lọc
                   </button>
                 </p>
               ) : (
-                <div className="mt-5 caret-transparent">
-                  <div
-                    aria-hidden="true"
-                    className={`border-b border-stone/20 pr-2 pb-2 pl-3 ${VACCINE_GRID}`}
-                  >
-                    <span className={HEAD_CELL}>
-                      Ngựa<span className="min-[900px]:hidden"> · loại</span>
-                    </span>
-                    <span className={`hidden min-[900px]:block ${HEAD_CELL}`}>
-                      Loại
-                    </span>
-                    <span
-                      className={`text-right min-[900px]:text-left ${HEAD_CELL}`}
-                    >
-                      Ngày hẹn
-                    </span>
-                    <span className={`hidden min-[900px]:block ${HEAD_CELL}`}>
-                      Thời hạn
-                    </span>
-                    <span
-                      className={`hidden text-right min-[900px]:block ${HEAD_CELL}`}
-                    >
-                      Hành động
-                    </span>
-                  </div>
-                  {groups.map((group) => (
-                    <section
-                      key={group.key}
-                      aria-label={`${group.title} · ${group.rows.length}`}
-                    >
-                      <h2 className={GROUP_TITLE}>
-                        {group.title} · {group.rows.length}
-                      </h2>
-                      <ul>
-                        {group.rows.map(({ item, state }) => (
-                          <VaccinationRow
-                            key={item.ScheduleID}
-                            item={item}
-                            state={state}
-                            horse={horseById[item.HorseID]}
-                            onMarkDone={setMarking}
-                          />
-                        ))}
-                      </ul>
-                    </section>
-                  ))}
+                <div className="mt-4 overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white">
+                  <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className={HEAD}>Ngựa</th>
+                        <th className={HEAD}>Loại</th>
+                        <th className={HEAD}>Ngày hẹn</th>
+                        <th className={HEAD}>Thời hạn</th>
+                        <th className={`${HEAD} text-right`}>Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody className="[&>tr:last-child>td]:border-b-0">
+                      {listRows.map(({ item, state }) => (
+                        <VaccinationRow
+                          key={item.ScheduleID}
+                          item={item}
+                          state={state}
+                          horse={horseById[item.HorseID]}
+                          onMarkDone={setMarking}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
+              <VaccinationLegend />
             </>
           )}
         </>

@@ -4,13 +4,15 @@ import LoadingState from "../../components/LoadingState";
 import Toast from "../../components/Toast";
 import useAuth from "../../hooks/useAuth";
 import IncidentDetailDrawer from "./IncidentDetailDrawer";
-import IncidentReportRow, { INCIDENT_GRID } from "./IncidentReportRow";
+import IncidentReportRow from "./IncidentReportRow";
 import { getHorses, getIncidentReports, getStableNumbers } from "../../services/careService";
 import { toUserID } from "../../utils/userId";
 
-const HEAD_CELL = "text-xs font-medium tracking-wide text-stone uppercase";
+const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
+const PRIMARY_LINK =
+  "inline-flex h-10 items-center rounded-[4px] bg-[#c2570c] px-5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-[#a8480a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
 
-// Lịch sử báo cáo sự cố (INCIDENTREPORT) do chính nhân viên đăng nhập gửi: nhóm theo tháng, mới nhất trước, chỉ xem;
+// Lịch sử báo cáo sự cố (INCIDENTREPORT) do chính nhân viên đăng nhập gửi: mới nhất trước, chỉ xem;
 // bấm 1 hàng mở ngăn chi tiết bên phải (mô tả đầy đủ + ảnh lớn).
 // Form gửi toast sang qua location.state ("Đã gửi báo cáo sự cố").
 export default function IncidentReports() {
@@ -51,25 +53,16 @@ export default function IncidentReports() {
 
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
 
-  // Nhóm theo tháng "YYYY-MM" (reports đã sắp mới → cũ nên nhóm cũng mới → cũ)
-  const groups = reports.reduce((acc, report) => {
-    const key = report.Ngay.slice(0, 7);
-    const last = acc[acc.length - 1];
-    if (last?.key === key) last.reports.push(report);
-    else acc.push({ key, reports: [report] });
-    return acc;
-  }, []);
-
   const selected = reports.find((r) => r.ReportID === selectedId);
 
   return (
-    <div className="max-w-[900px]">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Báo cáo sự cố</h1>
-        <Link
-          to="/groom/incidents/new"
-          className="btn-primary ml-auto"
-        >
+    <div className="mx-auto w-full max-w-[1100px] md:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div>
+          <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Báo cáo sự cố</h1>
+          {!loading && reports.length > 0 && <p className="mt-1 text-sm text-[#4a3f33]">{reports.length} báo cáo đã gửi</p>}
+        </div>
+        <Link to="/groom/incidents/new" className={PRIMARY_LINK}>
           + Gửi báo cáo
         </Link>
       </div>
@@ -77,40 +70,40 @@ export default function IncidentReports() {
       {loading ? (
         <LoadingState />
       ) : reports.length === 0 ? (
-        <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">Bạn chưa gửi báo cáo sự cố nào.</p>
+        <div className="mt-6 rounded-[4px] border border-[#d9cfba] bg-white px-4 py-12 text-center">
+          <p className="text-sm text-[#4a3f33]">Bạn chưa gửi báo cáo sự cố nào.</p>
+          <Link to="/groom/incidents/new" className={`mt-4 ${PRIMARY_LINK}`}>
+            + Gửi báo cáo
+          </Link>
+        </div>
       ) : (
-        <>
-          <p className="mt-1 text-[13px] text-stone">{reports.length} báo cáo đã gửi</p>
-          <div className="mt-5">
-            <div aria-hidden="true" className={`border-b border-stone/20 pr-2 pb-2 pl-3 ${INCIDENT_GRID}`}>
-              <span className={HEAD_CELL}>Ngày</span>
-              <span className={HEAD_CELL}>Ngựa</span>
-              <span className={HEAD_CELL}>Sự cố</span>
-            </div>
-            {groups.map((group) => {
-              const [year, month] = group.key.split("-");
-              return (
-                <section key={group.key} aria-label={`Tháng ${Number(month)}/${year}`}>
-                  <h2 className="border-b border-stone/15 pt-5 pb-1.5 pl-3 text-xs font-medium tracking-wide text-stone uppercase select-none">
-                    Tháng {Number(month)}/{year}
-                  </h2>
-                  <ul>
-                    {group.reports.map((report) => (
-                      <IncidentReportRow
-                        key={report.ReportID}
-                        report={report}
-                        horse={horseById[report.HorseID]}
-                        stable={stables[report.HorseID]}
-                        selected={report.ReportID === selectedId}
-                        onSelect={(r) => setSelectedId(r.ReportID)}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
-          </div>
-        </>
+        <div className="mt-6 overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white">
+          <table className="w-full border-separate border-spacing-0 text-left text-sm">
+            <thead>
+              <tr>
+                <th className={HEAD}>Ngựa</th>
+                <th className={HEAD}>Loại sự cố</th>
+                <th className={HEAD}>Mô tả</th>
+                <th className={`${HEAD} w-[130px] min-w-[130px] max-w-[130px] text-right`}>Ngày báo</th>
+              </tr>
+            </thead>
+            <tbody className="[&>tr:last-child>td]:border-b-0">
+              {reports.map((report) => (
+                <IncidentReportRow
+                  key={report.ReportID}
+                  report={report}
+                  horse={horseById[report.HorseID]}
+                  stable={stables[report.HorseID]}
+                  selected={report.ReportID === selectedId}
+                  onSelect={(r) => setSelectedId(r.ReportID)}
+                />
+              ))}
+            </tbody>
+          </table>
+          <p className="border-t border-[#d9cfba] px-4 py-3 text-sm text-[#4a3f33] tabular-nums">
+            Hiển thị {reports.length} / {reports.length} báo cáo
+          </p>
+        </div>
       )}
 
       <IncidentDetailDrawer

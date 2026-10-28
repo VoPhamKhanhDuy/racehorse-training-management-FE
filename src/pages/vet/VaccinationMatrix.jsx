@@ -1,21 +1,29 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { Check, Clock, TriangleAlert } from "lucide-react";
 import HorseAvatar from "../../components/HorseAvatar";
+import VaccinationLegend from "./VaccinationLegend";
 import { daysBetween, daysSince, formatDate, formatDayMonth } from "../../utils/date";
 import { getCellRepresentative, getVaccineColumns } from "../../utils/vaccinationMatrix";
 
-// Nền ô theo trạng thái đại diện: quá hạn cam nhạt rõ, sắp tới / hôm nay be nhạt — 2 màu phải phân biệt ngay; còn lại không tô
-const CELL_BG = { "Quá hạn": "bg-[#f6dcc3]", "Sắp tới": "bg-[#f3ebdd]" };
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#c2570c]";
+const HEAD = "border-b border-[#b9ab90] bg-[#f3ede0] px-3 py-3 text-[13px] font-semibold text-[#2b2118]";
+const MIN_COLUMN_WIDTH = 160;
+const HORSE_COLUMN_WIDTH = 220;
+
 // Hàng cần chú ý trước: có quá hạn → có sắp tới → còn lại
 const rowRank = (states) => (states.includes("Quá hạn") ? 0 : states.includes("Sắp tới") ? 1 : 2);
 
-// Nội dung 2 dòng nhỏ trong ô
+// Nội dung trong ô (không tô nền): trạng thái là chữ màu + icon, dòng dưới là ngày hẹn
 function CellText({ item, state, today }) {
   if (state === "Quá hạn") {
     return (
       <>
-        <span className="block font-medium text-[#b45309]">Quá hạn {daysSince(item.NgayHen)} ngày</span>
-        <span className="block text-xs text-stone">hẹn {formatDayMonth(item.NgayHen)}</span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-[#c0262d]">
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+          Quá hạn {daysSince(item.NgayHen)} ngày
+        </span>
+        <span className="block text-[13px] text-[#6b6055]">hẹn {formatDayMonth(item.NgayHen)}</span>
       </>
     );
   }
@@ -23,19 +31,27 @@ function CellText({ item, state, today }) {
     const left = daysBetween(today, item.NgayHen);
     return (
       <>
-        <span className="block text-bark">{left === 0 ? "Hôm nay" : `Còn ${left} ngày`}</span>
-        <span className="block text-xs text-stone">hẹn {formatDayMonth(item.NgayHen)}</span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-[#c2570c]">
+          <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+          {left === 0 ? "Hôm nay" : `Còn ${left} ngày`}
+        </span>
+        <span className="block text-[13px] text-[#6b6055]">hẹn {formatDayMonth(item.NgayHen)}</span>
       </>
     );
   }
-  if (state === "Chờ tiêm") return <span className="block text-stone">Hẹn {formatDayMonth(item.NgayHen)}</span>;
-  // Đã tiêm: chỉ 1 dòng ngày tiêm, chữ mờ
-  return <span className="block text-stone tabular-nums">{formatDate(item.NgayHen)}</span>;
+  if (state === "Chờ tiêm") return <span className="block text-sm text-[#4a3f33]">Hẹn {formatDayMonth(item.NgayHen)}</span>;
+  // Đã tiêm: tick nhỏ + ngày tiêm
+  return (
+    <span className="flex items-center gap-1.5 text-sm text-[#2b2118] tabular-nums">
+      <Check className="h-3.5 w-3.5 shrink-0 text-[#4d6b2a]" strokeWidth={2} aria-hidden="true" />
+      {formatDate(item.NgayHen)}
+    </span>
+  );
 }
 
 // Ma trận ngựa × loại tiêm (mặc định của /vet/vaccinations). Mỗi ô 1 lịch đại diện (getCellRepresentative).
 // Bấm ô có lịch → onOpenCell(horse, type); ô trống → form Thêm lịch điền sẵn ngựa + loại.
-// keyword: lọc theo tên ngựa hoặc loại; highlightHorseId (?horse=ID): vạch cam 2px mép trái + tên đậm hơn, cuộn tới hàng; không tô nền, không ẩn hàng khác.
+// keyword: lọc theo tên ngựa hoặc loại; highlightHorseId (?horse=ID): vạch cam mép trái + tên đậm hơn, cuộn tới hàng; không ẩn hàng khác.
 export default function VaccinationMatrix({ horses, items, keyword, highlightHorseId, today, onOpenCell }) {
   const highlightRef = useRef(null);
 
@@ -69,53 +85,67 @@ export default function VaccinationMatrix({ horses, items, keyword, highlightHor
     .join(" · ");
 
   if (rows.length === 0 || columns.length === 0) {
-    return <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">Không có lịch tiêm nào khớp bộ lọc.</p>;
+    return <p className="mt-4 rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">Không có lịch tiêm nào khớp bộ lọc.</p>;
   }
 
   return (
     <>
-      <p className="mt-2 text-[13px] text-stone">{summary}</p>
-      <div className="mt-4 overflow-x-auto caret-transparent">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+      <p className="mt-3 text-sm text-[#4a3f33]">{summary}</p>
+      <div className="mt-3 overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white caret-transparent">
+        {/* table-fixed: cột Ngựa 220px, các cột vắc-xin chia đều (tối thiểu 160px mỗi cột) */}
+        <table
+          className="w-full table-fixed border-separate border-spacing-0 text-sm"
+          style={{ minWidth: HORSE_COLUMN_WIDTH + columns.length * MIN_COLUMN_WIDTH }}
+        >
+          <colgroup>
+            <col style={{ width: HORSE_COLUMN_WIDTH }} />
+            {columns.map((type) => (
+              <col key={type} />
+            ))}
+          </colgroup>
           <thead>
-            <tr className="border-b border-stone/20">
-              <th scope="col" className="sticky left-0 z-10 w-[190px] bg-parchment py-2 pl-3 text-left text-xs font-medium tracking-wide text-stone uppercase">
+            <tr>
+              <th scope="col" className={`${HEAD} sticky left-0 z-10 text-left`}>
                 Ngựa
               </th>
               {columns.map((type) => (
-                <th key={type} scope="col" className="px-2 py-2 text-center text-xs font-medium tracking-wide text-stone uppercase">
+                <th key={type} scope="col" className={`${HEAD} border-l border-l-[#d9cfba] text-center`}>
                   {type}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="[&>tr:last-child>*]:border-b-0">
             {rows.map(({ horse, cells }) => {
               const highlighted = horse.HorseID === highlightHorseId;
               return (
-                <tr key={horse.HorseID} ref={highlighted ? highlightRef : undefined} className="border-b border-stone/15">
+                <tr key={horse.HorseID} ref={highlighted ? highlightRef : undefined} className="group">
                   <th
                     scope="row"
-                    className={`sticky left-0 z-10 bg-parchment py-2 pl-3 text-left font-normal ${
-                      highlighted ? "before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-brass" : ""
+                    className={`sticky left-0 z-10 h-16 border-b border-[#d9cfba] bg-white px-3 text-left font-normal transition-colors group-hover:bg-[#f0efec] ${
+                      highlighted ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[#c2570c]" : ""
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      <HorseAvatar horse={horse} size={28} />
-                      <span className={`font-serif text-base text-ink ${highlighted ? "font-bold" : "font-semibold"}`}>{horse.Ten}</span>
+                    <span className="flex items-center gap-3">
+                      <HorseAvatar horse={horse} size={36} square />
+                      <span className={`truncate font-serif text-base text-[#2b2118] ${highlighted ? "font-bold" : "font-semibold"}`}>{horse.Ten}</span>
                     </span>
                   </th>
                   {cells.map((cell, index) => {
                     const type = columns[index];
-                    const bg = cell ? CELL_BG[cell.state] : undefined;
                     return (
-                      <td key={type} className={`h-16 p-0 text-center ${bg ?? ""}`}>
+                      <td
+                        key={type}
+                        className="h-16 border-b border-l border-[#d9cfba] p-0 text-center transition-colors group-hover:bg-[#f0efec]"
+                      >
                         {cell ? (
                           <button
                             type="button"
                             onClick={() => onOpenCell(horse, type)}
                             aria-label={`${horse.Ten} · ${type}: ${cell.state}, ngày hẹn ${formatDate(cell.item.NgayHen)}`}
-                            className="flex h-16 w-full cursor-pointer flex-col items-center justify-center px-2 outline-none transition-colors hover:bg-black/[0.03] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brass"
+                            className={`flex h-16 w-full cursor-pointer flex-col items-center justify-center border-l-[3px] px-2 outline-none ${
+                              cell.state === "Quá hạn" ? "border-l-[#c0262d]" : "border-l-transparent"
+                            } ${FOCUS_RING}`}
                           >
                             <CellText item={cell.item} state={cell.state} today={today} />
                           </button>
@@ -123,10 +153,12 @@ export default function VaccinationMatrix({ horses, items, keyword, highlightHor
                           <Link
                             to={`/vet/vaccinations/new?${new URLSearchParams({ horse: horse.HorseID, type })}`}
                             aria-label={`Hẹn ${type} cho ${horse.Ten}`}
-                            className="group flex h-16 w-full items-center justify-center outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brass"
+                            className={`group/cell flex h-16 w-full items-center justify-center outline-none ${FOCUS_RING}`}
                           >
-                            <span className="text-stone/60 group-hover:hidden group-focus-visible:hidden">—</span>
-                            <span className="hidden text-xs font-medium text-brass-deep group-hover:inline group-focus-visible:inline">+ Hẹn</span>
+                            <span className="text-sm text-[#b9ab90] group-hover/cell:hidden group-focus-visible/cell:hidden">—</span>
+                            <span className="hidden text-[13px] font-semibold text-[#c2570c] group-hover/cell:inline group-focus-visible/cell:inline">
+                              + Hẹn
+                            </span>
                           </Link>
                         )}
                       </td>
@@ -138,7 +170,7 @@ export default function VaccinationMatrix({ horses, items, keyword, highlightHor
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-stone">Mỗi ô là lần tiêm gần nhất hoặc lịch sắp tới. Nền cam: quá hạn · nền be: sắp đến hạn · ô trống: chưa có lịch.</p>
+      <VaccinationLegend />
     </>
   );
 }

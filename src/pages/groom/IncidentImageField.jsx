@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { INCIDENT_IMAGE } from "../../data/incidentOptions";
 
-// Khu chọn ảnh sự cố (không bắt buộc): chưa có ảnh → ô viền nét đứt bấm để chọn; có ảnh → xem trước + "Đổi ảnh" / "Bỏ ảnh".
+// Khu chọn ảnh sự cố (không bắt buộc): chưa có ảnh → ô viền nét đứt bấm để chọn; có ảnh → xem trước + "Đổi ảnh" / "Xóa ảnh".
 // value: data URL của ảnh đã chọn ("" = chưa có). onChange(dataUrl); onError(thông báo) khi sai định dạng/quá dung lượng.
 // Mock: đọc ảnh thành base64 để lưu tạm vào dữ liệu mẫu — thực tế sẽ upload file lên server và lưu URL trả về.
 export default function IncidentImageField({ value, error, onChange, onError }) {
@@ -29,7 +29,7 @@ export default function IncidentImageField({ value, error, onChange, onError }) 
 
   return (
     <div>
-      <span className="mb-1.5 block font-serif text-sm font-semibold text-stone">Hình ảnh</span>
+      <span className="mb-1.5 block text-[13px] font-semibold text-[#4a3f33]">Hình ảnh</span>
       <input
         ref={inputRef}
         id="HinhAnh"
@@ -42,13 +42,21 @@ export default function IncidentImageField({ value, error, onChange, onError }) 
 
       {value ? (
         <div className="flex flex-wrap items-end gap-4">
-          <img src={value} alt="Ảnh sự cố đã chọn" className="h-40 w-56 rounded-[4px] border border-stone/20 object-cover" />
-          <div className="flex gap-3 text-sm">
-            <button type="button" onClick={openPicker} className="cursor-pointer font-semibold text-brass-deep underline-offset-2 hover:underline">
+          <img src={value} alt="Ảnh sự cố đã chọn" className="h-40 w-56 rounded-[4px] border border-[#d9cfba] object-cover" />
+          <div className="flex gap-4 text-sm">
+            <button
+              type="button"
+              onClick={openPicker}
+              className="cursor-pointer font-semibold text-[#c2570c] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+            >
               Đổi ảnh
             </button>
-            <button type="button" onClick={() => onChange("")} className="cursor-pointer text-stone underline-offset-2 hover:text-ink hover:underline">
-              Bỏ ảnh
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="cursor-pointer font-semibold text-[#b3473f] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+            >
+              Xóa ảnh
             </button>
           </div>
         </div>
@@ -56,15 +64,15 @@ export default function IncidentImageField({ value, error, onChange, onError }) 
         <button
           type="button"
           onClick={openPicker}
-          className={`flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed bg-[#faf7f1] px-4 text-center transition-colors hover:bg-[#f7f1e5] sm:max-w-md ${
-            error ? "border-rust" : "border-stone/40"
+          className={`flex h-[120px] w-full cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed bg-[#faf8f4] px-4 text-center transition-colors hover:bg-[#f0efec] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
+            error ? "border-[#c0262d]" : "border-[#b9ab90]"
           }`}
         >
-          <span className="text-sm font-medium text-ink">Bấm để chọn ảnh</span>
-          <span className="mt-1 text-xs text-stone">JPG hoặc PNG, tối đa {INCIDENT_IMAGE.maxLabel} · không bắt buộc</span>
+          <span className="text-sm font-semibold text-[#2b2118]">Bấm để chọn ảnh</span>
+          <span className="mt-1 text-[13px] text-[#6b6055]">JPG hoặc PNG, tối đa {INCIDENT_IMAGE.maxLabel}, không bắt buộc</span>
         </button>
       )}
-      {error && <p className="mt-1.5 text-sm text-rust">{error}</p>}
+      {error && <p className="mt-1.5 text-sm text-[#c0262d]">{error}</p>}
     </div>
   );
 }

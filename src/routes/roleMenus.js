@@ -32,6 +32,7 @@ const roleMenus = {
   veterinarian: [
     { label: "Tổng quan sức khỏe", path: "/vet/overview", icon: HeartPulse },
     { label: "Khám bệnh", path: "/vet/exams", icon: Stethoscope },
+    { label: "Sự cố", path: "/vet/incidents", icon: TriangleAlert },
     { label: "Lệnh khóa huấn luyện", path: "/vet/locks", icon: ShieldAlert },
     { label: "Lịch tiêm phòng", path: "/vet/vaccinations", icon: Syringe },
   ],
@@ -54,6 +55,7 @@ const roleMenus = {
     { label: "Duyệt tài khoản", path: "/manager/approvals", icon: UserCheck },
     { label: "Quản lý nhân sự", path: "/manager/staff", icon: Users },
     { label: "Quản lý vật tư", path: "/manager/supplies", icon: Package },
+    { label: "Sự cố", path: "/manager/incidents", icon: TriangleAlert },
     { label: "Báo cáo hiệu suất & tài chính", path: "/manager/reports", icon: ChartColumn },
     { label: "Chi phí & tiền thưởng", path: "/manager/finance", icon: Wallet },
     { label: "Nhật ký thao tác", path: "/manager/audit-log", icon: History },

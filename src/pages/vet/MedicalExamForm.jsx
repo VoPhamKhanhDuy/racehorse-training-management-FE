@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import FormField from "../../components/FormField";
 import HorseAvatar from "../../components/HorseAvatar";
 import LoadingState from "../../components/LoadingState";
 import useAuth from "../../hooks/useAuth";
-import ChoiceChips from "./ChoiceChips";
-import ExamFormContext from "./ExamFormContext";
+import ChoiceBoxes from "./ChoiceBoxes";
+import ExamHorsePanel from "./ExamHorsePanel";
 import {
   createMedicalRecord,
   getActiveTrainingLocks,
@@ -27,7 +26,16 @@ import {
 } from "../../data/medicalRecordOptions";
 import { addAuditLog } from "../../services/auditService";
 import { todayISO } from "../../utils/date";
+import { getHealthStyle } from "../../utils/healthStatusStyles";
 import { toUserID } from "../../utils/userId";
+
+const LABEL = "mb-1.5 block text-[13px] font-semibold text-[#4a3f33]";
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
+const fieldClass = (hasError) =>
+  `h-10 w-full rounded-[4px] border bg-white px-3 text-[15px] text-[#2b2118] outline-none transition-colors placeholder:text-[#8a7f70] focus:border-[#c2570c] ${
+    hasError ? "border-[#c0262d]" : "border-[#cfc4ad]"
+  }`;
+const ERROR_TEXT = "mt-1.5 text-sm text-[#c0262d]";
 
 // Ngày khám mặc định hôm nay (tính lúc mở form, không phải lúc tải module)
 const createEmptyForm = () => ({ HorseID: "", Ngay: todayISO(), ChanDoan: "", injuries: [], PhacDo: "", TrangThai: "" });
@@ -219,27 +227,31 @@ export default function MedicalExamForm() {
   const backToList = `/vet/exams${form.HorseID ? `?horse=${form.HorseID}` : ""}`;
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <Link to={backToList} className="text-sm font-medium text-brass-deep hover:underline">
+    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+      <Link to={backToList} className={`text-sm text-[#c2570c] hover:underline ${FOCUS_RING}`}>
         ← Quay lại sổ khám bệnh
       </Link>
-      <h1 className="mt-3 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
+      <h1 className="mt-3 font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">
         {isEdit ? "Sửa bệnh án" : "Ghi lần khám"}
       </h1>
 
-      {/* 2 cột: form bên trái, ngữ cảnh ngựa bên phải (dính khi cuộn). Dưới lg ngữ cảnh xuống dưới form. */}
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10">
-        <form onSubmit={handleSubmit} noValidate className="min-w-0 space-y-6 border-t border-stone/20 pt-6">
-          {errors.form && <p className="rounded-sm border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{errors.form}</p>}
+      {/* 2 cột: form bên trái, ngữ cảnh ngựa bên phải (dính khi cuộn). Dưới 960px ngữ cảnh xuống dưới form. */}
+      <div className="mt-6 grid items-start gap-6 min-[960px]:grid-cols-[minmax(0,760px)_340px]">
+        <form onSubmit={handleSubmit} noValidate className="min-w-0 space-y-5 rounded-[4px] border border-[#d9cfba] bg-white p-6">
+          {errors.form && (
+            <p className="rounded-[4px] border border-l-4 border-[#d9cfba] border-l-[#c0262d] bg-white px-4 py-3 text-sm text-[#c0262d]">
+              {errors.form}
+            </p>
+          )}
 
-          <ChoiceChips
+          <ChoiceBoxes
             legend="Ngựa"
             name="HorseID"
             options={horses}
             getKey={(horse) => String(horse.HorseID)}
             renderOption={(horse) => (
               <>
-                <HorseAvatar horse={horse} size={22} />
+                <HorseAvatar horse={horse} size={24} square />
                 {horse.Ten}
               </>
             )}
@@ -250,35 +262,45 @@ export default function MedicalExamForm() {
             onChange={handleHorseChange}
           />
 
-          <div className="sm:max-w-xs">
-            <FormField
-              variant="line"
-              label="Ngày khám"
+          <div className="w-full sm:w-[220px]">
+            <label htmlFor="Ngay" className={LABEL}>
+              Ngày khám
+            </label>
+            <input
               id="Ngay"
               name="Ngay"
               type="date"
               max={todayISO()}
               value={form.Ngay}
               onChange={(e) => setField("Ngay", e.target.value)}
-              error={errors.Ngay}
+              aria-invalid={Boolean(errors.Ngay)}
+              className={fieldClass(errors.Ngay)}
             />
+            {errors.Ngay && <p className={ERROR_TEXT}>{errors.Ngay}</p>}
           </div>
 
-          <FormField
-            variant="line"
-            label="Chẩn đoán"
-            id="ChanDoan"
-            name="ChanDoan"
-            placeholder="Ví dụ: Viêm gân gấp chân trước trái"
-            value={form.ChanDoan}
-            onChange={(e) => setField("ChanDoan", e.target.value)}
-            error={errors.ChanDoan}
-          />
+          <div>
+            <label htmlFor="ChanDoan" className={LABEL}>
+              Chẩn đoán
+            </label>
+            <input
+              id="ChanDoan"
+              name="ChanDoan"
+              type="text"
+              placeholder="Ví dụ: Viêm gân gấp chân trước trái"
+              value={form.ChanDoan}
+              onChange={(e) => setField("ChanDoan", e.target.value)}
+              aria-invalid={Boolean(errors.ChanDoan)}
+              className={fieldClass(errors.ChanDoan)}
+            />
+            {errors.ChanDoan && <p className={ERROR_TEXT}>{errors.ChanDoan}</p>}
+          </div>
 
-          <ChoiceChips
+          <ChoiceBoxes
             legend="Vị trí chấn thương"
             name="ViTriChanThuong"
             multiple
+            firstOptionOwnRow
             options={[NO_INJURY, ...INJURY_LOCATIONS]}
             value={form.injuries}
             error={errors.injuries}
@@ -286,7 +308,7 @@ export default function MedicalExamForm() {
           />
 
           <div>
-            <label htmlFor="PhacDo" className="mb-1 block font-serif text-sm font-semibold text-stone">
+            <label htmlFor="PhacDo" className={LABEL}>
               Phác đồ điều trị
             </label>
             <textarea
@@ -298,15 +320,15 @@ export default function MedicalExamForm() {
               aria-describedby="PhacDo-count"
               value={form.PhacDo}
               onChange={(e) => setField("PhacDo", e.target.value)}
-              className={`w-full resize-y border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors placeholder:text-stone/50 ${
-                errors.PhacDo ? "border-rust" : "border-stone/50 focus:border-brass"
+              className={`min-h-[120px] w-full resize-y rounded-[4px] border bg-white px-3 py-2.5 text-[15px] text-[#2b2118] outline-none transition-colors placeholder:text-[#8a7f70] focus:border-[#c2570c] ${
+                errors.PhacDo ? "border-[#c0262d]" : "border-[#cfc4ad]"
               }`}
             />
             <div className="mt-1 flex items-start justify-between gap-4">
-              {errors.PhacDo ? <p className="text-sm text-rust">{errors.PhacDo}</p> : <span />}
+              {errors.PhacDo ? <p className="text-sm text-[#c0262d]">{errors.PhacDo}</p> : <span />}
               <span
                 id="PhacDo-count"
-                className={`shrink-0 text-xs tabular-nums ${form.PhacDo.trim().length > MEDICAL_LIMITS.PhacDo.max ? "text-rust" : "text-stone"}`}
+                className={`shrink-0 text-[13px] tabular-nums ${form.PhacDo.trim().length > MEDICAL_LIMITS.PhacDo.max ? "text-[#c0262d]" : "text-[#6b6055]"}`}
               >
                 {form.PhacDo.trim().length}/{MEDICAL_LIMITS.PhacDo.max}
               </span>
@@ -314,36 +336,37 @@ export default function MedicalExamForm() {
           </div>
 
           {showHealth && (
-            <ChoiceChips
+            <ChoiceBoxes
               legend="Tình trạng sức khỏe sau khám"
               name="TrangThai"
               options={HEALTH_STATES}
               value={form.TrangThai}
+              selectedTextClass={(state) => getHealthStyle(state).text}
               hint="Chỉ cập nhật tình trạng hiện tại của ngựa nếu ngày khám không cũ hơn lần cập nhật gần nhất."
               error={errors.TrangThai}
               onChange={(value) => setField("TrangThai", value)}
             />
           )}
 
-          <div className="flex justify-end gap-3 border-t border-stone/20 pt-5">
+          <div className="flex justify-end gap-3 border-t border-[#d9cfba] pt-5">
             <Link
               to={backToList}
-              className="rounded-sm border border-stone/30 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-stone/50 hover:bg-black/[0.03]"
+              className={`inline-flex h-10 items-center rounded-[4px] border border-[#cfc4ad] bg-white px-5 text-sm font-semibold text-[#2b2118] transition-colors hover:bg-[#f0efec] ${FOCUS_RING}`}
             >
               Hủy
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="btn-primary"
+              className={`h-10 cursor-pointer rounded-[4px] bg-[#c2570c] px-5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-[#a8480a] disabled:cursor-wait disabled:opacity-60 ${FOCUS_RING}`}
             >
               {submitting ? "Đang lưu..." : "Lưu bệnh án"}
             </button>
           </div>
         </form>
 
-        <aside className="rounded-lg border border-stone/15 bg-white px-5 py-5 lg:sticky lg:top-24">
-          <ExamFormContext
+        <aside className="rounded-[4px] border border-[#d9cfba] bg-white p-5 min-[960px]:sticky min-[960px]:top-24">
+          <ExamHorsePanel
             horse={selectedHorse}
             health={selectedHealth}
             lock={selectedLock}

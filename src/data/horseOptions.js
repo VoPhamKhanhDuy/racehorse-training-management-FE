@@ -9,7 +9,7 @@ export const HORSE_LIMITS = {
 // GioiTinh chỉ nhận đúng 3 giá trị này
 export const HORSE_GENDERS = ["Ngựa đực", "Ngựa cái", "Ngựa thiến"];
 // Nhãn tiếng Anh hiển thị trên chip chọn giới tính ở form hồ sơ ngựa — chỉ là nhãn, giá trị lưu / gửi API vẫn là tiếng Việt ở trên
-export const HORSE_GENDER_LABELS = { "Ngựa đực": "Stallion", "Ngựa cái": "Mare", "Ngựa thiến": "Gelding" };
+export const HORSE_GENDER_LABELS = { "Ngựa đực": "Male", "Ngựa cái": "Female", "Ngựa thiến": "Gelding" };
 
 // Gợi ý cho ô Màu lông (MauLong) — vẫn cho nhập màu khác
 export const COAT_COLORS = ["Nâu", "Nâu sẫm", "Hạt dẻ", "Xám", "Đen", "Trắng", "Vàng nhạt"];

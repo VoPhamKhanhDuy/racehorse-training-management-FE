@@ -5,10 +5,12 @@ import careTasks from "../data/careTasks";
 import stableAssignments from "../data/stableAssignments";
 import feedingPlans from "../data/feedingPlans";
 import incidentReports from "../data/incidentReports";
-import { INCIDENT_DESCRIPTION_MAX, INCIDENT_TYPES } from "../data/incidentOptions";
-import { todayISO } from "../utils/date";
+import { HEALTH_INCIDENT_TYPES, INCIDENT_DESCRIPTION_MAX, INCIDENT_STATUS, INCIDENT_TYPES } from "../data/incidentOptions";
+import { toISODateTime, todayISO } from "../utils/date";
 import { getHorses } from "./horseService";
 import { createPersistedList } from "./persistedStore";
+import { getUsers } from "./accountService";
+import { toUserID } from "../utils/userId";
 
 export { getHorses };
 
@@ -73,6 +75,50 @@ export async function getIncidentReports(groomId) {
     .sort((a, b) => b.Ngay.localeCompare(a.Ngay) || b.ReportID - a.ReportID);
 }
 
+// Bản ghi cũ chưa có trường xử lý → mặc định "Mới", chưa ai xử lý
+const withHandling = (r) => ({
+  ...r,
+  TrangThai: r.TrangThai ?? INCIDENT_STATUS.NEW,
+  GhiChuXuLy: r.GhiChuXuLy ?? "",
+  HandledBy: r.HandledBy ?? null,
+  HandledAt: r.HandledAt ?? null,
+});
+
+// Mọi báo cáo sự cố (cho Club Manager xem), mới → cũ theo Ngay, kèm tên ngựa, tên người báo và người xử lý ("—" nếu không tra được).
+// Khi có API thật, BE trả sẵn HorseName/ReporterName/HandlerName → chỉ cần thay phần bên trong hàm này.
+export async function getAllIncidentReports() {
+  const [horses, users] = await Promise.all([getHorses(), getUsers(), delay()]);
+  const horseNames = Object.fromEntries(horses.map((h) => [h.HorseID, h.Ten]));
+  const userNames = Object.fromEntries(users.map((u) => [toUserID(u.id), u.fullName]));
+  return reportStore
+    .map((r) => {
+      const report = withHandling(r);
+      return {
+        ...report,
+        HorseName: horseNames[r.HorseID] ?? "—",
+        ReporterName: userNames[r.GroomID] ?? "—",
+        HandlerName: report.HandledBy ? (userNames[report.HandledBy] ?? "—") : null,
+      };
+    })
+    .sort((a, b) => b.Ngay.localeCompare(a.Ngay) || b.ReportID - a.ReportID);
+}
+
+// Manager đổi trạng thái / ghi chú xử lý. Ràng buộc (BE cũng phải kiểm tra lại): chỉ sự cố chuồng/thiết bị và "Khác"
+// (sự cố sức khỏe ngựa do bác sĩ thú y xử lý), trạng thái hợp lệ, đã xử lý thì không đổi nữa.
+export async function updateIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, userId) {
+  await delay();
+  const report = reportStore.find((r) => r.ReportID === Number(reportId));
+  if (!report) throw new Error("Không tìm thấy báo cáo sự cố");
+  if (HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo)) throw new Error("Sự cố sức khỏe ngựa do bác sĩ thú y xử lý.");
+  if (![INCIDENT_STATUS.IN_PROGRESS, INCIDENT_STATUS.DONE].includes(TrangThai)) throw new Error("Trạng thái không hợp lệ.");
+  if (report.TrangThai === INCIDENT_STATUS.DONE) throw new Error("Sự cố này đã được xử lý.");
+  const note = (GhiChuXuLy ?? "").trim();
+  if (note.length > INCIDENT_DESCRIPTION_MAX) throw new Error(`Ghi chú tối đa ${INCIDENT_DESCRIPTION_MAX} ký tự.`);
+  Object.assign(report, { TrangThai, GhiChuXuLy: note, HandledBy: Number(userId), HandledAt: toISODateTime(new Date()) });
+  reportList.save();
+  return withHandling(report);
+}
+
 // Gửi báo cáo sự cố: GroomID luôn là người đang đăng nhập. Không có sửa/xóa sau khi gửi.
 // HinhAnh: ở mock là data URL (base64) của ảnh đã chọn; thực tế FE upload ảnh lên server rồi lưu URL trả về.
 // Ràng buộc (BE cũng phải kiểm tra lại): có ngựa, loại sự cố hợp lệ, mô tả ≤ 300 ký tự, ngày không ở tương lai.
@@ -91,8 +137,37 @@ export async function createIncidentReport(data, groomId) {
     MoTa: moTa,
     HinhAnh: data.HinhAnh ?? "",
     Ngay: data.Ngay,
+    TrangThai: INCIDENT_STATUS.NEW,
+    GhiChuXuLy: "",
+    HandledBy: null,
+    HandledAt: null,
   };
   reportStore.push(report);
   reportList.save();
   return { ...report };
+}
+
+// Sự cố sức khỏe ngựa (Vết thương, Khập khiễng, Bỏ ăn) cho Bác sĩ thú y, mới → cũ theo Ngay, kèm tên ngựa / người báo / người xử lý.
+// Khi có API thật chỉ cần thay phần bên trong hàm này.
+export async function getIncidentsForVet() {
+  const all = await getAllIncidentReports();
+  return all.filter((r) => HEALTH_INCIDENT_TYPES.includes(r.LoaiSuCo));
+}
+
+// Bác sĩ thú y đổi trạng thái / ghi chú xử lý sự cố sức khỏe ngựa: Mới → Đang xử lý → Đã xử lý (không bỏ qua bước, không quay lại).
+// (updateIncidentStatus ở trên dành cho Manager và từ chối loại sức khỏe nên không dùng lại được.)
+// Ràng buộc (BE cũng phải kiểm tra lại): đúng loại sức khỏe, đúng thứ tự trạng thái, ghi chú ≤ 300 ký tự.
+export async function updateHealthIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, userId) {
+  await delay();
+  const report = reportStore.find((r) => r.ReportID === Number(reportId));
+  if (!report) throw new Error("Không tìm thấy báo cáo sự cố");
+  if (!HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo)) throw new Error("Chỉ xử lý sự cố về sức khỏe ngựa.");
+  const current = report.TrangThai ?? INCIDENT_STATUS.NEW;
+  const nextAllowed = { [INCIDENT_STATUS.NEW]: INCIDENT_STATUS.IN_PROGRESS, [INCIDENT_STATUS.IN_PROGRESS]: INCIDENT_STATUS.DONE };
+  if (nextAllowed[current] !== TrangThai) throw new Error("Không thể chuyển sang trạng thái này.");
+  const note = (GhiChuXuLy ?? "").trim();
+  if (note.length > INCIDENT_DESCRIPTION_MAX) throw new Error(`Ghi chú tối đa ${INCIDENT_DESCRIPTION_MAX} ký tự.`);
+  Object.assign(report, { TrangThai, GhiChuXuLy: note, HandledBy: Number(userId), HandledAt: toISODateTime(new Date()) });
+  reportList.save();
+  return withHandling(report);
 }

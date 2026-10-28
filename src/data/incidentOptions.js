@@ -14,3 +14,7 @@ export const INCIDENT_IMAGE = {
   maxBytes: 5 * 1024 * 1024,
   maxLabel: "5MB",
 };
+
+// Trạng thái xử lý sự cố (INCIDENTREPORT.TrangThai). Bản ghi cũ chưa có trường này coi như "Mới".
+export const INCIDENT_STATUS = { NEW: "Mới", IN_PROGRESS: "Đang xử lý", DONE: "Đã xử lý" };
+export const INCIDENT_STATUSES = Object.values(INCIDENT_STATUS);
