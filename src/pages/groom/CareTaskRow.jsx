@@ -1,69 +1,69 @@
+import { Check } from "lucide-react";
 import HorseAvatar from "../../components/HorseAvatar";
+import { formatDayMonth } from "../../utils/date";
 
-// Mẫu cột của phiếu việc. ≥900px: Giờ | Ngựa (+ chuồng) | Loại việc | Hành động. Hẹp hơn: bỏ cột Giờ — giờ xuống
-// thành dòng nhỏ dưới tên việc.
-export const TASK_GRID =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 min-[900px]:grid-cols-[104px_250px_minmax(0,1fr)_auto]";
+// Mẫu cột của phiếu việc. ≥768px: Giờ 70px | Ngựa (+ chuồng) | Công việc (phần còn lại) | Hành động 150px.
+// Hẹp hơn: các cột xếp dọc — giờ xuống dòng nhỏ dưới tên việc, nút xuống dòng riêng rộng 100%.
+export const TASK_GRID = "grid grid-cols-1 gap-y-2 md:grid-cols-[70px_240px_minmax(0,1fr)_150px] md:items-center md:gap-x-4";
 
-// 1 việc trong phiếu (~48px). Việc đã xong: mờ nhưng giữ đúng vị trí giờ, chữ "Đã xong" (không icon).
-// - timeLabel: chữ trong cột Giờ (≥900px). "" = để trống giữ căn cột (việc cùng giờ với hàng trên trong ca).
-//   Việc tồn: "dd/MM · HH:mm". mobileTime: giờ hiện dưới tên việc ở màn hẹp (luôn hiện, vì không có cột Giờ).
-// - highlight: giờ chữ cam đậm (việc tồn, hoặc trễ). late: chưa xong quá giờ chuẩn → thêm chữ nhỏ "Trễ" (kể cả khi
-//   timeLabel trống, để hàng trễ không mất dấu).
-// - gapBefore: hàng đầu của 1 giờ mới → cách hàng trên thêm 8px để thấy nhịp thời gian.
-export default function CareTaskRow({
-  task,
-  timeLabel,
-  mobileTime,
-  highlight = false,
-  late = false,
-  gapBefore = false,
-  horse,
-  horseName,
-  stable,
-  saving,
-  onConfirm,
-}) {
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
+
+// 1 việc trong phiếu (≥60px). Việc đã xong: chữ vẫn rõ, hiện tick + "Đã xong" ở cột hành động, tên việc gạch ngang nhẹ.
+// - timeLabel: chữ trong cột Giờ (≥768px). "" = để trống giữ căn cột (việc cùng giờ với hàng trên trong ca).
+//   Việc tồn: "dd/MM · HH:mm" → cột Giờ chỉ hiện HH:mm, ngày hiện thành nhãn "Tồn từ dd/MM" cạnh tên việc.
+//   mobileTime: giờ hiện dưới tên việc ở màn hẹp (luôn hiện, vì không có cột Giờ).
+// - highlight: việc tồn. late: chưa xong quá giờ chuẩn → thêm chữ nhỏ "Trễ" (kể cả khi timeLabel trống).
+export default function CareTaskRow({ task, timeLabel, mobileTime, highlight = false, late = false, horse, horseName, stable, saving, onConfirm }) {
   const done = task.TrangThai;
-  const timeClass = highlight || late ? "font-medium text-brass-deep" : done ? "text-stone/70" : "text-ink";
+  const columnTime = highlight ? (timeLabel.split(" · ")[1] ?? timeLabel) : timeLabel;
+  const mobileHour = highlight ? (mobileTime.split(" · ")[1] ?? mobileTime) : mobileTime;
+  const timeClass = late ? "text-[#c2570c]" : "text-[#2b2118]";
+  const taskClass = done ? "text-[#6b6055] line-through" : "text-[#2b2118]";
+  const backlogTag = highlight && !done && <span className="ml-2 text-[13px] font-semibold text-[#c0262d]">Tồn từ {formatDayMonth(task.Ngay)}</span>;
 
   return (
-    <li className={`min-h-12 border-b border-stone/15 py-1.5 pr-1 text-sm ${TASK_GRID} ${gapBefore ? "mt-2" : ""} ${done ? "opacity-60" : ""}`}>
-      <span className={`hidden whitespace-nowrap tabular-nums min-[900px]:block ${timeClass}`}>
-        {timeLabel}
-        {late && <span className={`text-xs font-medium text-brass-deep ${timeLabel ? "ml-1.5" : ""}`}>Trễ</span>}
+    <li className={`min-h-[60px] border-b border-[#ece5d6] px-5 py-3 transition-colors last:border-b-0 hover:bg-[#f0efec] ${TASK_GRID}`}>
+      <span className={`hidden text-[15px] font-semibold whitespace-nowrap tabular-nums md:block ${timeClass}`}>
+        {columnTime}
+        {late && <span className={`text-[13px] font-semibold text-[#c2570c] ${columnTime ? "ml-1.5" : ""}`}>Trễ</span>}
       </span>
 
-      <span className="flex min-w-0 items-center gap-2 min-[900px]:col-start-2">
-        <HorseAvatar horse={horse} size={28} />
+      <span className="flex min-w-0 items-center gap-3 md:col-start-2">
+        <HorseAvatar horse={horse} size={36} square />
         <span className="min-w-0">
-          <span className="font-serif text-base font-semibold text-ink">{horseName}</span>
-          {stable && <span className="ml-2 text-xs whitespace-nowrap text-stone">Chuồng {stable}</span>}
-          {/* Hẹp: loại việc + giờ ngay dưới tên ngựa */}
-          <span className="mt-0.5 block min-[900px]:hidden">
-            <span className="text-ink">{task.LoaiViec}</span>
-            <span className={`ml-2 text-xs tabular-nums ${timeClass}`}>
-              {mobileTime}
-              {late && " · Trễ"}
-            </span>
-          </span>
+          <span className="block truncate font-serif text-base font-semibold text-[#4a3f33]">{horseName}</span>
+          {stable && <span className="block text-[13px] text-[#6b6055]">Chuồng {stable}</span>}
         </span>
       </span>
 
-      <span className="hidden min-w-0 text-ink min-[900px]:block">{task.LoaiViec}</span>
+      {/* Hẹp: tên việc + giờ nằm dưới ngựa */}
+      <span className="min-w-0 text-[15px] md:hidden">
+        <span className={taskClass}>{task.LoaiViec}</span>
+        {backlogTag}
+        <span className={`ml-2 text-[13px] tabular-nums ${timeClass}`}>
+          {mobileHour}
+          {late && " · Trễ"}
+        </span>
+      </span>
+      <span className="hidden min-w-0 text-[15px] md:block">
+        <span className={taskClass}>{task.LoaiViec}</span>
+        {backlogTag}
+      </span>
 
       {done ? (
-        <span className="px-2.5 py-1 text-stone">Đã xong</span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-[#4d6b2a] md:justify-end">
+          <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Đã xong
+        </span>
       ) : (
-        // Link chữ cam: không nền/viền; viền nhạt chỉ hiện khi rê chuột / focus (viền trong suốt giữ chỗ)
         <button
           type="button"
           onClick={() => onConfirm(task)}
           disabled={saving}
-          aria-label={`Xác nhận xong ${task.LoaiViec} cho ${horseName}`}
-          className="cursor-pointer rounded-sm border border-transparent px-2.5 py-1 font-medium whitespace-nowrap text-brass-deep transition-colors hover:border-brass/40 focus-visible:border-brass/40 disabled:cursor-wait disabled:opacity-60"
+          aria-label={`Hoàn thành ${task.LoaiViec} cho ${horseName}`}
+          className={`h-9 w-full cursor-pointer rounded-[4px] border border-[#c2570c] bg-white px-3 text-sm font-semibold whitespace-nowrap text-[#c2570c] transition-colors hover:bg-[#fbf3e6] disabled:cursor-wait disabled:opacity-60 md:w-auto md:justify-self-end ${FOCUS_RING}`}
         >
-          Xác nhận xong
+          Hoàn thành
         </button>
       )}
     </li>

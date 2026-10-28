@@ -4,19 +4,19 @@ import { Search } from "lucide-react";
 import LoadingState from "../../components/LoadingState";
 import Toast from "../../components/Toast";
 import useAuth from "../../hooks/useAuth";
-import HorseSelect from "./HorseSelect";
-import ExamTableRow, { EXAM_GRID } from "./ExamTableRow";
+import ExamTableRow from "./ExamTableRow";
 import ExamDetailDrawer from "./ExamDetailDrawer";
 import { getHorses, getMedicalRecords, getTrainingLocks, getVets } from "../../services/vetService";
 import { EXAM_WINDOW_DAYS, NO_INJURY } from "../../data/medicalRecordOptions";
 import { daysFromToday } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
-const HEAD_CELL = "text-xs font-medium tracking-wide text-stone uppercase";
+const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
 
-// Sổ bệnh án của bác sĩ thú y: mỗi lần khám (MEDICALRECORD) 1 hàng gọn, nhóm theo tháng, mới nhất trước;
+// Sổ bệnh án của bác sĩ thú y: mỗi lần khám (MEDICALRECORD) 1 hàng bảng, mới nhất trước;
 // bấm 1 hàng mở ngăn chi tiết bên phải (phác đồ đầy đủ, lệnh khóa liên quan, nút Sửa nếu là người ghi).
-// Lọc: ô tìm (tên ngựa / chẩn đoán / vị trí), dropdown Ngựa (?horse=ID trên URL), chip "Có chấn thương".
+// Lọc: ô tìm (tên ngựa / chẩn đoán / vị trí), dropdown Ngựa (?horse=ID trên URL), ô bật/tắt "Có chấn thương".
 // Form gửi toast sang qua location.state ("Đã lưu bệnh án", kèm liên kết "Xem lệnh khóa" nếu vừa tự động khóa huấn luyện).
 export default function MedicalExams() {
   const { user } = useAuth();
@@ -82,104 +82,112 @@ export default function MedicalExams() {
   const windowStart = daysFromToday(-EXAM_WINDOW_DAYS);
   const recentCount = visibleRecords.filter((r) => r.Ngay >= windowStart).length;
 
-  // Nhóm theo tháng "YYYY-MM" (records đã sắp mới → cũ nên nhóm cũng mới → cũ)
-  const groups = visibleRecords.reduce((acc, record) => {
-    const key = record.Ngay.slice(0, 7);
-    const last = acc[acc.length - 1];
-    if (last?.key === key) last.records.push(record);
-    else acc.push({ key, records: [record] });
-    return acc;
-  }, []);
-
   const selected = records.find((r) => r.RecordID === selectedId);
   // Lệnh khóa liên quan: đặt cho ngựa này đúng ngày khám
   const relatedLock = selected && locks.find((l) => l.HorseID === selected.HorseID && l.NgayDat === selected.Ngay);
 
   return (
-    <div>
-      <h1 className="mb-5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Khám bệnh</h1>
+    <div className="mx-auto w-full max-w-[1280px] md:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div>
+          <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Khám bệnh</h1>
+          {!loading && (
+            <p className="mt-1 text-sm text-[#4a3f33]">
+              {recentCount} lần khám trong {EXAM_WINDOW_DAYS} ngày gần đây
+            </p>
+          )}
+        </div>
+        <Link
+          to={`/vet/exams/new${horseFilter ? `?horse=${horseFilter}` : ""}`}
+          className={`inline-flex h-10 items-center rounded-[4px] bg-[#c2570c] px-5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-[#a8480a] ${FOCUS_RING}`}
+        >
+          + Ghi lần khám
+        </Link>
+      </div>
 
       {loading ? (
         <LoadingState />
       ) : (
         <>
-          {/* Thanh lọc 1 hàng; nút "+ Ghi lần khám" bên phải */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-72">
+          {/* Thanh lọc 1 hàng: tìm kiếm, chọn ngựa, bật/tắt "Có chấn thương" */}
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full sm:w-[300px]">
               <label htmlFor="examKeyword" className="sr-only">
                 Tìm theo tên ngựa, chẩn đoán, vị trí
               </label>
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" aria-hidden="true" />
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" aria-hidden="true" />
               <input
                 id="examKeyword"
                 type="search"
                 placeholder="Tìm ngựa, chẩn đoán, vị trí..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="h-9 w-full rounded-full border border-stone/20 bg-white pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+                className="h-9 w-full rounded-[4px] border border-[#cfc4ad] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none placeholder:text-[#6b6055]/70 focus:border-[#c2570c]"
               />
             </div>
-            <HorseSelect horses={horses} value={horseFilter} onChange={selectHorse} />
+            <label htmlFor="examHorse" className="sr-only">
+              Lọc theo ngựa
+            </label>
+            <select
+              id="examHorse"
+              value={horseFilter ?? ""}
+              onChange={(e) => selectHorse(e.target.value ? Number(e.target.value) : null)}
+              className="h-9 w-full cursor-pointer rounded-[4px] border border-[#cfc4ad] bg-white px-3 text-sm text-[#2b2118] outline-none focus:border-[#c2570c] sm:w-48"
+            >
+              <option value="">Tất cả ngựa</option>
+              {horses.map((h) => (
+                <option key={h.HorseID} value={h.HorseID}>
+                  {h.Ten}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               aria-pressed={injuryOnly}
               onClick={() => setInjuryOnly((prev) => !prev)}
-              className={`h-9 cursor-pointer rounded-full border px-3.5 text-sm transition-colors ${
-                injuryOnly ? "border-brass bg-brass/15 font-medium text-brass-deep" : "border-stone/25 bg-white text-ink hover:border-stone/40"
+              className={`h-9 cursor-pointer rounded-[4px] border px-3.5 text-sm transition-colors ${FOCUS_RING} ${
+                injuryOnly ? "border-[#c2570c] bg-[#fbf3e6] font-semibold text-[#2b2118]" : "border-[#cfc4ad] bg-white text-[#2b2118] hover:bg-[#f0efec]"
               }`}
             >
               Có chấn thương
             </button>
-            <Link
-              to={`/vet/exams/new${horseFilter ? `?horse=${horseFilter}` : ""}`}
-              className="btn-primary ml-auto"
-            >
-              + Ghi lần khám
-            </Link>
           </div>
-          <p className="mt-2 text-[13px] text-stone">
-            {recentCount} lần khám trong {EXAM_WINDOW_DAYS} ngày gần đây
-          </p>
 
-          {groups.length === 0 ? (
-            <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">
-              Chưa có lần khám nào khớp bộ lọc.{" "}
-              <button type="button" onClick={clearFilters} className="cursor-pointer font-medium text-brass-deep underline-offset-2 hover:underline">
+          {visibleRecords.length === 0 ? (
+            <p className="mt-5 rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">
+              Không có lần khám nào phù hợp.{" "}
+              <button type="button" onClick={clearFilters} className={`cursor-pointer font-semibold text-[#c2570c] underline-offset-2 hover:underline ${FOCUS_RING}`}>
                 Xóa bộ lọc
               </button>
             </p>
           ) : (
             // caret-transparent: không hiện con trỏ chữ trong vùng chỉ đọc (vd khi bật duyệt bằng con trỏ — F7)
-            <div className="mt-5 caret-transparent">
-              <div aria-hidden="true" className={`border-b border-stone/20 pr-2 pb-2 pl-3 ${EXAM_GRID}`}>
-                <span className={HEAD_CELL}>Ngày</span>
-                <span className={HEAD_CELL}>Ngựa</span>
-                <span className={HEAD_CELL}>Chẩn đoán</span>
-                <span className={`hidden min-[900px]:block ${HEAD_CELL}`}>Vị trí chấn thương</span>
-                <span className={`hidden text-right min-[900px]:block ${HEAD_CELL}`}>Bác sĩ</span>
-              </div>
-              {groups.map((group) => {
-                const [year, month] = group.key.split("-");
-                return (
-                  <section key={group.key} aria-label={`Tháng ${Number(month)}/${year}`}>
-                    <h2 className="border-b border-stone/15 pt-5 pb-1.5 pl-3 text-xs font-medium tracking-wide text-stone uppercase select-none">
-                      Tháng {Number(month)}/{year}
-                    </h2>
-                    <ul>
-                      {group.records.map((record) => (
-                        <ExamTableRow
-                          key={record.RecordID}
-                          record={record}
-                          horse={horseById[record.HorseID]}
-                          vetName={vetNames[record.VetID]}
-                          selected={record.RecordID === selectedId}
-                          onSelect={(r) => setSelectedId(r.RecordID)}
-                        />
-                      ))}
-                    </ul>
-                  </section>
-                );
-              })}
+            <div className="mt-5 overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white caret-transparent">
+              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={HEAD}>Ngựa</th>
+                    <th className={HEAD}>Chẩn đoán</th>
+                    <th className={HEAD}>Vị trí chấn thương</th>
+                    <th className={`${HEAD} text-right`}>Ngày khám</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr:last-child>td]:border-b-0">
+                  {visibleRecords.map((record) => (
+                    <ExamTableRow
+                      key={record.RecordID}
+                      record={record}
+                      horse={horseById[record.HorseID]}
+                      vetName={vetNames[record.VetID]}
+                      selected={record.RecordID === selectedId}
+                      onSelect={(r) => setSelectedId(r.RecordID)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+              <p className="border-t border-[#d9cfba] px-4 py-3 text-sm text-[#4a3f33] tabular-nums">
+                Hiển thị {visibleRecords.length} / {records.length} lần khám
+              </p>
             </div>
           )}
         </>

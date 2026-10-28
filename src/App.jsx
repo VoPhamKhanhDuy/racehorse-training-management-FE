@@ -20,6 +20,7 @@ import StaffManagement from "./pages/manager/StaffManagement";
 import SupplyManagement from "./pages/manager/SupplyManagement";
 import SupplyForm from "./pages/manager/SupplyForm";
 import Reports from "./pages/manager/Reports";
+import ManagerIncidents from "./pages/manager/ManagerIncidents";
 import AuditLog from "./pages/manager/AuditLog";
 import ManagerFinance from "./pages/manager/ManagerFinance";
 import TrainingPlans from "./pages/trainer/TrainingPlans";
@@ -36,6 +37,7 @@ import HorseProfile from "./pages/trainer/HorseProfile";
 import MedicalExams from "./pages/vet/MedicalExams";
 import MedicalExamForm from "./pages/vet/MedicalExamForm";
 import HealthOverview from "./pages/vet/HealthOverview";
+import VetIncidents from "./pages/vet/VetIncidents";
 import GroomTasks from "./pages/groom/GroomTasks";
 import StableMap from "./pages/groom/StableMap";
 import IncidentReports from "./pages/groom/IncidentReports";
@@ -106,6 +108,7 @@ function App() {
         <Route path="/vet/exams" element={<MedicalExams />} />
         <Route path="/vet/exams/new" element={<MedicalExamForm />} />
         <Route path="/vet/exams/:id/edit" element={<MedicalExamForm />} />
+        <Route path="/vet/incidents" element={<VetIncidents />} />
         <Route path="/vet/locks" element={<TrainingLocks />} />
         <Route path="/vet/locks/new" element={<TrainingLockForm />} />
         <Route path="/vet/vaccinations" element={<Vaccinations />} />
@@ -170,6 +173,7 @@ function App() {
         <Route path="/manager/supplies" element={<SupplyManagement />} />
         <Route path="/manager/supplies/new" element={<SupplyForm />} />
         <Route path="/manager/supplies/:id/edit" element={<SupplyForm />} />
+        <Route path="/manager/incidents" element={<ManagerIncidents />} />
         <Route path="/manager/reports" element={<Reports />} />
         <Route path="/manager/audit-log" element={<AuditLog />} />
         <Route path="/manager/*" element={<PlaceholderPage />} />

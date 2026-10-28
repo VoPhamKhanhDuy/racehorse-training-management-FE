@@ -1,63 +1,70 @@
 import { Link } from "react-router-dom";
+import { Check, Clock, TriangleAlert } from "lucide-react";
 import HorseAvatar from "../../components/HorseAvatar";
 import { daysBetween, daysSince, formatDate, todayISO } from "../../utils/date";
 
-// Mẫu cột danh sách lịch tiêm — dùng chung cho hàng tiêu đề và từng hàng.
-// ≥900px: Ngựa | Loại | Ngày hẹn | Thời hạn | Hành động. Hẹp hơn: bỏ Thời hạn; Loại xuống dưới tên ngựa,
-// hàng hành động xuống dòng riêng (căn phải).
-export const VACCINE_GRID =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 min-[900px]:grid-cols-[190px_minmax(0,1fr)_110px_130px_150px] min-[900px]:gap-y-0";
+const CELL = "border-b border-[#d9cfba] px-4 py-3";
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
 
-const CELL = {
-  type: "col-start-1 row-start-2 min-[900px]:col-start-auto min-[900px]:row-start-auto",
-  date: "col-start-2 row-start-1 text-right min-[900px]:col-start-auto min-[900px]:row-start-auto min-[900px]:text-left",
-  actions: "col-span-2 row-start-3 min-[900px]:col-span-1 min-[900px]:row-start-auto",
-};
-
-// Thời hạn: quá hạn → "Quá hạn N ngày" (cam đậm); sắp tới → "Còn N ngày" (nâu); chờ tiêm xa → "Còn N ngày" (mờ); đã tiêm → "—"
-function dueText(item, state) {
-  if (state === "Đã tiêm") return { text: "—", className: "text-stone" };
-  if (state === "Quá hạn") return { text: `Quá hạn ${daysSince(item.NgayHen)} ngày`, className: "font-medium text-brass-deep" };
+// Thời hạn: quá hạn → "Quá hạn N ngày" (đỏ + cảnh báo); sắp tới → "Còn N ngày" (cam + đồng hồ);
+// chờ tiêm xa → "Còn N ngày" (chữ thường); đã tiêm → "Đã tiêm" (xanh + tick)
+function dueInfo(item, state) {
+  if (state === "Đã tiêm") return { text: "Đã tiêm", className: "font-semibold text-[#4d6b2a]", Icon: Check };
+  if (state === "Quá hạn") {
+    return { text: `Quá hạn ${daysSince(item.NgayHen)} ngày`, className: "font-semibold text-[#c0262d]", Icon: TriangleAlert };
+  }
   const left = daysBetween(todayISO(), item.NgayHen);
   const text = left === 0 ? "Hôm nay" : `Còn ${left} ngày`;
-  return { text, className: state === "Sắp tới" ? "text-bark" : "text-stone" };
+  return state === "Sắp tới"
+    ? { text, className: "font-semibold text-[#c2570c]", Icon: Clock }
+    : { text, className: "text-[#4a3f33]", Icon: null };
 }
 
-// 1 lịch tiêm = 1 hàng. state: trạng thái hiển thị (getVaccineState). Chưa tiêm: nút "Đã tiêm" + link "Sửa";
+// 1 lịch tiêm = 1 hàng bảng. state: trạng thái hiển thị (getVaccineState). Chưa tiêm: nút "Đã tiêm" + link "Sửa";
 // đã tiêm: không có hành động (không sửa, không xóa).
 export default function VaccinationRow({ item, state, horse, onMarkDone }) {
-  const due = dueText(item, state);
+  const due = dueInfo(item, state);
   const pending = state !== "Đã tiêm";
+  const horseName = horse?.Ten ?? `Ngựa #${item.HorseID}`;
 
   return (
-    <li className={`border-b border-stone/15 py-2 pr-2 pl-3 text-sm transition-colors hover:bg-track/40 ${VACCINE_GRID} min-h-14`}>
-      <span className="flex min-w-0 items-center gap-2">
-        <HorseAvatar horse={horse} size={28} />
-        <span className="truncate font-serif text-base font-semibold text-ink">{horse?.Ten ?? `Ngựa #${item.HorseID}`}</span>
-      </span>
-      <span className={`min-w-0 text-ink ${CELL.type}`}>{item.Loai}</span>
-      <span className={`text-ink tabular-nums ${CELL.date}`}>{formatDate(item.NgayHen)}</span>
-      <span className={`hidden min-[900px]:block ${due.className}`}>{due.text}</span>
-      <span className={`flex items-center justify-end gap-3 ${CELL.actions} ${pending ? "" : "hidden min-[900px]:flex"}`}>
-        {pending && (
-          <>
-            <button
-              type="button"
-              onClick={() => onMarkDone(item)}
-              aria-label={`Đánh dấu đã tiêm ${item.Loai} cho ${horse?.Ten ?? "ngựa"}`}
-              className="cursor-pointer rounded-sm border border-brass px-3 py-1 text-sm font-medium text-brass-deep transition-colors hover:bg-brass/10"
-            >
-              Đã tiêm
-            </button>
-            <Link
-              to={`/vet/vaccinations/${item.ScheduleID}/edit`}
-              className="text-sm text-stone underline-offset-2 hover:text-ink hover:underline"
-            >
-              Sửa
-            </Link>
-          </>
-        )}
-      </span>
-    </li>
+    <tr className="text-[#2b2118] transition-colors hover:bg-[#f0efec]">
+      <td className={`${CELL} whitespace-nowrap`}>
+        <span className="flex items-center gap-3">
+          <HorseAvatar horse={horse} size={36} square />
+          <span className="font-serif text-base font-semibold">{horseName}</span>
+        </span>
+      </td>
+      <td className={`${CELL} text-sm whitespace-nowrap`}>{item.Loai}</td>
+      <td className={`${CELL} text-sm whitespace-nowrap tabular-nums`}>{formatDate(item.NgayHen)}</td>
+      <td className={`${CELL} text-sm whitespace-nowrap ${due.className}`}>
+        <span className="flex items-center gap-1.5">
+          {due.Icon && <due.Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />}
+          {due.text}
+        </span>
+      </td>
+      <td className={`${CELL} w-[190px] min-w-[190px]`}>
+        <span className="flex items-center justify-end gap-4">
+          {pending && (
+            <>
+              <button
+                type="button"
+                onClick={() => onMarkDone(item)}
+                aria-label={`Đánh dấu đã tiêm ${item.Loai} cho ${horse?.Ten ?? "ngựa"}`}
+                className={`h-9 cursor-pointer rounded-[4px] border border-[#c2570c] bg-white px-3 text-sm font-semibold text-[#c2570c] transition-colors hover:bg-[#fbf3e6] ${FOCUS_RING}`}
+              >
+                Đã tiêm
+              </button>
+              <Link
+                to={`/vet/vaccinations/${item.ScheduleID}/edit`}
+                className={`text-sm font-semibold text-[#4a3f33] underline-offset-2 hover:text-[#2b2118] hover:underline ${FOCUS_RING}`}
+              >
+                Sửa
+              </Link>
+            </>
+          )}
+        </span>
+      </td>
+    </tr>
   );
 }

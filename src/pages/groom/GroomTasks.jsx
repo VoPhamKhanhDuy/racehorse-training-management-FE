@@ -10,7 +10,8 @@ import { CARE_SHIFTS, CARE_TASK_SCHEDULE, CARE_WORK_WINDOW, getTaskTime, toMinut
 import { addDays, formatDate, formatDayMonth, todayISO } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
-const GROUP_TITLE = "border-b border-stone/20 pb-1.5 text-xs font-medium tracking-wide text-stone uppercase";
+const GROUP_FRAME = "overflow-hidden rounded-[4px] border border-[#b9ab90] bg-white";
+const GROUP_HEAD = "flex items-baseline gap-3 border-b border-[#d9cfba] bg-[#f3ede0] px-5 py-3";
 
 // Số phút từ 0h của thời điểm hiện tại
 const currentMinutes = () => {
@@ -35,6 +36,7 @@ export default function GroomTasks() {
   const [savingId, setSavingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [nowMin, setNowMin] = useState(currentMinutes);
+  const [doneBacklogIds, setDoneBacklogIds] = useState([]); // việc tồn vừa hoàn thành: vẫn hiện ở mục "Đã hoàn thành" trong phiên này
 
   // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock careService)
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function GroomTasks() {
   const horseName = (horseId) => horseById[horseId]?.Ten ?? `Ngựa #${horseId}`;
 
   // Việc hiển thị: việc hôm nay + việc chưa xong của ngày trước (tồn)
-  const visibleTasks = tasks.filter((t) => t.Ngay === today || (!t.TrangThai && t.Ngay < today));
+  const visibleTasks = tasks.filter((t) => t.Ngay === today || (!t.TrangThai && t.Ngay < today) || doneBacklogIds.includes(t.TaskID));
   const isBacklog = (t) => !t.TrangThai && t.Ngay < today;
   const pendingCount = visibleTasks.filter((t) => !t.TrangThai).length;
 
@@ -83,6 +85,8 @@ export default function GroomTasks() {
 
   const backlog = visibleTasks.filter(isBacklog).sort(byTime);
   const todayTasks = visibleTasks.filter((t) => t.Ngay === today);
+  // Việc đã hoàn thành chuyển xuống mục "Đã hoàn thành" ở cuối trang (cũ → mới theo ngày, giờ)
+  const doneTasks = visibleTasks.filter((t) => t.TrangThai).sort(byTime);
   // Việc tiếp theo: chưa xong có giờ sớm nhất, việc tồn luôn trước (backlog đã sắp theo ngày cũ nhất trước)
   const nextTask = backlog[0] ?? [...todayTasks].filter((t) => !t.TrangThai).sort(byTime)[0] ?? null;
 
@@ -94,11 +98,13 @@ export default function GroomTasks() {
     .map(([key, shift]) => ({
       key,
       title: `${shift.label} · ${shift.tu}–${shift.den}`,
-      rows: todayTasks.filter((t) => listed(t) && CARE_TASK_SCHEDULE[t.LoaiViec]?.ca === key).sort(byTime),
+      label: shift.label,
+      range: `${shift.tu}–${shift.den}`,
+      rows: todayTasks.filter((t) => listed(t) && !t.TrangThai && CARE_TASK_SCHEDULE[t.LoaiViec]?.ca === key).sort(byTime),
     }))
     .filter((g) => g.rows.length > 0);
-  const otherToday = todayTasks.filter((t) => listed(t) && !CARE_TASK_SCHEDULE[t.LoaiViec]).sort(byTime);
-  if (otherToday.length > 0) shiftGroups.push({ key: "other", title: "Việc khác", rows: otherToday });
+  const otherToday = todayTasks.filter((t) => listed(t) && !t.TrangThai && !CARE_TASK_SCHEDULE[t.LoaiViec]).sort(byTime);
+  if (otherToday.length > 0) shiftGroups.push({ key: "other", title: "Việc khác", label: "Việc khác", range: "", rows: otherToday });
 
   const backlogOnlyYesterday = backlogList.every((t) => t.Ngay === yesterday);
 
@@ -115,6 +121,7 @@ export default function GroomTasks() {
         targetLabel: name,
       });
       setTasks((prev) => prev.map((t) => (t.TaskID === done.TaskID ? done : t)));
+      if (done.Ngay < today) setDoneBacklogIds((prev) => [...prev, done.TaskID]);
       setToast({ text: `Đã xác nhận: ${done.LoaiViec} – ${name}` });
     } catch (err) {
       setToast({ text: err.message, error: true });
@@ -147,20 +154,47 @@ export default function GroomTasks() {
     );
   };
 
+  // Chỉ để hiển thị: số việc của 1 ca (cả việc đang ở khối "Việc tiếp theo") và số đã xong
+  const shiftStats = (key) => {
+    const inShift = todayTasks.filter((t) =>
+      key === "other" ? !CARE_TASK_SCHEDULE[t.LoaiViec] : CARE_TASK_SCHEDULE[t.LoaiViec]?.ca === key
+    );
+    return { total: inShift.length, done: inShift.filter((t) => t.TrangThai).length };
+  };
+
+  const totalCount = visibleTasks.length;
+  const doneCount = totalCount - pendingCount;
+
   return (
-    <div className="max-w-[900px]">
-      <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Công việc hôm nay</h1>
-      <p className="mt-1 text-sm text-stone">
-        Hôm nay, {formatDate(today)}
-        {!loading && pendingCount > 0 && ` · còn ${pendingCount} việc chưa xong`}
-      </p>
+    <div className="mx-auto w-full max-w-[1100px] md:px-8">
+      <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Công việc hôm nay</h1>
+      <p className="mt-1 text-sm text-[#4a3f33]">Hôm nay, {formatDate(today)}</p>
 
       {loading ? (
         <LoadingState />
       ) : visibleTasks.length === 0 ? (
         <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">Hôm nay bạn không có công việc nào.</p>
       ) : (
-        <div className="mt-5 space-y-8">
+        <div className="mt-6 space-y-6">
+          <div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <p className="text-[15px] font-semibold text-[#2b2118]">Còn {pendingCount} việc chưa xong</p>
+              <p className="text-sm text-[#6b6055] tabular-nums">
+                {doneCount}/{totalCount} đã hoàn thành
+              </p>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Tiến độ công việc"
+              aria-valuemin={0}
+              aria-valuemax={totalCount}
+              aria-valuenow={doneCount}
+              className="mt-2 h-1.5 overflow-hidden rounded-[2px] bg-[#ece5d6]"
+            >
+              <div className="h-full bg-[#4d6b2a]" style={{ width: `${(doneCount / totalCount) * 100}%` }} />
+            </div>
+          </div>
+
           <NextTaskBanner
             task={nextTask}
             gio={nextTask ? getTaskTime(nextTask.LoaiViec) : ""}
@@ -174,20 +208,44 @@ export default function GroomTasks() {
           />
 
           {backlogList.length > 0 && (
-            <section aria-label="Việc tồn">
-              <h2 className={GROUP_TITLE}>
-                {backlogOnlyYesterday ? "Tồn từ hôm qua" : "Tồn từ các ngày trước"} · {backlogList.length}
-              </h2>
+            <section aria-label="Việc tồn" className={GROUP_FRAME}>
+              <div className={GROUP_HEAD}>
+                <h2 className="font-serif text-[17px] font-semibold text-[#2b2118]">
+                  {backlogOnlyYesterday ? "Tồn từ hôm qua" : "Tồn từ các ngày trước"}
+                </h2>
+                <span className="ml-auto text-[13px] font-semibold text-[#c0262d] tabular-nums">{backlogList.length} việc</span>
+              </div>
               <ul>{backlogList.map((t, i) => renderRow(t, backlogList[i - 1] ?? null, true))}</ul>
             </section>
           )}
 
-          {shiftGroups.map((group) => (
-            <section key={group.key} aria-label={group.title}>
-              <h2 className={GROUP_TITLE}>{group.title}</h2>
-              <ul>{group.rows.map((t, i) => renderRow(t, group.rows[i - 1] ?? null))}</ul>
+          {shiftGroups.map((group) => {
+            const { total, done } = shiftStats(group.key);
+            return (
+              <section key={group.key} aria-label={group.title} className={GROUP_FRAME}>
+                <div className={GROUP_HEAD}>
+                  <h2 className="font-serif text-[17px] font-semibold text-[#2b2118]">{group.label}</h2>
+                  {group.range && <span className="text-[13px] text-[#6b6055]">{group.range}</span>}
+                  <span
+                    className={`ml-auto text-[13px] font-semibold tabular-nums ${done === total ? "text-[#4d6b2a]" : "text-[#2b2118]"}`}
+                  >
+                    {done}/{total} việc
+                  </span>
+                </div>
+                <ul>{group.rows.map((t, i) => renderRow(t, group.rows[i - 1] ?? null))}</ul>
+              </section>
+            );
+          })}
+
+          {doneTasks.length > 0 && (
+            <section aria-label="Đã hoàn thành" className={GROUP_FRAME}>
+              <div className={GROUP_HEAD}>
+                <h2 className="font-serif text-[17px] font-semibold text-[#2b2118]">Đã hoàn thành</h2>
+                <span className="ml-auto text-[13px] font-semibold text-[#4d6b2a] tabular-nums">{doneTasks.length} việc</span>
+              </div>
+              <ul>{doneTasks.map((t, i) => renderRow(t, doneTasks[i - 1] ?? null, t.Ngay < today))}</ul>
             </section>
-          ))}
+          )}
         </div>
       )}
 

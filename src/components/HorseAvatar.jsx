@@ -1,10 +1,10 @@
 import HorseIcon from "./HorseIcon";
 
 // Ảnh ngựa tròn cỡ nhỏ (chip lọc, dòng danh sách). size: số px. Không có ảnh thì hiện icon ngựa.
-export default function HorseAvatar({ horse, size = 28 }) {
+export default function HorseAvatar({ horse, size = 28, square = false }) {
   return (
     <span
-      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone/10 text-stone"
+      className={`flex shrink-0 items-center justify-center overflow-hidden bg-stone/10 text-stone ${square ? "rounded-[4px]" : "rounded-full"}`}
       style={{ width: size, height: size }}
     >
       {horse?.photo ? (
