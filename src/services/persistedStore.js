@@ -11,7 +11,7 @@ const DATA_PREFIX = "equitrack.data.";
 const DATA_VERSION_KEY = "equitrack.dataSeedVersion";
 
 // Mọi key do lớp mock tạo ra (dùng cho nút "Reset dữ liệu demo")
-const DEMO_KEYS = ["equitrack.userData", "equitrack.seedVersion", "equitrack.users", DATA_VERSION_KEY];
+const DEMO_KEYS = ["equitrack.userData", "equitrack.seedVersion", "equitrack.users", DATA_VERSION_KEY, "financePayments"];
 
 function storage() {
   try {

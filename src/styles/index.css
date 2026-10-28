@@ -92,3 +92,72 @@
     color: rgb(255 255 255 / 0.85);
   }
 }
+
+/* Thu nhỏ toàn bộ giao diện còn 90% (đổi hệ số ở --app-zoom). Đơn vị vh không được zoom theo nên chia lại để
+   các khối "cao bằng màn hình" (min-h-screen, sidebar h-screen) vẫn phủ kín khung nhìn. */
+:root {
+  --app-zoom: 0.9;
+}
+
+html {
+  zoom: var(--app-zoom);
+}
+
+.min-h-screen {
+  min-height: calc(100vh / var(--app-zoom));
+}
+
+@media (min-width: 1024px) {
+  .lg\:h-screen {
+    height: calc(100vh / var(--app-zoom));
+  }
+}
+
+/* In / Lưu PDF chứng từ (pages/owner/DocumentViewer.jsx): chỉ in tờ giấy, khổ A4, lề 18mm, chữ đen, không viền ngoài */
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm;
+  }
+
+  html {
+    zoom: 1;
+  }
+
+  /* Ứng dụng nằm trong #root; khung chứng từ render qua portal vào <body> nên vẫn in được */
+  #root,
+  .doc-no-print {
+    display: none !important;
+  }
+
+  body {
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  #document-print-root {
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  #document-print-root .doc-modal {
+    display: block !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  #document-print-root .doc-modal > div {
+    overflow: visible !important;
+  }
+
+  #document-sheet {
+    width: 100% !important;
+    border: 0 !important;
+    padding: 0 !important;
+    color: #000 !important;
+  }
+}

@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import LoadingState from "../../components/LoadingState";
-import SectionTitle from "../../components/SectionTitle";
 import useAuth from "../../hooks/useAuth";
-import OwnerHealthRow, { OWNER_HEALTH_GRID } from "./OwnerHealthRow";
+import OwnerHealthRow from "./OwnerHealthRow";
 import OwnerVaccineStatus from "./OwnerVaccineStatus";
 import { getActiveLockDates, getHealthStatuses, getOwnerHorses, getOwnerVaccinations } from "../../services/ownerService";
+import { getVaccineState } from "../../utils/healthAlerts";
 import { formatDate } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
-const HEAD_CELL = "text-xs font-medium tracking-wide text-stone uppercase";
+const HEAD = "h-10 border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-0 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
+const SECTION_TITLE = "font-serif text-xl font-semibold text-[#2b2118]";
+const FRAME = "mt-3 overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white";
+const VCELL = "border-b border-[#d9cfba] px-4 py-2 align-middle";
 const isDone = (v) => v.TrangThai === "Đã tiêm";
 
 // "Sức khỏe" của Chủ ngựa — CHỈ XEM, ngựa có HORSE.OwnerID = người đang đăng nhập. KHÔNG có chẩn đoán / phác đồ / bệnh án.
@@ -48,63 +51,85 @@ export default function OwnerHealth() {
   const schedule = [...vaccinations.filter((v) => !isDone(v)), ...vaccinations.filter(isDone)];
 
   return (
-    <div className="max-w-[1100px]">
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Sức khỏe</h1>
-        <p className="mt-1 text-stone">Tình trạng và lịch tiêm phòng của ngựa bạn.</p>
+    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+      <div>
+        <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Sức khỏe</h1>
+        <p className="mt-1 text-sm text-[#4a3f33]">Tình trạng và lịch tiêm phòng của ngựa bạn.</p>
       </div>
 
       {loading ? (
         <LoadingState />
       ) : horses.length === 0 ? (
-        <div className="border-y border-stone/20 py-16 text-center">
-          <p className="font-serif text-lg font-semibold text-ink">Chưa có ngựa nào gắn với tài khoản của bạn</p>
-          <p className="mt-1.5 text-sm text-stone">Liên hệ Quản lý CLB để được thêm ngựa vào hồ sơ.</p>
+        <div className="mt-6 rounded-[4px] border border-[#d9cfba] bg-white py-16 text-center">
+          <p className="font-serif text-lg font-semibold text-[#2b2118]">Chưa có ngựa nào gắn với tài khoản của bạn</p>
+          <p className="mt-1.5 text-sm text-[#4a3f33]">Liên hệ Quản lý CLB để được thêm ngựa vào hồ sơ.</p>
         </div>
       ) : (
         <>
-          <section aria-label="Tình trạng hiện tại">
-            <SectionTitle>Tình trạng hiện tại</SectionTitle>
-            <div aria-hidden="true" className={`hidden border-b border-stone/20 pr-2 pb-2 pl-1 min-[900px]:grid ${OWNER_HEALTH_GRID}`}>
-              <span className={HEAD_CELL}>Ngựa</span>
-              <span className={HEAD_CELL}>Sức khỏe</span>
-              <span className={HEAD_CELL}>Thi đấu</span>
-              <span className={HEAD_CELL}>Tiêm tiếp theo</span>
+          <section aria-label="Tình trạng hiện tại" className="mt-8">
+            <h2 className={SECTION_TITLE}>Tình trạng hiện tại</h2>
+            <div className={FRAME}>
+              <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={HEAD}>Ngựa</th>
+                    <th className={HEAD}>Sức khỏe</th>
+                    <th className={HEAD}>Thi đấu</th>
+                    <th className={HEAD}>Tiêm tiếp theo</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr:last-child>td]:border-b-0">
+                  {horses.map((horse) => (
+                    <OwnerHealthRow
+                      key={horse.HorseID}
+                      horse={horse}
+                      health={healthByHorse[horse.HorseID]}
+                      lock={lockByHorse[horse.HorseID]}
+                      nextVaccine={vaccinations.find((v) => v.HorseID === horse.HorseID && !isDone(v))}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <ul className="border-t border-stone/20 min-[900px]:border-t-0">
-              {horses.map((horse) => (
-                <OwnerHealthRow
-                  key={horse.HorseID}
-                  horse={horse}
-                  health={healthByHorse[horse.HorseID]}
-                  lock={lockByHorse[horse.HorseID]}
-                  nextVaccine={vaccinations.find((v) => v.HorseID === horse.HorseID && !isDone(v))}
-                />
-              ))}
-            </ul>
           </section>
 
-          <section aria-label="Lịch tiêm phòng" className="mt-14">
-            <SectionTitle>Lịch tiêm phòng</SectionTitle>
+          <section aria-label="Lịch tiêm phòng" className="mt-8">
+            <h2 className={SECTION_TITLE}>Lịch tiêm phòng</h2>
             {schedule.length === 0 ? (
-              <p className="text-sm text-stone">Chưa có lịch tiêm nào.</p>
+              <p className="mt-3 text-sm text-[#4a3f33]">Chưa có lịch tiêm nào.</p>
             ) : (
-              <ul className="border-t border-stone/20">
-                {schedule.map((v) => (
-                  <li
-                    key={v.ScheduleID}
-                    className={`grid grid-cols-[96px_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-stone/15 py-3 pr-2 pl-1 text-[15px] whitespace-nowrap ${
-                      isDone(v) ? "text-stone" : ""
-                    }`}
-                  >
-                    <span className={`tabular-nums ${isDone(v) ? "text-stone" : "text-ink"}`}>{formatDate(v.NgayHen)}</span>
-                    <span className={`truncate ${isDone(v) ? "text-stone" : "text-ink"}`}>
-                      {v.Loai} · {horseName(v.HorseID)}
-                    </span>
-                    <OwnerVaccineStatus vaccination={v} className="text-right text-sm" />
-                  </li>
-                ))}
-              </ul>
+              <div className={FRAME}>
+                <table className="w-full min-w-[640px] border-separate border-spacing-0 text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th className={HEAD}>Ngày</th>
+                      <th className={HEAD}>Vắc-xin</th>
+                      <th className={HEAD}>Ngựa</th>
+                      <th className={`${HEAD} text-right`}>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&>tr:last-child>td]:border-b-0">
+                    {schedule.map((v) => {
+                      // Quá hạn: chữ ba cột đầu dịu đi (#6b6055), không tô nền / gạch ngang; còn lại chữ mực
+                      const overdue = !isDone(v) && getVaccineState(v) === "Quá hạn";
+                      const text = overdue ? "text-[#6b6055]" : "text-[#2b2118]";
+                      return (
+                        <tr key={v.ScheduleID} className="h-11 transition-colors hover:bg-[#f0efec]">
+                          <td className={`${VCELL} w-[140px] text-[15px] whitespace-nowrap tabular-nums ${text}`}>{formatDate(v.NgayHen)}</td>
+                          <td className={`${VCELL} text-[15px] font-medium whitespace-nowrap ${text}`}>{v.Loai}</td>
+                          <td className={`${VCELL} text-[15px] whitespace-nowrap ${overdue ? "text-[#6b6055]" : "text-[#4a3f33]"}`}>{horseName(v.HorseID)}</td>
+                          <td className={`${VCELL} text-right whitespace-nowrap`}>
+                            <OwnerVaccineStatus vaccination={v} className="text-sm font-medium" />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="border-t border-[#d9cfba] px-4 py-3 text-sm text-[#4a3f33] tabular-nums">
+                  Hiển thị {schedule.length} / {vaccinations.length} lịch tiêm
+                </p>
+              </div>
             )}
           </section>
         </>

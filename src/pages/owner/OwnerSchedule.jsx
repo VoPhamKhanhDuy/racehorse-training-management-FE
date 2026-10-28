@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronDown, TriangleAlert } from "lucide-react";
+import HorseAvatar from "../../components/HorseAvatar";
 import LoadingState from "../../components/LoadingState";
-import SectionTitle from "../../components/SectionTitle";
 import useAuth from "../../hooks/useAuth";
 import {
   getActiveLockDates,
@@ -10,7 +11,7 @@ import {
   getRaceRegistrations,
   getRaces,
 } from "../../services/ownerService";
-import { daysBetween, formatDate, formatDayMonth, todayISO, weekdayName } from "../../utils/date";
+import { daysBetween, formatDate, todayISO, weekdayName } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
 const SESSION_LIMIT = 6;
@@ -120,110 +121,127 @@ export default function OwnerSchedule() {
   const recentSessions = training.sessions.slice(0, SESSION_LIMIT); // đã sắp mới → cũ
   const lockedHorses = horses.filter((h) => lockByHorse[h.HorseID]);
 
+  // Loại buổi hiển thị ở cuối dòng: buổi tập → phần sau dấu "·" (giai đoạn; trống thì "Buổi tập"); giải thi đấu → "Thi đấu"
+  const sessionKind = (item) => (item.isRace ? "Thi đấu" : item.detail || item.title);
+
   return (
-    <div className="max-w-[1100px]">
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Lịch trình</h1>
-        <p className="mt-1 text-stone">Lịch tập, lịch thi đấu và nhận xét của huấn luyện viên.</p>
+    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+      <div>
+        <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Lịch trình</h1>
+        <p className="mt-1 text-sm text-[#4a3f33]">Lịch tập, lịch thi đấu và nhận xét của huấn luyện viên.</p>
       </div>
 
       {loading ? (
         <LoadingState />
       ) : horses.length === 0 ? (
-        <div className="border-y border-stone/20 py-16 text-center">
-          <p className="font-serif text-lg font-semibold text-ink">Chưa có ngựa nào gắn với tài khoản của bạn</p>
-          <p className="mt-1.5 text-sm text-stone">Liên hệ Quản lý CLB để được thêm ngựa vào hồ sơ.</p>
+        <div className="mt-6 rounded-[4px] border border-[#d9cfba] bg-white py-16 text-center">
+          <p className="font-serif text-lg font-semibold text-[#2b2118]">Chưa có ngựa nào gắn với tài khoản của bạn</p>
+          <p className="mt-1.5 text-sm text-[#4a3f33]">Liên hệ Quản lý CLB để được thêm ngựa vào hồ sơ.</p>
         </div>
       ) : (
-        <>
-          <section aria-label="Sắp tới">
-            <SectionTitle>Sắp tới</SectionTitle>
-            {lockedHorses.map((horse) => (
-              <p key={horse.HorseID} className="mb-2 text-sm text-brass-deep">
-                {horse.Ten}: Đang tạm ngưng huấn luyện, không có buổi tập sắp tới.
-              </p>
-            ))}
-            {dayGroups.length === 0 ? (
-              <p className="text-sm text-stone">Chưa có lịch sắp tới</p>
-            ) : (
-              <>
-                {visibleGroups.map((group, groupIndex) => (
-                  <div key={group.date} className={groupIndex === 0 ? "" : "mt-5"}>
-                    <h3 className={`border-b border-stone/20 pb-1.5 font-serif text-lg ${group.hasRace ? "text-[#c2570c]" : "text-ink"}`}>
-                      {weekdayName(group.date)}, {formatDayMonth(group.date)}
-                    </h3>
-                    <ul>
-                      {group.items.map((item) => (
-                        // 1 việc / dòng: giờ 64px (giải thi đấu để trống) | tên ngựa | nội dung | (giải) "Thi đấu · còn N ngày"
-                        <li
-                          key={item.key}
-                          className={`grid grid-cols-[56px_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b text-[15px] min-[640px]:grid-cols-[64px_160px_minmax(0,1fr)_auto] ${
-                            item.isRace
-                              ? "border-[#ecd9c4] bg-[#fbf1e6] py-3.5 pr-2 pl-3 shadow-[inset_3px_0_0_#c2570c]"
-                              : "border-stone/10 py-2.5"
-                          }`}
-                        >
-                          <span className="text-stone tabular-nums">{item.time}</span>
-                          <Link
-                            to={`/owner/horses/${item.horseId}`}
-                            className="min-w-0 truncate font-serif text-base text-[#2b2118] no-underline hover:underline"
-                          >
-                            {horseName(item.horseId)}
-                          </Link>
-                          <span
-                            className="col-span-3 col-start-1 row-start-2 min-w-0 truncate pl-[72px] text-ink min-[640px]:col-span-1 min-[640px]:col-start-auto min-[640px]:row-start-auto min-[640px]:pl-0"
-                            title={[item.title, item.detail].filter(Boolean).join(" · ")}
-                          >
-                            <span className={item.isRace ? "text-[17px] font-bold text-[#2b2118]" : ""}>{item.title}</span>
-                            {item.detail && <span className="text-stone"> · {item.detail}</span>}
-                          </span>
-                          <span className="text-right text-sm font-semibold whitespace-nowrap text-[#c2570c]">
-                            {item.isRace ? raceCountdownText(daysBetween(today, item.date)) : ""}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                {dayGroups.length > UPCOMING_DAY_LIMIT && !showAllDays && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllDays(true)}
-                    className="mt-4 cursor-pointer text-sm text-stone underline-offset-2 hover:text-ink hover:underline"
-                  >
-                    Xem thêm ({dayGroups.length - UPCOMING_DAY_LIMIT} ngày)
-                  </button>
-                )}
-              </>
-            )}
+        <div className="mt-8 grid items-start gap-14 min-[960px]:grid-cols-[minmax(0,1fr)_360px]">
+          <section aria-label="Sắp tới" className="min-w-0">
+            <h2 className="font-serif text-xl font-semibold text-[#2b2118]">Sắp tới</h2>
+            <div className="mt-4">
+              {lockedHorses.map((horse) => (
+                <p
+                  key={horse.HorseID}
+                  className="mb-2 flex items-start gap-2 rounded-[4px] border border-[#e0cfb4] bg-white px-3.5 py-2.5 text-sm text-[#c2570c]"
+                >
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+                  <span>
+                    {horse.Ten}: Đang tạm ngưng huấn luyện, không có buổi tập sắp tới.
+                  </span>
+                </p>
+              ))}
+              {dayGroups.length === 0 ? (
+                <p className="text-sm text-[#4a3f33]">Chưa có lịch sắp tới</p>
+              ) : (
+                <>
+                  {visibleGroups.map((group, groupIndex) => {
+                    const isToday = group.date === today;
+                    return (
+                      <div key={group.date} className={`flex gap-4 ${groupIndex === 0 && lockedHorses.length === 0 ? "" : "mt-6"}`}>
+                        <div className="w-[72px] shrink-0">
+                          <p className={`text-[13px] ${isToday ? "font-semibold text-[#c2570c]" : "text-[#6b6055]"}`}>
+                            {isToday ? "Hôm nay" : weekdayName(group.date)}
+                          </p>
+                          <p className={`font-serif text-[32px] leading-tight font-semibold ${isToday ? "text-[#c2570c]" : "text-[#2b2118]"}`}>
+                            {group.date.slice(8, 10)}
+                          </p>
+                          <p className="text-[13px] text-[#6b6055]">tháng {Number(group.date.slice(5, 7))}</p>
+                        </div>
+                        <ul className="min-w-0 flex-1">
+                          {group.items.map((item) => (
+                            <li
+                              key={item.key}
+                              title={[item.title, item.detail, item.isRace ? raceCountdownText(daysBetween(today, item.date)) : ""].filter(Boolean).join(" · ")}
+                              className="flex min-h-[52px] items-center gap-3 border-b border-[#d9cfba] px-1 transition-colors last:border-b-0 hover:bg-[#f0efec]"
+                            >
+                              <span className="w-[52px] shrink-0 text-[15px] text-[#4a3f33] tabular-nums">{item.time}</span>
+                              <HorseAvatar horse={horseById[item.horseId]} size={32} square />
+                              <Link
+                                to={`/owner/horses/${item.horseId}`}
+                                className="min-w-0 flex-1 truncate font-serif text-base font-semibold text-[#2b2118] no-underline outline-none hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+                              >
+                                {horseName(item.horseId)}
+                              </Link>
+                              <span
+                                className={`shrink-0 text-right text-sm whitespace-nowrap ${item.isRace ? "font-semibold text-[#c2570c]" : "text-[#4a3f33]"}`}
+                              >
+                                {sessionKind(item)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                  {dayGroups.length > UPCOMING_DAY_LIMIT && !showAllDays && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllDays(true)}
+                      className="mt-4 inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-[#c2570c] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+                    >
+                      Xem thêm ({dayGroups.length - UPCOMING_DAY_LIMIT} ngày)
+                      <ChevronDown className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </section>
 
-          <section aria-label="Nhận xét gần đây" className="mt-14">
-            <SectionTitle>Nhận xét gần đây</SectionTitle>
+          <section aria-label="Nhận xét gần đây" className="min-w-0">
+            <h2 className="font-serif text-xl font-semibold text-[#2b2118]">Nhận xét gần đây</h2>
             {recentSessions.length === 0 ? (
-              <p className="text-sm text-stone">Chưa có nhận xét</p>
+              <p className="mt-4 text-sm text-[#4a3f33]">Chưa có nhận xét</p>
             ) : (
-              <ul className="border-t border-stone/20">
-                {recentSessions.map((session, index) => (
-                  <li key={session.SessionID} className="border-b border-stone/15 py-3.5 pr-2 pl-1">
-                    {/* Mục mới nhất: dòng ngày / ngựa màu mực; nhận xét cùng cỡ 16px với các mục khác */}
-                    <p className={`flex items-baseline justify-between gap-4 text-sm ${index === 0 ? "text-ink" : "text-stone"}`}>
-                      <span>
-                        <span className="tabular-nums">{formatDate(session.Ngay)}</span> · {horseName(session.HorseID)}
-                      </span>
-                      {session.ChiSoTap !== undefined && session.ChiSoTap !== null && (
-                        <span className="text-xs text-stone/70 tabular-nums">Chỉ số tập {session.ChiSoTap}</span>
-                      )}
+              <ul className="mt-4">
+                {recentSessions.map((session) => (
+                  <li key={session.SessionID} className="border-b border-[#d9cfba] py-4 first:pt-0 last:border-b-0">
+                    <div className="flex items-center gap-3">
+                      <HorseAvatar horse={horseById[session.HorseID]} size={36} square />
+                      <div className="min-w-0">
+                        <p className="truncate font-serif text-base leading-tight font-semibold text-[#2b2118]">{horseName(session.HorseID)}</p>
+                        <p className="text-[13px] text-[#6b6055] tabular-nums">{formatDate(session.Ngay)}</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 line-clamp-3 text-[15px] leading-[1.55] text-[#2b2118]">
+                      {session.NhanXet || <span className="text-[#6b6055]">Chưa có nhận xét</span>}
                     </p>
-                    <p className="mt-1 line-clamp-3 font-serif text-base leading-relaxed text-ink italic">
-                      {session.NhanXet || <span className="text-stone/60 not-italic">Chưa có nhận xét</span>}
-                    </p>
+                    {session.ChiSoTap !== undefined && session.ChiSoTap !== null && (
+                      <p className="mt-2 flex items-baseline gap-2">
+                        <span className="text-[13px] text-[#6b6055]">Chỉ số tập</span>
+                        <span className="font-serif text-lg font-semibold text-[#2b2118] tabular-nums">{session.ChiSoTap}</span>
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
           </section>
-        </>
+        </div>
       )}
     </div>
   );

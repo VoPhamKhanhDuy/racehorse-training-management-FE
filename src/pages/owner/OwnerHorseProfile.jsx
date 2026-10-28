@@ -39,7 +39,7 @@ export default function OwnerHorseProfile() {
   if (!data) return <Navigate to="/owner/horses" replace />;
 
   return (
-    <div className="max-w-[1100px]">
+    <div className="max-w-[1040px]">
       <Link to="/owner/horses" className="text-sm text-stone underline-offset-2 hover:text-ink hover:underline">
         ← Ngựa của tôi
       </Link>

@@ -1,16 +1,22 @@
+import { Check } from "lucide-react";
 import { getVaccineState } from "../../utils/healthAlerts";
 
-// Màu chữ theo trạng thái hiển thị của getVaccineState (không pill/chấm): Quá hạn đỏ đậm; Sắp tới (≤ 7 ngày) cam đậm;
-// Chờ tiêm chữ mực; Đã tiêm chữ nhạt.
-const STATE_CLASSES = {
-  "Quá hạn": "font-semibold text-[#c0262d]",
-  "Sắp tới": "font-semibold text-[#d97706]",
-  "Chờ tiêm": "text-ink",
-  "Đã tiêm": "text-stone",
+// Chữ trạng thái theo trạng thái hiển thị của getVaccineState (không pill/nền; chỉ "Đã tiêm" có dấu tích): Quá hạn đỏ gạch dịu;
+// Sắp tới (≤ 7 ngày) cam; Chờ tiêm xám; Đã tiêm xanh. Cỡ chữ và độ đậm do className của nơi dùng quyết định.
+const STATE_COLORS = {
+  "Quá hạn": "text-[#b3473f]",
+  "Sắp tới": "text-[#c2570c]",
+  "Chờ tiêm": "text-[#6b6055]",
+  "Đã tiêm": "text-[#4d6b2a]",
 };
 
-// Chữ trạng thái 1 lịch tiêm (VACCINATIONSCHEDULE) cho các trang của chủ ngựa
+// Trạng thái 1 lịch tiêm (VACCINATIONSCHEDULE) cho các trang của chủ ngựa
 export default function OwnerVaccineStatus({ vaccination, className = "" }) {
   const state = getVaccineState(vaccination);
-  return <span className={`${STATE_CLASSES[state] ?? "text-ink"} ${className}`}>{state}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1.5 ${STATE_COLORS[state] ?? "text-[#2b2118]"} ${className}`}>
+      {state === "Đã tiêm" && <Check className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />}
+      {state}
+    </span>
+  );
 }
