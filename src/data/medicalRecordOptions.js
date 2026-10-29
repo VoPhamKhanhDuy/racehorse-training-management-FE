@@ -18,10 +18,10 @@ export const INJURY_LOCATIONS = [
 ];
 export const INJURY_SEPARATOR = ", ";
 
-// Tình trạng sức khỏe bác sĩ chọn sau khám → ghi vào HEALTHSTATUS.TrangThai
-export const HEALTH_STATES = ["Tốt", "Cần theo dõi", "Đang điều trị"];
-// Tình trạng gợi ý đặt lệnh khóa huấn luyện sau khi lưu
-export const TREATMENT_STATE = "Đang điều trị";
+// Tình trạng sức khỏe bác sĩ chọn sau khám → ghi vào HorseHealthStatus (đúng 4 giá trị của backend).
+export const HEALTH_STATES = ["Đủ điều kiện", "Cần theo dõi", "Chấn thương", "Cách ly"];
+// Có chấn thương và chọn trạng thái này thì tự đặt lệnh khóa huấn luyện.
+export const TREATMENT_STATE = "Chấn thương";
 
 export const MEDICAL_LIMITS = {
   ChanDoan: { min: 5, max: 200 }, // số ký tự
@@ -33,5 +33,5 @@ export const EXAM_WINDOW_DAYS = 60;
 
 // ---- Lệnh khóa huấn luyện (TRAININGLOCK) ----
 export const LOCK_REASON_LIMITS = { min: 5, max: 200 }; // số ký tự LyDo
-// Gỡ khóa: bác sĩ bắt buộc chọn tình trạng mới (không có "Đang điều trị")
-export const RELEASE_HEALTH_STATES = ["Cần theo dõi", "Tốt"];
+// Gỡ khóa: bác sĩ bắt buộc chọn tình trạng mới, ngựa được tập lại có giới hạn hoặc đủ điều kiện.
+export const RELEASE_HEALTH_STATES = ["Cần theo dõi", "Đủ điều kiện"];

@@ -39,7 +39,6 @@ export default function MedicalExams() {
     if (location.state) navigate({ search: location.search }, { replace: true, state: null });
   }, [location.state, location.search, navigate]);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getMedicalRecords(), getHorses(), getTrainingLocks(), getVets()]).then(([recordList, horseList, lockList, vetList]) => {

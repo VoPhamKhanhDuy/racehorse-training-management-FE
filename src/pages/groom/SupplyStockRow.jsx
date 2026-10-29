@@ -7,7 +7,7 @@ export const SUPPLY_GRID =
 // 1 vật tư = 1 hàng ~52px, chỉ xem (không bấm được). showType: hiện Loại (nhóm "Cần bổ sung").
 export default function SupplyStockRow({ item, showType }) {
   const state = getSupplyState(item);
-  const { donVi } = getSupplyConfig(item.TenVatTu);
+  const donVi = item.DonVi || getSupplyConfig(item.TenVatTu).donVi;
 
   return (
     <li className={`min-h-[52px] border-b border-stone/15 py-2.5 pr-2 pl-3 text-sm transition-colors hover:bg-[#faf6ee] ${SUPPLY_GRID}`}>

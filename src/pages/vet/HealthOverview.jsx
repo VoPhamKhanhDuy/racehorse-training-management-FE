@@ -3,16 +3,14 @@ import LoadingState from "../../components/LoadingState";
 import OverviewActionItem from "./OverviewActionItem";
 import OverviewAttentionRow, { BOARD_GRID } from "./OverviewAttentionRow";
 import OverviewGoodRow from "./OverviewGoodRow";
-import { getActiveTrainingLocks, getHealthStatuses, getHorses, getMedicalRecords, getVaccinations } from "../../services/vetService";
-// Buổi tập (TRAININGSESSION) nằm trong kho của HLV trưởng — chỉ đọc để cảnh báo nhịp tim
-import { getTrainingSessions } from "../../services/trainerService";
+import { getActiveTrainingLocks, getHealthStatuses, getHorses, getMedicalRecords, getRecentSessionVitals, getVaccinations } from "../../services/vetService";
 import { NO_INJURY } from "../../data/medicalRecordOptions";
 import { getHealthAlerts, getVaccineState } from "../../utils/healthAlerts";
 import { daysSince, formatDate, formatDayMonth, todayISO } from "../../utils/date";
 
 const MAX_ACTIONS = 5; // hàng đợi tối đa 5 việc
 const VISIBLE_ACTIONS = 3; // hiện sẵn 3 việc, còn lại gom vào "Xem thêm"
-const ATTENTION_ORDER = { "Đang điều trị": 0, "Cần theo dõi": 1 };
+const ATTENTION_ORDER = { "Đang điều trị": 0, "Chấn thương": 0, "Cách ly": 1, "Cần theo dõi": 2 };
 const SECTION_TITLE = "border-b border-stone/20 pb-2 font-serif text-[22px] font-semibold text-ink";
 const GROUP_LABEL = "border-b border-stone/20 pb-1.5 text-xs font-medium tracking-wide text-stone uppercase";
 const BOARD_COLUMNS = ["Ngựa", "Tình trạng", "Khám gần nhất", "Lưu ý", ""];
@@ -24,14 +22,15 @@ export default function HealthOverview() {
   const [data, setData] = useState(null);
   const [showAllActions, setShowAllActions] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService / trainerService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getHorses(), getHealthStatuses(), getMedicalRecords(), getActiveTrainingLocks(), getVaccinations(), getTrainingSessions()]).then(
-      ([horses, healthStatuses, records, locks, vaccinations, sessions]) => {
+    Promise.all([getHorses(), getHealthStatuses(), getMedicalRecords(), getActiveTrainingLocks(), getVaccinations(), getRecentSessionVitals()])
+      .then(([horses, healthStatuses, records, locks, vaccinations, sessions]) => {
         if (!ignore) setData({ horses, healthStatuses, records, locks, vaccinations, sessions });
-      }
-    );
+      })
+      .catch((err) => {
+        if (!ignore) setData({ error: err.message || "Không tải được tổng quan sức khỏe." });
+      });
     return () => {
       ignore = true;
     };
@@ -42,6 +41,15 @@ export default function HealthOverview() {
       <div className="max-w-[1100px]">
         <OverviewHeader today={today} />
         <LoadingState />
+      </div>
+    );
+  }
+
+  if (data.error) {
+    return (
+      <div className="max-w-[1100px]">
+        <OverviewHeader today={today} />
+        <p className="mt-6 text-sm text-[#c0262d]">{data.error}</p>
       </div>
     );
   }

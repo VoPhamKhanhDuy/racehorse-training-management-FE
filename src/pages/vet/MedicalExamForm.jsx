@@ -83,7 +83,6 @@ export default function MedicalExamForm() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService)
   useEffect(() => {
     let ignore = false;
     Promise.all([
@@ -350,7 +349,7 @@ export default function MedicalExamForm() {
             lockedByName={lockedByName}
             records={horseRecords}
             editingRecordId={isEdit ? Number(id) : undefined}
-            note={willAutoLock ? "Lưu với tình trạng Đang điều trị và có chấn thương sẽ tự động khóa huấn luyện." : undefined}
+            note={willAutoLock ? "Lưu với tình trạng Chấn thương và có vị trí chấn thương sẽ tự động khóa huấn luyện." : undefined}
           />
         </aside>
       </div>

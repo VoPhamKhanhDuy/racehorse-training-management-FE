@@ -3,6 +3,7 @@ import HorseIcon from "../../components/HorseIcon";
 import OwnerVaccineStatus from "./OwnerVaccineStatus";
 import { formatDate, formatDayMonth } from "../../utils/date";
 import { getLockDays } from "../../utils/trainingLock";
+import { isBlockingHealth } from "../../utils/healthGroups";
 import { OWNER_HEALTH_COLORS } from "../../utils/ownerHealthText";
 
 // Mẫu cột bảng "Tình trạng hiện tại" — dùng chung cho hàng tiêu đề và từng hàng:
@@ -10,14 +11,11 @@ import { OWNER_HEALTH_COLORS } from "../../utils/ownerHealthText";
 export const OWNER_HEALTH_GRID =
   "grid grid-cols-2 items-start gap-x-4 gap-y-2 min-[900px]:grid-cols-[minmax(0,1.2fr)_180px_minmax(0,1fr)_minmax(0,1fr)] min-[900px]:items-center";
 
-// Trạng thái sức khỏe chặn thi đấu (cùng quy tắc đăng ký giải của HLV)
-const BLOCKING_HEALTH = "Đang điều trị";
-
 // 1 ngựa trong bảng "Tình trạng hiện tại" (chỉ xem; KHÔNG hiện chẩn đoán / lý do khóa tập):
 // health: HEALTHSTATUS; lock: { NgayDat, NgayGo } nếu đang khóa tập; nextVaccine: lịch Chờ tiêm sớm nhất (có thể undefined).
 export default function OwnerHealthRow({ horse, health, lock, nextVaccine }) {
   const healthColor = OWNER_HEALTH_COLORS[health?.TrangThai];
-  const ready = !lock && health?.TrangThai !== BLOCKING_HEALTH;
+  const ready = !lock && !isBlockingHealth(health?.TrangThai);
 
   return (
     <li className={`border-b border-stone/15 py-3 pr-2 pl-1 text-[15px] ${OWNER_HEALTH_GRID}`}>

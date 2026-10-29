@@ -22,21 +22,25 @@ export default function StableMap() {
   const [feeding, setFeeding] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [pickedId, setPickedId] = useState(null); // StableID do người dùng chọn
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock careService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getStableAssignments(), getHorses(), getFeedingPlans(), getCareTasks(groomId)]).then(
-      ([stableList, horseList, feedList, taskList]) => {
+    Promise.all([getStableAssignments(), getHorses(), getFeedingPlans(), getCareTasks(groomId)])
+      .then(([stableList, horseList, feedList, taskList]) => {
         if (ignore) return;
         setAssignments(stableList);
         setHorses(horseList);
         setFeeding(feedList);
         setMyTasks(taskList);
         setLoading(false);
-      }
-    );
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được chuồng.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -81,6 +85,8 @@ export default function StableMap() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : assignments.length === 0 ? (
         <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">Chưa có chuồng nào được phân.</p>
       ) : (

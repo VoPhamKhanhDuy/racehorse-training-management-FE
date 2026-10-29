@@ -40,19 +40,25 @@ export default function IncidentReportForm() {
   const [stables, setStables] = useState({});
   const [myHorseIds, setMyHorseIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock careService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getHorses(), getStableNumbers(), getCareTasks(groomId)]).then(([horseList, stableMap, taskList]) => {
-      if (ignore) return;
-      setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-      setStables(stableMap);
-      setMyHorseIds(new Set(taskList.map((t) => t.HorseID)));
-      setLoading(false);
-    });
+    Promise.all([getHorses(), getStableNumbers(), getCareTasks(groomId)])
+      .then(([horseList, stableMap, taskList]) => {
+        if (ignore) return;
+        setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
+        setStables(stableMap);
+        setMyHorseIds(new Set(taskList.map((t) => t.HorseID)));
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được dữ liệu.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -92,6 +98,14 @@ export default function IncidentReportForm() {
   };
 
   if (loading) return <LoadingState />;
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
+      </div>
+    );
+  }
 
   const renderOption = (horse) => (
     <option key={horse.HorseID} value={horse.HorseID}>

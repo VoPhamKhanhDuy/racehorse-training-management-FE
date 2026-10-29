@@ -38,27 +38,35 @@ export default function OwnerSchedule() {
   const [races, setRaces] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showAllDays, setShowAllDays] = useState(false);
 
   // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock ownerService)
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const horseList = await getOwnerHorses(ownerId);
-      const ids = horseList.map((h) => h.HorseID);
-      const [locks, overview, raceList, registrationList] = await Promise.all([
-        getActiveLockDates(ids),
-        getOwnerTrainingOverview(ids),
-        getRaces(),
-        getRaceRegistrations(),
-      ]);
-      if (ignore) return;
-      setHorses(horseList);
-      setLockByHorse(locks);
-      setTraining(overview);
-      setRaces(raceList);
-      setRegistrations(registrationList.filter((r) => ids.includes(r.HorseID)));
-      setLoading(false);
+      try {
+        const horseList = await getOwnerHorses(ownerId);
+        const ids = horseList.map((h) => h.HorseID);
+        const [locks, overview, raceList, registrationList] = await Promise.all([
+          getActiveLockDates(ids),
+          getOwnerTrainingOverview(ids),
+          getRaces(),
+          getRaceRegistrations(),
+        ]);
+        if (ignore) return;
+        setHorses(horseList);
+        setLockByHorse(locks);
+        setTraining(overview);
+        setRaces(raceList);
+        setRegistrations(registrationList.filter((r) => ids.includes(r.HorseID)));
+        setLoading(false);
+      } catch (err) {
+        if (!ignore) {
+          setLoadError(err.message || "Không tải được lịch trình.");
+          setLoading(false);
+        }
+      }
     })();
     return () => {
       ignore = true;
@@ -129,6 +137,8 @@ export default function OwnerSchedule() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : horses.length === 0 ? (
         <div className="border-y border-stone/20 py-16 text-center">
           <p className="font-serif text-lg font-semibold text-ink">Chưa có ngựa nào gắn với tài khoản của bạn</p>

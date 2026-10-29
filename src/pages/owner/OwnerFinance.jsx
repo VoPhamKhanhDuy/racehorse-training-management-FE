@@ -40,6 +40,7 @@ export default function OwnerFinance() {
   const [races, setRaces] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const [showAllPrizes, setShowAllPrizes] = useState(false);
 
@@ -47,15 +48,22 @@ export default function OwnerFinance() {
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const horseList = await getOwnerHorses(ownerId);
-      const ids = horseList.map((h) => h.HorseID);
-      const [expenseList, raceList, registrationList] = await Promise.all([getExpenses(ids), getRaces(), getRaceRegistrations()]);
-      if (ignore) return;
-      setHorses(horseList);
-      setExpenses(expenseList);
-      setRaces(raceList);
-      setRegistrations(registrationList.filter((r) => ids.includes(r.HorseID)));
-      setLoading(false);
+      try {
+        const horseList = await getOwnerHorses(ownerId);
+        const ids = horseList.map((h) => h.HorseID);
+        const [expenseList, raceList, registrationList] = await Promise.all([getExpenses(ids), getRaces(), getRaceRegistrations()]);
+        if (ignore) return;
+        setHorses(horseList);
+        setExpenses(expenseList);
+        setRaces(raceList);
+        setRegistrations(registrationList.filter((r) => ids.includes(r.HorseID)));
+        setLoading(false);
+      } catch (err) {
+        if (!ignore) {
+          setLoadError(err.message || "Không tải được chi phí và thành tích.");
+          setLoading(false);
+        }
+      }
     })();
     return () => {
       ignore = true;
@@ -96,6 +104,8 @@ export default function OwnerFinance() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : horses.length === 0 ? (
         <div className="border-y border-stone/20 py-16 text-center">
           <p className="font-serif text-lg font-semibold text-ink">Chưa có ngựa nào gắn với tài khoản của bạn</p>

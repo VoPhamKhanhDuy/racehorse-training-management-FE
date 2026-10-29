@@ -62,7 +62,6 @@ export default function VaccinationForm() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getHorses(), getVaccinations(), isEdit ? getVaccinationById(id) : null]).then(([horseList, itemList, item]) => {

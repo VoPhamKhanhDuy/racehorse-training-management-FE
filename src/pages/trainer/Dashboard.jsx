@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import LoadingState from "../../components/LoadingState";
 import StatusBadge from "../../components/StatusBadge";
+import { isReadyHealth } from "../../utils/healthGroups";
 import { getHealthStatuses, getHorses, getSchedules, getUsers } from "../../services/trainerService";
 import { formatHorseAge, todayISO } from "../../utils/date";
 
@@ -33,8 +34,8 @@ export default function Dashboard() {
 
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
   const userNames = Object.fromEntries(users.map((u) => [u.UserID, u.HoTen]));
-  const readyCount = healthStatuses.filter((h) => h.TrangThai === "Tốt").length;
-  const attentionList = healthStatuses.filter((h) => h.TrangThai !== "Tốt");
+  const readyCount = healthStatuses.filter((h) => isReadyHealth(h.TrangThai)).length;
+  const attentionList = healthStatuses.filter((h) => h.TrangThai && !isReadyHealth(h.TrangThai));
 
   const stats = [
     { label: "Ngựa đủ điều kiện tập", value: readyCount, hint: `trên tổng ${horses.length} ngựa` },

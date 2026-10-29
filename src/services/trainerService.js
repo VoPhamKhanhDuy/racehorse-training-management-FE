@@ -4,8 +4,6 @@
 import trainingPlans from "../data/trainingPlans";
 import trainingSchedules from "../data/trainingSchedules";
 import trainingSessions from "../data/trainingSessions";
-import races from "../data/races";
-import raceRegistrations from "../data/raceRegistrations";
 import users from "../data/users";
 import { toUserID } from "../utils/userId";
 import { formatDate, todayISO } from "../utils/date";
@@ -14,6 +12,16 @@ import { createPersistedList } from "./persistedStore";
 import { SESSION_LIMITS } from "../data/trainingSessionOptions";
 import { getHealthStatuses, getHorseById, getHorses } from "./horseService";
 import { getActiveTrainingLocks as getActiveLocks, getLatestExamDate, getVaccinations, isHorseLocked } from "./vetService";
+export {
+  cancelRaceRegistration,
+  dismissPrizeAlert,
+  getPrizeAlerts,
+  getRaceRegistrations,
+  getRaces,
+  registerHorseForRace,
+  setRaceRegistrationPrize,
+  updateRaceResult,
+} from "./raceService";
 
 // Ngựa + trạng thái sức khỏe dùng chung kho với trang Quản lý hồ sơ ngựa (Club Manager)
 export { getHealthStatuses, getHorseById, getHorses };
@@ -29,14 +37,10 @@ function delay(ms = NETWORK_DELAY_MS) {
 const planList = createPersistedList("trainingPlans", trainingPlans, "PlanID");
 const scheduleList = createPersistedList("trainingSchedules", trainingSchedules, "ScheduleID");
 const sessionList = createPersistedList("trainingSessions", trainingSessions, "SessionID");
-const registrationList = createPersistedList("raceRegistrations", raceRegistrations, (r) => r.HorseID + "|" + r.RaceID);
-// Thông báo cho Quản lý khi HLV đổi hạng làm mất tiền thưởng cũ: { AlertID, HorseID, RaceID, Ngay } — Quản lý xem ở /manager/finance
-const prizeAlertList = createPersistedList("prizeAlerts", [], "AlertID");
 const db = {
   trainingPlans: planList.items,
   trainingSchedules: scheduleList.items,
   trainingSessions: sessionList.items,
-  raceRegistrations: registrationList.items,
 };
 
 // Trả bản sao để component không sửa trực tiếp vào "DB"
@@ -265,119 +269,6 @@ export async function updateTrainingSession(sessionId, data) {
   Object.assign(session, record);
   sessionList.save();
   return { ...session };
-}
-
-// ---- Đăng ký thi đấu (RACE chỉ đọc, RACEREGISTRATION thêm/hủy) ----
-
-// Trạng thái sức khỏe chặn đăng ký thi đấu (các trạng thái khác "Tốt" còn lại chỉ cảnh báo ở giao diện)
-export const BLOCKING_HEALTH_STATUS = "Đang điều trị";
-
-export async function getRaces() {
-  await delay();
-  return clone(races).sort((a, b) => a.Ngay.localeCompare(b.Ngay));
-}
-
-export async function getRaceRegistrations() {
-  await delay();
-  return clone(db.raceRegistrations);
-}
-
-// Ràng buộc — BE cũng phải kiểm tra lại: giải chưa diễn ra; không trùng (HorseID + RaceID);
-// ngựa không đang khóa tập; sức khỏe không "Đang điều trị"
-export async function registerHorseForRace(raceId, horseId) {
-  await delay();
-  const race = races.find((r) => r.RaceID === Number(raceId));
-  if (!race) throw new Error("Không tìm thấy giải đua");
-  if (race.Ngay < todayISO()) throw new Error("Giải đua đã diễn ra, không thể đăng ký");
-  if (db.raceRegistrations.some((r) => r.RaceID === race.RaceID && r.HorseID === Number(horseId))) {
-    throw new Error("Ngựa này đã đăng ký giải đua này");
-  }
-  if (isHorseLocked(horseId)) {
-    throw new Error("Ngựa đang khóa tập, không thể đăng ký thi đấu");
-  }
-  // Đọc tình trạng hiện tại từ kho dùng chung (bác sĩ thú y có thể vừa cập nhật sau khám)
-  const health = (await getHealthStatuses()).find((h) => h.HorseID === Number(horseId));
-  if (health?.TrangThai === BLOCKING_HEALTH_STATUS) {
-    throw new Error("Ngựa đang điều trị, không thể đăng ký thi đấu");
-  }
-  const registration = { HorseID: Number(horseId), RaceID: race.RaceID, NgayDangKy: todayISO(), ThuHang: null, TienThuong: null };
-  db.raceRegistrations.push(registration);
-  registrationList.save();
-  return { ...registration };
-}
-
-// Hủy đăng ký — chỉ giải sắp tới (vẫn hủy được dù ngựa đã bị khóa tập sau khi đăng ký)
-export async function cancelRaceRegistration(raceId, horseId) {
-  await delay();
-  const race = races.find((r) => r.RaceID === Number(raceId));
-  if (!race) throw new Error("Không tìm thấy giải đua");
-  if (race.Ngay < todayISO()) throw new Error("Giải đua đã diễn ra, không thể hủy đăng ký");
-  registrationList.remove((r) => r.RaceID === race.RaceID && r.HorseID === Number(horseId));
-}
-
-// Nhập/sửa kết quả thi đấu (RACEREGISTRATION.ThuHang): null = chưa có kết quả, 0 = không xếp hạng, 1…N = thứ hạng
-// (N = số ngựa đăng ký giải). Ràng buộc — BE cũng phải kiểm tra lại: chỉ HLV; giải đã diễn ra; ngựa có đăng ký giải;
-// không trùng thứ hạng (≥ 1) giữa các ngựa trong cùng giải.
-// Ràng buộc dữ liệu: TienThuong chỉ hợp lệ khi ThuHang ≥ 1 và gắn với đúng thứ hạng đó → mỗi lần ThuHang ĐỔI (đổi hạng, về
-// "chưa có kết quả", về "không xếp hạng") thì TienThuong tự đặt về null, Quản lý nhập lại sau.
-// Trả { registration, prizeCleared } — prizeCleared = true nếu vừa xóa 1 khoản tiền thưởng cũ.
-export async function updateRaceResult(raceId, horseId, thuHang) {
-  await delay();
-  const race = races.find((r) => r.RaceID === Number(raceId));
-  if (!race) throw new Error("Không tìm thấy giải đua");
-  if (race.Ngay >= todayISO()) throw new Error("Giải đua chưa diễn ra, chưa thể nhập kết quả");
-  const entries = db.raceRegistrations.filter((r) => r.RaceID === race.RaceID);
-  const registration = entries.find((r) => r.HorseID === Number(horseId));
-  if (!registration) throw new Error("Ngựa này không đăng ký giải đua này");
-  const rank = thuHang === null ? null : Number(thuHang);
-  if (rank !== null && (!Number.isInteger(rank) || rank < 0 || rank > entries.length)) {
-    throw new Error("Thứ hạng không hợp lệ");
-  }
-  if (rank >= 1 && entries.some((r) => r !== registration && r.ThuHang === rank)) {
-    throw new Error(`Thứ hạng ${rank} đã được gán cho ngựa khác trong giải này`);
-  }
-  const changed = registration.ThuHang !== rank;
-  const hadPrize = registration.TienThuong !== null && registration.TienThuong !== undefined;
-  registration.ThuHang = rank;
-  if (changed || !(rank >= 1)) registration.TienThuong = null;
-  registrationList.save();
-  const prizeCleared = hadPrize && registration.TienThuong === null;
-  if (prizeCleared) {
-    // Báo Quản lý nhập lại tiền thưởng (mỗi lượt đăng ký chỉ giữ 1 thông báo mới nhất)
-    prizeAlertList.remove((a) => a.RaceID === race.RaceID && a.HorseID === registration.HorseID);
-    const AlertID = Math.max(999, ...prizeAlertList.items.map((a) => a.AlertID)) + 1;
-    prizeAlertList.items.push({ AlertID, HorseID: registration.HorseID, RaceID: race.RaceID, Ngay: todayISO() });
-    prizeAlertList.save();
-  }
-  return { registration: { ...registration }, prizeCleared };
-}
-
-// Quản lý CLB nhập / sửa tiền thưởng (VNĐ) của 1 lượt đăng ký. Ràng buộc — BE cũng phải kiểm tra lại: giải đã diễn ra;
-// ThuHang ≥ 1; số tiền nguyên > 0. Nhập xong thì xóa thông báo "cần nhập lại" của lượt đăng ký đó.
-export async function setRaceRegistrationPrize(raceId, horseId, amount) {
-  await delay();
-  const race = races.find((r) => r.RaceID === Number(raceId));
-  if (!race) throw new Error("Không tìm thấy giải đua");
-  if (race.Ngay >= todayISO()) throw new Error("Giải đua chưa diễn ra, chưa thể nhập tiền thưởng");
-  const registration = db.raceRegistrations.find((r) => r.RaceID === race.RaceID && r.HorseID === Number(horseId));
-  if (!registration) throw new Error("Ngựa này không đăng ký giải đua này");
-  if (!(registration.ThuHang >= 1)) throw new Error("Chỉ nhập tiền thưởng khi ngựa có thứ hạng");
-  const value = Number(amount);
-  if (!Number.isInteger(value) || value <= 0) throw new Error("Tiền thưởng phải là số nguyên lớn hơn 0");
-  registration.TienThuong = value;
-  registrationList.save();
-  prizeAlertList.remove((a) => a.RaceID === race.RaceID && a.HorseID === registration.HorseID);
-  return { ...registration };
-}
-
-// Thông báo "kết quả đã đổi, cần nhập lại tiền thưởng" còn chưa xử lý
-export async function getPrizeAlerts() {
-  await delay(0);
-  return prizeAlertList.items.map((a) => ({ ...a }));
-}
-
-export async function dismissPrizeAlert(alertId) {
-  prizeAlertList.remove((a) => a.AlertID === Number(alertId));
 }
 
 // ---- Hồ sơ ngựa (chỉ xem) ----

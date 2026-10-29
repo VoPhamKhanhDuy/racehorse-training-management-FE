@@ -1,3 +1,4 @@
+import { isBlockingHealth, isReadyHealth } from "../../utils/healthGroups";
 import { LOCK_CONFLICT_RACE } from "../../utils/trainingLock";
 import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
@@ -8,7 +9,6 @@ import useAuth from "../../hooks/useAuth";
 import RaceMatrix from "./RaceMatrix";
 import RaceResultPopover from "./RaceResultPopover";
 import {
-  BLOCKING_HEALTH_STATUS,
   cancelRaceRegistration,
   getActiveTrainingLocks,
   getHealthStatuses,
@@ -48,6 +48,7 @@ export default function Races() {
   const [healthByHorse, setHealthByHorse] = useState({});
   const [sessionDatesByHorse, setSessionDatesByHorse] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [keyword, setKeyword] = useState(new URLSearchParams(window.location.search).get("q") ?? "");
   const [tab, setTab] = useState("upcoming");
   const [savingKey, setSavingKey] = useState(null); // "HorseID|RaceID" đang ghi
@@ -73,7 +74,11 @@ export default function Races() {
         setSessionDatesByHorse(sessionList.reduce((acc, s) => ({ ...acc, [s.HorseID]: [...(acc[s.HorseID] ?? []), s.Ngay] }), {}));
         setLoading(false);
       }
-    );
+    ).catch((err) => {
+      if (ignore) return;
+      setLoadError(err.message || "Không tải được danh sách giải đua.");
+      setLoading(false);
+    });
     return () => {
       ignore = true;
     };
@@ -113,7 +118,7 @@ export default function Races() {
       const health = healthByHorse[horse.HorseID];
       const dates = sessionDatesByHorse[horse.HorseID] ?? [];
       // Khóa tập ưu tiên hơn "Đang điều trị" khi ngựa bị cả hai
-      const blockReason = lockedHorseIds.has(horse.HorseID) ? "Đang khóa tập" : health === BLOCKING_HEALTH_STATUS ? "Đang điều trị" : null;
+      const blockReason = lockedHorseIds.has(horse.HorseID) ? "Đang khóa tập" : isBlockingHealth(health) ? health : null;
       return [
         horse.HorseID,
         {
@@ -143,7 +148,7 @@ export default function Races() {
   // Sức khỏe khác "Tốt" (ngựa "Đang điều trị" đã bị chặn ở ô): hỏi xác nhận trước khi ghi
   const handleRegister = (horse, race) => {
     const status = horseInfoById[horse.HorseID].health;
-    if (status && status !== "Tốt") setHealthConfirm({ horse, race, status });
+    if (status && !isReadyHealth(status)) setHealthConfirm({ horse, race, status });
     else doRegister(horse, race);
   };
 
@@ -214,6 +219,8 @@ export default function Races() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-[#c0262d] bg-[#c0262d]/5 px-4 py-3 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <>
           {/* 1 hàng: tìm kiếm bên trái, tab Sắp tới / Đã diễn ra bên phải; đường kẻ chạy hết chiều rộng bên dưới */}

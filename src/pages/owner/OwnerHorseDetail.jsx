@@ -11,8 +11,11 @@ import { OWNER_HEALTH_COLORS } from "../../utils/ownerHealthText";
 // lead: chữ đứng trước; word: cụm tô màu. Trạng thái khác / chưa cập nhật → chữ nhạt.
 const HEALTH_LINES = {
   "Tốt": { lead: "Sức khỏe ", word: "tốt", color: OWNER_HEALTH_COLORS["Tốt"] },
+  "Đủ điều kiện": { lead: "Sức khỏe ", word: "đủ điều kiện", color: OWNER_HEALTH_COLORS["Đủ điều kiện"] },
   "Cần theo dõi": { lead: "Sức khỏe ", word: "cần theo dõi", color: OWNER_HEALTH_COLORS["Cần theo dõi"] },
   "Đang điều trị": { lead: "Sức khỏe ", word: "đang điều trị", color: OWNER_HEALTH_COLORS["Đang điều trị"] },
+  "Chấn thương": { lead: "Sức khỏe ", word: "chấn thương", color: OWNER_HEALTH_COLORS["Chấn thương"] },
+  "Cách ly": { lead: "Sức khỏe ", word: "cách ly", color: OWNER_HEALTH_COLORS["Cách ly"] },
 };
 
 // Dấu phẩy thập phân, tối đa 1 chữ số (vd 2,5)

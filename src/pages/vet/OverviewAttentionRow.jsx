@@ -11,6 +11,8 @@ export const BOARD_GRID =
 // Vạch dọc 3px bên trái dòng + màu chữ tình trạng (chỉ "Đang điều trị" in đậm vừa)
 const STATUS_STYLES = {
   "Đang điều trị": { text: "font-medium text-bark", bar: "before:bg-brass" },
+  "Chấn thương": { text: "font-medium text-bark", bar: "before:bg-brass" },
+  "Cách ly": { text: "font-medium text-bark", bar: "before:bg-brass" },
   "Cần theo dõi": { text: "text-brass-deep", bar: "before:bg-sand" },
 };
 

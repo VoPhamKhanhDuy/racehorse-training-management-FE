@@ -14,17 +14,23 @@ const byName = (a, b) => a.TenVatTu.localeCompare(b.TenVatTu, "vi");
 export default function GroomSupplies() {
   const [supplies, setSupplies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [keyword, setKeyword] = useState("");
   const [activeType, setActiveType] = useState(null); // null = Tất cả
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock supplyService)
   useEffect(() => {
     let ignore = false;
-    getSupplies().then((list) => {
-      if (ignore) return;
-      setSupplies(list);
-      setLoading(false);
-    });
+    getSupplies()
+      .then((list) => {
+        if (ignore) return;
+        setSupplies(list);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được vật tư.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -67,6 +73,8 @@ export default function GroomSupplies() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <>
           <div className="mt-5 flex flex-wrap items-center gap-2">
