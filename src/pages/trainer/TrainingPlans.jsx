@@ -1,121 +1,208 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Search, SearchX } from "lucide-react";
+import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
-import Modal from "../../components/Modal";
-import TrainingPlanForm from "./TrainingPlanForm";
-import useAuth from "../../hooks/useAuth";
-import {
-  createTrainingPlan,
-  getHealthStatuses,
-  getHorses,
-  getTrainingPlans,
-  getUsers,
-} from "../../services/trainerService";
-import { toUserID } from "../../utils/userId";
+import { statusDisplayLabel } from "../../utils/statusLabels";
+import TabFilter from "../../components/TabFilter";
+import useApiResource from "../../hooks/useApiResource";
+import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { getHorses, getTrainingPlans } from "../../services/trainingApi";
+import PlanPagination from "./PlanPagination";
+import TrainingPlanRow, { PLAN_BORDER, PLAN_HEAD_CELL, PLAN_ROW_GRID, PLAN_TABLE_MIN_WIDTH } from "./TrainingPlanRow";
 
+const PAGE_SIZES = [5, 10, 20]; // số dòng mỗi trang (mặc định 10)
+const COLUMNS = ["Ngựa", "Giáo án", "Thời gian", "Cường độ", "Tiến độ", "Trạng thái"];
+
+// Danh sách giáo án (GET /api/trainer/training-plans) — lọc theo ngựa + trạng thái phía BE (?horse=&status= trên URL),
+// tìm theo tên giáo án phía FE, phân trang phía FE trên mảng đã lọc. Bảng phẳng có khung; bấm 1 dòng → chi tiết giáo án.
 export default function TrainingPlans() {
-  const { user } = useAuth();
-  const [plans, setPlans] = useState([]);
-  const [horses, setHorses] = useState([]);
-  const [healthStatuses, setHealthStatuses] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [formOpen, setFormOpen] = useState(false);
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { options } = useTrainingOptions();
+  const horseFilter = searchParams.get("horse") ?? "";
+  const statusFilter = searchParams.get("status") ?? "";
 
-  useEffect(() => {
-    let ignore = false;
-    Promise.all([getTrainingPlans(), getHorses(), getHealthStatuses(), getUsers()]).then(
-      ([planList, horseList, healthList, userList]) => {
-        if (ignore) return;
-        setPlans(planList);
-        setHorses(horseList);
-        setHealthStatuses(healthList);
-        setUsers(userList);
-        setLoading(false);
-      }
-    );
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const [keyword, setKeyword] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[1]);
+  const [message, setMessage] = useState(state?.message ?? "");
+  // Danh sách ngựa chỉ để lọc — lỗi thì bộ lọc ngựa trống, lỗi chính hiện ở danh sách giáo án
+  const horsesResource = useApiResource(getHorses, "horses");
+  const plansResource = useApiResource(
+    () => getTrainingPlans({ horseId: horseFilter || undefined, status: statusFilter || undefined }),
+    `${horseFilter}|${statusFilter}`
+  );
+  const horses = horsesResource.data ?? [];
+  const plans = plansResource.data ?? [];
+  const { loading, error } = plansResource;
 
-  const horseNames = Object.fromEntries(horses.map((h) => [h.HorseID, h.Ten]));
-  const userNames = Object.fromEntries(users.map((u) => [u.UserID, u.HoTen]));
-  const healthByHorse = Object.fromEntries(healthStatuses.map((h) => [h.HorseID, h.TrangThai]));
-
-  const handleCreate = async (data) => {
-    const newPlan = await createTrainingPlan({ ...data, CreatedBy: toUserID(user.id) });
-    setPlans((prev) => [newPlan, ...prev]);
-    setFormOpen(false);
+  const retry = () => {
+    horsesResource.reload();
+    plansResource.reload();
   };
+
+  // Đổi tab / lọc ngựa → về trang 1
+  const updateFilter = (name, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(name, value);
+    else next.delete(name);
+    setSearchParams(next, { replace: true });
+    setPage(1);
+  };
+
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  const visiblePlans = plans.filter(
+    (p) => p.planName.toLowerCase().includes(normalizedKeyword) || (p.horseName ?? "").toLowerCase().includes(normalizedKeyword)
+  );
+
+  // Số đếm trên tab (chữ nhạt sau nhãn): đếm trên dữ liệu đã tải, trước khi tìm kiếm. API lọc trạng thái ở phía BE nên
+  // chỉ biết số của mọi tab khi đang ở "Tất cả"; đang ở 1 tab trạng thái thì chỉ tab đó có số.
+  const countOf = (code) => (code === "" ? plans.length : plans.filter((p) => p.status === code).length);
+  const tabLabel = (code, text) => {
+    if (statusFilter !== "" && statusFilter !== code) return text;
+    const count = countOf(code);
+    if (count === 0 && code !== "") return text;
+    return (
+      <>
+        {text} <span className="text-xs font-normal text-[#6b6055]">{count}</span>
+      </>
+    );
+  };
+
+  // Phân trang: trang hiện tại luôn nằm trong [1, tổng trang] kể cả khi dữ liệu tải lại ít hơn
+  const totalPages = Math.max(1, Math.ceil(visiblePlans.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedPlans = visiblePlans.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagination = (
+    <PlanPagination
+      total={visiblePlans.length}
+      page={currentPage}
+      pageSize={pageSize}
+      pageSizes={PAGE_SIZES}
+      onPageChange={setPage}
+      onPageSizeChange={(size) => {
+        setPageSize(size);
+        setPage(1);
+      }}
+    />
+  );
+
+  const newPlanLink = horseFilter ? `/trainer/plans/new?horse=${horseFilter}` : "/trainer/plans/new";
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Giáo án huấn luyện</h1>
-          <p className="mt-1 text-[#6E6E76]">Lập giáo án theo từng giai đoạn cho từng chiến mã.</p>
+          <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">Giáo án tập luyện</h1>
+          <p className="mt-1 text-sm text-[#6b6055]">Theo dõi giáo án, cường độ và tiến độ của từng ngựa.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          disabled={loading}
-          className="cursor-pointer rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white shadow-md transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+        <Link
+          to={newPlanLink}
+          className="inline-flex h-10 items-center rounded bg-[#c2570c] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#a8480a]"
         >
-          + Thêm giáo án
-        </button>
+          Lập giáo án
+        </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        {loading ? (
-          <LoadingState />
-        ) : plans.length === 0 ? (
-          <p className="py-16 text-center text-[#6E6E76]">Chưa có giáo án nào.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-[#6E6E76]">
-                <tr>
-                  <th className="px-5 py-3 font-medium">Ngựa</th>
-                  <th className="px-5 py-3 font-medium">Giai đoạn</th>
-                  <th className="px-5 py-3 font-medium">Cự ly</th>
-                  <th className="px-5 py-3 font-medium">Khối lượng</th>
-                  <th className="px-5 py-3 font-medium">Mặt sân</th>
-                  <th className="px-5 py-3 font-medium">Người tạo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {plans.map((plan) => (
-                  <tr key={plan.PlanID} className="hover:bg-gray-50/60">
-                    <td className="px-5 py-4 font-semibold whitespace-nowrap">
-                      {horseNames[plan.HorseID] ?? `Ngựa #${plan.HorseID}`}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-[#C65D18]">
-                        {plan.GiaiDoan}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap">{plan.CuLy.toLocaleString("vi-VN")} m</td>
-                    <td className="px-5 py-4">{plan.KhoiLuong}</td>
-                    <td className="px-5 py-4 whitespace-nowrap text-[#6E6E76]">{plan.MatSan}</td>
-                    <td className="px-5 py-4 whitespace-nowrap text-[#6E6E76]">
-                      {userNames[plan.CreatedBy] ?? `#${plan.CreatedBy}`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {message && (
+        <div className="mb-4 flex items-center justify-between gap-4 rounded-sm border-l-2 border-green-700 bg-white/60 px-4 py-3 text-sm text-green-800">
+          {message}
+          <button type="button" onClick={() => setMessage("")} className="cursor-pointer font-semibold text-green-700 hover:underline">
+            Đóng
+          </button>
+        </div>
+      )}
 
-      <Modal open={formOpen} title="Thêm giáo án" onClose={() => setFormOpen(false)}>
-        <TrainingPlanForm
-          horses={horses}
-          healthByHorse={healthByHorse}
-          onSubmit={handleCreate}
-          onCancel={() => setFormOpen(false)}
+      {/* 1 hàng: tab trạng thái ("Tất cả" + 4 trạng thái giáo án) bên trái, chọn ngựa + tìm kiếm bên phải;
+          đường kẻ chạy hết chiều rộng bên dưới cả hàng */}
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-[#ece5d6]">
+        <TabFilter
+          ariaLabel="Lọc theo trạng thái"
+          options={[
+            { code: "", label: tabLabel("", "Tất cả") },
+            ...options.planStatuses.map((o) => ({ ...o, label: tabLabel(o.code, statusDisplayLabel(o.code, o.label)) })),
+          ]}
+          value={statusFilter}
+          onChange={(code) => updateFilter("status", code)}
         />
-      </Modal>
+
+        <div className="flex flex-wrap items-center gap-3 pb-2">
+          <label htmlFor="planHorse" className="sr-only">
+            Lọc theo ngựa
+          </label>
+          <select
+            id="planHorse"
+            value={horseFilter}
+            onChange={(e) => updateFilter("horse", e.target.value)}
+            className="h-9 cursor-pointer rounded border border-[#d9d0bf] bg-white px-3 text-sm text-[#2b2118] outline-none focus:border-[#c2570c]"
+          >
+            <option value="">Tất cả ngựa</option>
+            {horses.map((horse) => (
+              <option key={horse.horseId} value={horse.horseId}>
+                {horse.name}
+              </option>
+            ))}
+          </select>
+          <div className="relative w-full sm:w-60">
+            <label htmlFor="planKeyword" className="sr-only">
+              Tìm theo tên giáo án hoặc tên ngựa
+            </label>
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" />
+            <input
+              id="planKeyword"
+              type="search"
+              placeholder="Tìm giáo án, ngựa..."
+              value={keyword}
+              onChange={(e) => {
+                setKeyword(e.target.value);
+                setPage(1);
+              }}
+              className="h-9 w-full rounded border border-[#d9d0bf] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <LoadingState />
+      ) : error ? (
+        <ApiErrorNotice variant="page" error={error} onRetry={retry} />
+      ) : (
+        <div className={`overflow-x-auto rounded border bg-white ${PLAN_BORDER}`}>
+          {visiblePlans.length === 0 ? (
+            <>
+              <div className="py-16 text-center text-[#6b6055]">
+                <SearchX className="mx-auto mb-3 h-10 w-10 text-[#6b6055]/40" />
+                {plans.length === 0 ? "Chưa có giáo án nào phù hợp bộ lọc." : "Không tìm thấy giáo án phù hợp."}
+                <div className="mt-4">
+                  <Link to={newPlanLink} className="text-sm font-semibold text-[#c2570c] hover:underline">
+                    Lập giáo án mới →
+                  </Link>
+                </div>
+              </div>
+              {pagination}
+            </>
+          ) : (
+            <div role="table" className={PLAN_TABLE_MIN_WIDTH}>
+              <div role="row" className={`grid bg-[#4a3a2a] text-[13px] font-semibold text-[#f3ede0] ${PLAN_ROW_GRID}`}>
+                {COLUMNS.map((column) => (
+                  <div key={column} role="columnheader" className={PLAN_HEAD_CELL}>
+                    {column}
+                  </div>
+                ))}
+              </div>
+              <div>
+                {pagedPlans.map((plan) => (
+                  <TrainingPlanRow key={plan.planId} plan={plan} onOpen={() => navigate(`/trainer/plans/${plan.planId}`)} />
+                ))}
+              </div>
+              {pagination}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,9 +3,23 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../../components/AuthLayout";
 import FormField from "../../components/FormField";
 import useAuth from "../../hooks/useAuth";
-import users from "../../data/users";
 import roleHomePaths from "../../routes/roleHomePaths";
 import { isValidEmail } from "../../utils/validators";
+import AccountStatusText from "../../components/AccountStatusText";
+
+// Lỗi chung dưới nút Đăng nhập. Lỗi do trạng thái tài khoản (hiện chỉ còn bị khóa): câu chữ thường,
+// riêng cụm trạng thái tô màu dùng chung của AccountStatusText. Lỗi khác (sai email/mật khẩu): giữ chữ đỏ.
+function FormError({ message, accountStatus }) {
+  const index = accountStatus ? message.indexOf(accountStatus.phrase) : -1;
+  if (index < 0) return <p className="mt-2 text-sm text-red-500">{message}</p>;
+  return (
+    <p className="mt-2 text-sm text-[#6E6E76]">
+      {message.slice(0, index)}
+      <AccountStatusText status={accountStatus.status}>{accountStatus.phrase}</AccountStatusText>
+      {message.slice(index + accountStatus.phrase.length)}
+    </p>
+  );
+}
 
 export default function Login() {
   const { login } = useAuth();
@@ -15,6 +29,7 @@ export default function Login() {
   const blockedPath = location.state?.from?.pathname;
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,8 +37,9 @@ export default function Login() {
     setErrors((prev) => ({ ...prev, [name]: undefined, form: undefined }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     const newErrors = {};
     if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
     else if (!isValidEmail(form.email)) newErrors.email = "Email không hợp lệ";
@@ -33,15 +49,26 @@ export default function Login() {
       return;
     }
 
-    if (!login(form.email, form.password)) {
-      setErrors({ form: "Email hoặc mật khẩu không đúng" });
+    // Đăng nhập thử qua BE trước (có độ trễ mạng) → khóa nút trong lúc chờ
+    setSubmitting(true);
+    const result = await login(form.email, form.password);
+    setSubmitting(false);
+    // Chờ duyệt / bị từ chối: sang màn trạng thái, không đăng nhập
+    if (result.statusScreen) {
+      navigate("/account-status", { state: { ...result.statusScreen, source: "login" } });
+      return;
+    }
+    if (result.error) {
+      setErrors({ form: result.error, accountStatus: result.accountStatus });
+      return;
+    }
+    // Nhân sự mới đăng nhập bằng mật khẩu mặc định → bắt buộc đổi mật khẩu trước
+    if (result.user.mustChangePassword) {
+      navigate("/change-password", { replace: true });
       return;
     }
     // Quay lại trang bị chặn nếu có, không thì về trang chủ của role
-    const { roleId } = users.find(
-      (u) => u.email.toLowerCase() === form.email.trim().toLowerCase()
-    );
-    navigate(blockedPath || roleHomePaths[roleId] || "/", { replace: true });
+    navigate(blockedPath || roleHomePaths[result.user.roleId] || "/", { replace: true });
   };
 
   return (
@@ -95,11 +122,12 @@ export default function Login() {
         <div>
           <button
             type="submit"
-            className="w-full rounded-xl bg-orange-500 py-3 font-semibold text-white shadow-md cursor-pointer transition-colors hover:bg-orange-600"
+            disabled={submitting}
+            className="w-full rounded-xl bg-orange-500 py-3 font-semibold text-white shadow-md cursor-pointer transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Đăng nhập
+            {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
-          {errors.form && <p className="mt-2 text-sm text-red-500">{errors.form}</p>}
+          {errors.form && <FormError message={errors.form} accountStatus={errors.accountStatus} />}
         </div>
       </form>
     </AuthLayout>

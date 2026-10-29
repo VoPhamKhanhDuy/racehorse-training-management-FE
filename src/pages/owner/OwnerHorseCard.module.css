@@ -1,0 +1,226 @@
+/* Trang chi tiết ngựa của Chủ ngựa. Viết CSS module để giá trị bố cục chắc chắn được áp dụng (không phụ thuộc class Tailwind
+   tùy ý). Màu dùng biến của hệ thống trong styles/index.css.
+   - Phần đầu: ảnh (tỉ lệ 4:3, tối đa 620px) | thông tin (eyebrow, tên, sức khỏe, bảng Hồ sơ), căn đỉnh theo đỉnh ảnh.
+   - Bên dưới: "Chăm sóc hằng ngày" | "Thành tích thi đấu" 2 cột (≥ 1100px) hoặc xếp dọc full-width.
+   - Tiêu đề mục dùng components/SectionTitle (cách phía trên 56px). */
+
+.page {
+  max-width: 1040px;
+}
+
+/* Phần đầu: 1 cột (màn hẹp); ≥ 900px: ảnh | thông tin */
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 32px;
+  align-items: start;
+}
+
+.photo {
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 2px;
+  background-color: #ece4d6;
+}
+
+.photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.photoInitial {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 96px;
+  font-weight: 600;
+  line-height: 1;
+  color: #d9cdb8;
+}
+
+.identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-stone);
+}
+
+.name {
+  margin-top: 8px;
+  font-family: var(--font-serif);
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: #2b2118;
+}
+
+.health {
+  margin-top: 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.lock {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-brass-deep);
+}
+
+/* Mục "Hồ sơ" trong cột thông tin: cách phía trên 56px như mọi mục khác */
+.profile {
+  margin-top: 36px;
+}
+
+/* Hàng dưới: Chăm sóc hằng ngày | Thành tích thi đấu */
+.lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 40px;
+  margin-top: 40px;
+  align-items: start;
+}
+
+/* Bảng đường chấm: mỗi dòng ~40px, nhãn màu phụ 15px, giá trị màu mực 15px */
+.specs {
+  font-size: 15px;
+}
+
+.specRow {
+  display: flex;
+  min-height: 40px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.specLabel {
+  flex-shrink: 0;
+  color: var(--color-stone);
+}
+
+.leader {
+  flex: 1;
+  min-width: 24px;
+  height: 0;
+  border-bottom: 1px dotted #b8ac96;
+  transform: translateY(-4px);
+}
+
+.specValue {
+  flex-shrink: 0;
+  text-align: right;
+  color: #2b2118;
+}
+
+/* Giá trị dài (lịch sinh hoạt, khẩu phần): xuống dòng dưới nhãn, canh trái, giữ xuống dòng của văn bản */
+.stackRow {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.stackValue {
+  margin-top: 4px;
+  line-height: 1.6;
+  white-space: pre-line;
+  color: #2b2118;
+}
+
+.muted {
+  color: var(--color-stone);
+}
+
+/* Thành tích thi đấu */
+.achievements {
+  margin-top: 0;
+}
+
+.raceList {
+  margin-top: 0;
+}
+
+.raceRow {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: baseline;
+  column-gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #ece5d8;
+  white-space: nowrap;
+}
+
+.raceDate {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-stone);
+}
+
+.raceName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  color: var(--color-ink);
+}
+
+.raceRank {
+  text-align: right;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.raceRankFirst {
+  color: var(--color-brass-deep);
+}
+
+.raceState {
+  text-align: right;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--color-stone);
+}
+
+.empty {
+  margin-top: 0;
+  font-size: 14px;
+  color: var(--color-stone);
+}
+
+/* ≥ 900px: ảnh (co theo cột, tối đa 620px) | thông tin, cách 48px */
+@media (min-width: 900px) {
+  .top {
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+    column-gap: 40px;
+  }
+
+  .name {
+    font-size: 40px;
+  }
+}
+
+/* ≥ 1100px: Chăm sóc hằng ngày | Thành tích thi đấu cạnh nhau, cùng khoảng cách 48px */
+@media (min-width: 1100px) {
+  .lower {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 40px;
+  }
+}
