@@ -4,11 +4,10 @@ import HorseAvatar from "../../components/HorseAvatar";
 import OwnerVaccineStatus from "./OwnerVaccineStatus";
 import { formatDate, formatDayMonth } from "../../utils/date";
 import { getLockDays } from "../../utils/trainingLock";
+import { isBlockingHealth } from "../../utils/healthGroups";
 
 const CELL = "border-b border-[#d9cfba] px-4 py-2 align-middle";
 
-// Trạng thái sức khỏe chặn thi đấu (cùng quy tắc đăng ký giải của HLV)
-const BLOCKING_HEALTH = "Đang điều trị";
 
 // Sức khỏe: chữ màu; chỉ "Đang điều trị" có icon cảnh báo (trường hợp duy nhất cần nhấn). Trạng thái khác / chưa cập nhật → chữ xám.
 const HEALTH_STYLES = {
@@ -16,6 +15,8 @@ const HEALTH_STYLES = {
   "Đủ điều kiện": { className: "text-[#4d6b2a]", Icon: null },
   "Cần theo dõi": { className: "text-[#946330]", Icon: null },
   "Đang điều trị": { className: "text-[#c0262d]", Icon: TriangleAlert },
+  "Chấn thương": { className: "text-[#c0262d]", Icon: TriangleAlert },
+  "Cách ly": { className: "text-[#c0262d]", Icon: TriangleAlert },
 };
 
 // 1 ngựa trong bảng "Tình trạng hiện tại" (chỉ xem; KHÔNG hiện chẩn đoán / lý do khóa tập): Ngựa | Sức khỏe | Thi đấu | Tiêm tiếp theo.
@@ -23,7 +24,7 @@ const HEALTH_STYLES = {
 export default function OwnerHealthRow({ horse, health, lock, nextVaccine }) {
   const healthStyle = HEALTH_STYLES[health?.TrangThai];
   const HealthIcon = healthStyle?.Icon;
-  const ready = !lock && health?.TrangThai !== BLOCKING_HEALTH;
+  const ready = !lock && !isBlockingHealth(health?.TrangThai);
 
   return (
     <tr className="h-16 text-[#2b2118] transition-colors hover:bg-[#f0efec]">

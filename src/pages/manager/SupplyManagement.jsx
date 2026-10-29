@@ -13,6 +13,7 @@ export default function SupplyManagement() {
   const [supplies, setSupplies] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [keyword, setKeyword] = useState("");
   const [typeFilter, setTypeFilter] = useState(""); // "" = tất cả loại
   const [stockAction, setStockAction] = useState(null); // { supply, mode: "in" | "out" }
@@ -20,15 +21,20 @@ export default function SupplyManagement() {
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState(state?.message ?? "");
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock supplyService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getSupplies(), getStaffMembers()]).then(([supplyList, staffList]) => {
-      if (ignore) return;
-      setSupplies(supplyList);
-      setStaffMembers(staffList);
-      setLoading(false);
-    });
+    Promise.all([getSupplies(), getStaffMembers()])
+      .then(([supplyList, staffList]) => {
+        if (ignore) return;
+        setSupplies(supplyList);
+        setStaffMembers(staffList);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được vật tư.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -74,11 +80,17 @@ export default function SupplyManagement() {
   const handleConfirmDelete = async () => {
     const supply = supplyToDelete;
     setDeleting(true);
-    await deleteSupply(supply.SupplyID);
-    setSupplies((prev) => prev.filter((s) => s.SupplyID !== supply.SupplyID));
-    setDeleting(false);
-    setSupplyToDelete(null);
-    setMessage(`Đã xóa vật tư "${supply.TenVatTu}".`);
+    try {
+      await deleteSupply(supply.SupplyID);
+      setSupplies((prev) => prev.filter((s) => s.SupplyID !== supply.SupplyID));
+      setSupplyToDelete(null);
+      setMessage(`Đã xóa vật tư "${supply.TenVatTu}".`);
+    } catch (err) {
+      setMessage(err.message || "Không xóa được vật tư.");
+      setSupplyToDelete(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -111,6 +123,8 @@ export default function SupplyManagement() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <div className="space-y-5">
           {/* Dải số liệu trong 1 card trắng (giống /manager/staff); vạch dọc ngăn từng ô */}

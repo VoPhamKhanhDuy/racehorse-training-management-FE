@@ -25,6 +25,7 @@ export default function IncidentReports() {
   const [horses, setHorses] = useState([]);
   const [stables, setStables] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [selectedId, setSelectedId] = useState(null); // ReportID đang mở trong ngăn chi tiết
   const [toast, setToast] = useState(location.state?.toast ?? null);
 
@@ -33,16 +34,21 @@ export default function IncidentReports() {
     if (location.state) navigate(location.pathname, { replace: true, state: null });
   }, [location.state, location.pathname, navigate]);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock careService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getIncidentReports(groomId), getHorses(), getStableNumbers()]).then(([reportList, horseList, stableMap]) => {
-      if (ignore) return;
-      setReports(reportList);
-      setHorses(horseList);
-      setStables(stableMap);
-      setLoading(false);
-    });
+    Promise.all([getIncidentReports(groomId), getHorses(), getStableNumbers()])
+      .then(([reportList, horseList, stableMap]) => {
+        if (ignore) return;
+        setReports(reportList);
+        setHorses(horseList);
+        setStables(stableMap);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được báo cáo.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -69,6 +75,8 @@ export default function IncidentReports() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : reports.length === 0 ? (
         <div className="mt-6 rounded-[4px] border border-[#d9cfba] bg-white px-4 py-12 text-center">
           <p className="text-sm text-[#4a3f33]">Bạn chưa gửi báo cáo sự cố nào.</p>

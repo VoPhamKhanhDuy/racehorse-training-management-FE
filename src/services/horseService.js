@@ -1,11 +1,6 @@
-import healthStatuses from "../data/healthStatuses";
-import { createPersistedList } from "./persistedStore";
 import { apiRequest, apiUploadForm } from "./apiClient";
 import { getHorseAge } from "../utils/date";
 import { DUPLICATE_HORSE_NAME, INVALID_BIRTH_DATE } from "../data/horseOptions";
-
-const healthList = createPersistedList("healthStatuses", healthStatuses, "HorseID");
-const healthStore = healthList.items;
 
 const collapseSpaces = (text) => text.trim().replace(/\s+/g, " ");
 
@@ -223,16 +218,6 @@ export async function deleteHorse(horseId) {
 export async function getHealthStatuses() {
   const data = await apiRequest("/horses/health-statuses");
   return (data ?? []).map(mapHealthFromApi);
-}
-
-/** Vet mock — chưa có API cập nhật sức khỏe; giữ local để màn bác sĩ không vỡ luồng. */
-export async function updateHealthStatus(horseId, trangThai, ngay) {
-  const current = healthStore.find((h) => h.HorseID === Number(horseId));
-  if (current && ngay < current.NgayCapNhat) return false;
-  if (current) Object.assign(current, { TrangThai: trangThai, NgayCapNhat: ngay });
-  else healthStore.push({ HorseID: Number(horseId), TrangThai: trangThai, NgayCapNhat: ngay });
-  healthList.save();
-  return true;
 }
 
 export async function getHorseOwners() {

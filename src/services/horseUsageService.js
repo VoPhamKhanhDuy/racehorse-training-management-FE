@@ -9,18 +9,21 @@ import { getRaceRegistrations, getSchedules, getTrainingPlans, getTrainingSessio
 // TRAININGPLAN, TRAININGSCHEDULE, TRAININGSESSION, RACEREGISTRATION, TRAININGLOCK, VACCINATIONSCHEDULE, MEDICALRECORD, HEALTHSTATUS.
 // (Tạo ngựa mới không sinh bản ghi HEALTHSTATUS mặc định, nên mọi bản ghi sức khỏe đều tính là dữ liệu thật.)
 export async function getHorseIdsWithRelatedData() {
-  const [plans, schedules, sessions, registrations, healthList] = await Promise.all([
+  const [plans, schedules, sessions, registrations, healthList, recordIds, lockIds, vaccineIds] = await Promise.all([
     getTrainingPlans(),
     getSchedules(),
     getTrainingSessions(),
     getRaceRegistrations(),
     getHealthStatuses(),
+    getHorseIdsWithRecords(),
+    getHorseIdsWithLocks(),
+    getHorseIdsWithVaccinations(),
   ]);
   return new Set(
     [plans, schedules, sessions, registrations, healthList]
       .flat()
       .map((record) => record.HorseID)
-      .concat([...getHorseIdsWithRecords(), ...getHorseIdsWithLocks(), ...getHorseIdsWithVaccinations()])
+      .concat([...recordIds, ...lockIds, ...vaccineIds])
   );
 }
 

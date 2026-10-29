@@ -67,7 +67,6 @@ export default function Vaccinations() {
       navigate({ search: location.search }, { replace: true, state: null });
   }, [location.state, location.search, navigate]);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getVaccinations(), getHorses()]).then(

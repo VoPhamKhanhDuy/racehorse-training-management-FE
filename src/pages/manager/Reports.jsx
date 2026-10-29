@@ -12,7 +12,7 @@ import { todayISO } from "../../utils/date";
 export default function Reports() {
   const [trainingReport, setTrainingReport] = useState(null);
   const [financeReport, setFinanceReport] = useState(null);
-  const [clubFinance, setClubFinance] = useState(null); // { cost, prize, difference } của năm hiện tại
+  const [clubFinance, setClubFinance] = useState(null); // { cost, prize } của năm hiện tại
 
   // TODO: thay bằng gọi API thật khi BE xong (hiện tính từ mock reportService)
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function Reports() {
           .reduce((sum, r) => sum + r.TienThuong, 0);
         setTrainingReport(training);
         setFinanceReport(finance);
-        setClubFinance({ cost, prize, difference: prize - cost });
+        setClubFinance({ cost, prize });
       }
     );
     return () => {

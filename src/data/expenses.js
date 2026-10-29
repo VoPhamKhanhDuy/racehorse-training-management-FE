@@ -3,8 +3,8 @@ import { daysFromToday } from "../utils/date";
 // Mock data — bảng EXPENSE (chi phí câu lạc bộ ghi cho từng ngựa) trong ERD mới: ExpenseID, HorseID, LoaiChiPhi, SoTien, Ngay, GhiChu
 // TRƯỜNG/BẢNG MỚI — cần BE xác nhận. LoaiChiPhi ∈ EXPENSE_TYPES (data/expenseOptions.js). SoTien: VNĐ (số nguyên).
 // Ngay tương đối so với hôm nay (trong ~3 tháng gần nhất). Seed cho MỌI ngựa hiện có (6 ngựa của 3 chủ ngựa demo), mỗi ngựa
-// 8 khoản; ngựa mới thêm sau này không có seed nên chi phí = 0. Chênh lệch (tiền thưởng − chi phí): dương ở Thunder, Spirit;
-// âm ở Shadow, Storm, Lightning, Blaze. Chỉ để chủ ngựa XEM — việc thanh toán diễn ra ngoài hệ thống.
+// 8 khoản; ngựa mới thêm sau này không có seed nên chi phí = 0.
+// Chỉ để chủ ngựa XEM — việc thanh toán diễn ra ngoài hệ thống.
 const expenses = [
   // Thunder (1)
   { ExpenseID: 1, HorseID: 1, LoaiChiPhi: "Thức ăn", SoTien: 4200000, Ngay: daysFromToday(-78), GhiChu: "Cám ngựa đua và cỏ khô tháng trước" },
@@ -56,7 +56,7 @@ const expenses = [
   { ExpenseID: 39, HorseID: 4, LoaiChiPhi: "Vật tư", SoTien: 610000, Ngay: daysFromToday(-13), GhiChu: "Móng sắt mới" },
   { ExpenseID: 40, HorseID: 4, LoaiChiPhi: "Thức ăn", SoTien: 4800000, Ngay: daysFromToday(-6), GhiChu: "Cám và cỏ khô tháng 10" },
 
-  // Spirit (6) — chủ owner3@equitrack.vn, có tiền thưởng hạng nhất nên chênh lệch dương
+  // Spirit (6) — chủ owner3@equitrack.vn, có tiền thưởng hạng nhất
   { ExpenseID: 41, HorseID: 6, LoaiChiPhi: "Thức ăn", SoTien: 3300000, Ngay: daysFromToday(-79), GhiChu: "Cám và cỏ khô tháng 7" },
   { ExpenseID: 42, HorseID: 6, LoaiChiPhi: "Huấn luyện", SoTien: 3200000, Ngay: daysFromToday(-73), GhiChu: "Phí HLV tháng 8" },
   { ExpenseID: 43, HorseID: 6, LoaiChiPhi: "Thú y", SoTien: 450000, Ngay: daysFromToday(-57), GhiChu: "Tẩy giun định kỳ" },

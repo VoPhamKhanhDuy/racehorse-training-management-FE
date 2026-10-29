@@ -1,90 +1,82 @@
-// TODO: thay bằng gọi API thật khi BE xong
-// Mock API vật tư (bảng SUPPLY) cho Club Manager: thêm/sửa/xóa, nhập kho/xuất kho.
-// Dữ liệu giữ trong bộ nhớ của module nên còn nguyên khi chuyển trang, mất khi tải lại trang.
-import supplies from "../data/supplies";
-import { STAFF_ROLE_IDS } from "../data/roles";
-import { getUsers } from "./accountService";
-import { createPersistedList } from "./persistedStore";
-import { toUserID } from "../utils/userId";
+// Flow 4 gọi API /api/supplies. Nhân viên chăm sóc chỉ xem; Quản lý CLB thêm, sửa, nhập và xuất kho.
+import { apiRequest } from "./apiClient";
 
-const NETWORK_DELAY_MS = 400;
-
-function delay(ms = NETWORK_DELAY_MS) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function pick(obj, ...keys) {
+  for (const key of keys) {
+    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
+  }
+  return undefined;
 }
 
-// Lưu bền: SEED (data/supplies.js) + lớp thay đổi trong localStorage (services/persistedStore.js)
-const supplyList = createPersistedList("supplies", supplies, "SupplyID");
-const supplyStore = supplyList.items;
-
-const nextSupplyId = () => supplyStore.reduce((max, s) => Math.max(max, s.SupplyID), 0) + 1;
-
-// Chuẩn hóa dữ liệu từ form theo kiểu cột trong ERD
-function toSupplyRecord(data) {
+function mapSupply(raw) {
   return {
-    TenVatTu: data.TenVatTu.trim(),
-    Loai: data.Loai.trim(),
-    SoLuongTon: Number(data.SoLuongTon),
-    ManagedBy: Number(data.ManagedBy),
-    DonGia: Number(data.DonGia),
+    SupplyID: Number(pick(raw, "supplyID", "SupplyID")),
+    TenVatTu: pick(raw, "tenVatTu", "TenVatTu") ?? "",
+    Loai: pick(raw, "loai", "Loai") ?? "",
+    SoLuongTon: Number(pick(raw, "soLuongTon", "SoLuongTon") ?? 0),
+    ManagedBy: Number(pick(raw, "managedBy", "ManagedBy") ?? 0),
+    DonGia: Number(pick(raw, "donGia", "DonGia") ?? 0),
+    DonVi: pick(raw, "donVi", "DonVi") ?? "",
   };
 }
 
-function findSupplyOrThrow(supplyId) {
-  const supply = supplyStore.find((s) => s.SupplyID === Number(supplyId));
-  if (!supply) throw new Error("Không tìm thấy vật tư");
-  return supply;
+function mapStaff(raw) {
+  return {
+    UserID: Number(pick(raw, "userID", "UserID")),
+    HoTen: pick(raw, "hoTen", "HoTen") ?? "",
+    roleId: pick(raw, "roleId", "RoleId") ?? "",
+    isActive: Boolean(pick(raw, "isActive", "IsActive")),
+  };
+}
+
+function toSupplyBody(data) {
+  return {
+    tenVatTu: data.TenVatTu.trim(),
+    loai: data.Loai.trim(),
+    soLuongTon: Number(data.SoLuongTon),
+    donGia: Number(data.DonGia),
+    managedBy: Number(data.ManagedBy),
+  };
 }
 
 export async function getSupplies() {
-  await delay();
-  return supplyStore.map((s) => ({ ...s }));
+  const rows = await apiRequest("/supplies");
+  return (rows ?? []).map(mapSupply);
 }
 
-// Trả về null nếu không tìm thấy
 export async function getSupplyById(supplyId) {
-  await delay();
-  const supply = supplyStore.find((s) => s.SupplyID === Number(supplyId));
-  return supply ? { ...supply } : null;
+  try {
+    const raw = await apiRequest(`/supplies/${Number(supplyId)}`);
+    return raw ? mapSupply(raw) : null;
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
 }
 
 export async function createSupply(data) {
-  await delay();
-  const newSupply = { SupplyID: nextSupplyId(), ...toSupplyRecord(data) };
-  supplyStore.push(newSupply);
-  supplyList.save();
-  return { ...newSupply };
+  const saved = await apiRequest("/supplies", { method: "POST", body: toSupplyBody(data) });
+  return mapSupply(saved);
 }
 
 export async function updateSupply(supplyId, data) {
-  await delay();
-  const supply = findSupplyOrThrow(supplyId);
-  Object.assign(supply, toSupplyRecord(data));
-  supplyList.save();
-  return { ...supply };
+  const saved = await apiRequest(`/supplies/${Number(supplyId)}`, { method: "PUT", body: toSupplyBody(data) });
+  return mapSupply(saved);
 }
 
 export async function deleteSupply(supplyId) {
-  await delay();
-  supplyList.remove((s) => s.SupplyID === Number(supplyId));
+  await apiRequest(`/supplies/${Number(supplyId)}`, { method: "DELETE" });
 }
 
-// Nhập kho (delta > 0) / xuất kho (delta < 0). Không cho tồn kho âm.
 export async function adjustStock(supplyId, delta) {
-  await delay();
-  const supply = findSupplyOrThrow(supplyId);
-  const newQuantity = supply.SoLuongTon + delta;
-  if (newQuantity < 0) throw new Error(`Chỉ còn ${supply.SoLuongTon} trong kho, không thể xuất ${-delta}`);
-  supply.SoLuongTon = newQuantity;
-  supplyList.save();
-  return { ...supply };
+  const saved = await apiRequest(`/supplies/${Number(supplyId)}/adjust`, {
+    method: "POST",
+    body: { delta: Number(delta) },
+  });
+  return mapSupply(saved);
 }
 
-// Toàn bộ nhân sự nội bộ theo field ERD (kể cả đã khóa, để vẫn hiện tên người quản lý cũ).
-// Form chỉ cho chọn người đang hoạt động (isActive).
 export async function getStaffMembers() {
-  const users = await getUsers();
-  return users
-    .filter((u) => STAFF_ROLE_IDS.includes(u.roleId))
-    .map((u) => ({ UserID: toUserID(u.id), HoTen: u.fullName, roleId: u.roleId, isActive: u.isActive }));
+  const rows = await apiRequest("/supplies/staff");
+  return (rows ?? []).map(mapStaff);
 }
