@@ -50,6 +50,7 @@ export default function OwnerFinance() {
   const [races, setRaces] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState(location.state?.tab === "prize" ? "prize" : "expense");
   const [selectedMonths, setSelectedMonths] = useState({ expense: location.state?.month ?? null, prize: null }); // mỗi tab nhớ tháng riêng
   const [showAll, setShowAll] = useState(false);
@@ -62,26 +63,32 @@ export default function OwnerFinance() {
     if (location.state) navigate(location.pathname, { replace: true, state: null });
   }, [location.state, location.pathname, navigate]);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock expenseService / ownerService)
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const horseList = await getOwnerHorses(ownerId);
-      const ids = horseList.map((h) => h.HorseID);
-      const [expenseList, raceList, registrationList] = await Promise.all([getExpenses(ids), getRaces(), getRaceRegistrations()]);
-      if (ignore) return;
-      const ownRegistrations = registrationList.filter((r) => ids.includes(r.HorseID));
-      // Seed trạng thái thanh toán demo lần đầu (không làm gì nếu đã có dữ liệu)
-      const prizeDates = ownRegistrations
-        .filter((r) => r.TienThuong !== null && r.TienThuong !== undefined)
-        .map((r) => raceList.find((race) => race.RaceID === r.RaceID)?.Ngay)
-        .filter(Boolean);
-      seedDemoPayments(ownerId, { expense: monthsOf(expenseList.map((e) => e.Ngay)), reward: monthsOf(prizeDates) });
-      setHorses(horseList);
-      setExpenses(expenseList);
-      setRaces(raceList);
-      setRegistrations(ownRegistrations);
-      setLoading(false);
+      try {
+        const horseList = await getOwnerHorses(ownerId);
+        const ids = horseList.map((h) => h.HorseID);
+        const [expenseList, raceList, registrationList] = await Promise.all([getExpenses(ids), getRaces(), getRaceRegistrations()]);
+        if (ignore) return;
+        const ownRegistrations = registrationList.filter((r) => ids.includes(r.HorseID));
+        // Seed trạng thái thanh toán demo lần đầu (không làm gì nếu đã có dữ liệu)
+        const prizeDates = ownRegistrations
+          .filter((r) => r.TienThuong !== null && r.TienThuong !== undefined)
+          .map((r) => raceList.find((race) => race.RaceID === r.RaceID)?.Ngay)
+          .filter(Boolean);
+        seedDemoPayments(ownerId, { expense: monthsOf(expenseList.map((e) => e.Ngay)), reward: monthsOf(prizeDates) });
+        setHorses(horseList);
+        setExpenses(expenseList);
+        setRaces(raceList);
+        setRegistrations(ownRegistrations);
+        setLoading(false);
+      } catch (err) {
+        if (!ignore) {
+          setLoadError(err.message || "Không tải được chi phí và thành tích.");
+          setLoading(false);
+        }
+      }
     })();
     return () => {
       ignore = true;
@@ -203,6 +210,8 @@ export default function OwnerFinance() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : horses.length === 0 ? (
         <div className="mt-6 rounded-[4px] border border-[#d9cfba] bg-white py-16 text-center">
           <p className="font-serif text-lg font-semibold text-[#2b2118]">Chưa có ngựa nào gắn với tài khoản của bạn</p>

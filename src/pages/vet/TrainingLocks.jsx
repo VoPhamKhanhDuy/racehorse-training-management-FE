@@ -52,7 +52,6 @@ export default function TrainingLocks() {
     if (location.state) navigate({ search: location.search }, { replace: true, state: null });
   }, [location.state, location.search, navigate]);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService / trainerService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getTrainingLocks(), getHorses(), getMedicalRecords(), getSchedules(), getRaceRegistrations(), getRaces(), getVets()]).then(

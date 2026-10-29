@@ -7,7 +7,7 @@ const CELL = "border-b border-[#d9cfba] px-4 py-3";
 // Cần bổ sung (sắp hết / hết hàng): vạch trái 3px cam + nền kem nhạt.
 export default function SupplyStockRow({ item }) {
   const state = getSupplyState(item);
-  const { donVi } = getSupplyConfig(item.TenVatTu);
+  const donVi = item.DonVi || getSupplyConfig(item.TenVatTu).donVi;
   const restock = state !== SUPPLY_STATES.OK;
 
   return (

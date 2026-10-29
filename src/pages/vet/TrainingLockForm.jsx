@@ -46,7 +46,6 @@ export default function TrainingLockForm() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock vetService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getHorses(), getActiveTrainingLocks(), getHealthStatuses(), getMedicalRecords()]).then(
@@ -205,7 +204,7 @@ export default function TrainingLockForm() {
             records={horseRecords}
             note={
               selectedHorse && selectedHealth?.TrangThai !== TREATMENT_STATE
-                ? "Đặt lệnh khóa sẽ chuyển tình trạng sức khỏe của ngựa sang Đang điều trị."
+                ? "Đặt lệnh khóa sẽ chuyển tình trạng sức khỏe của ngựa sang Chấn thương."
                 : undefined
             }
           />

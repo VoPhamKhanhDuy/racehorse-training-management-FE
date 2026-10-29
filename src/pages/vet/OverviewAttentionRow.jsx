@@ -7,9 +7,9 @@ import { getHealthLabel, getHealthStyle } from "../../utils/healthStatusStyles";
 export const BOARD_CELL = "border-b border-[#d9cfba] px-4 py-3 align-middle";
 
 // Icon theo tình trạng: tốt → tick; đang điều trị → cảnh báo; cần theo dõi → mắt
-const STATUS_ICON = { "Tốt": Check, "Đủ điều kiện": Check, "Đang điều trị": TriangleAlert, "Cần theo dõi": Eye };
+const STATUS_ICON = { "Tốt": Check, "Đủ điều kiện": Check, "Đang điều trị": TriangleAlert, "Chấn thương": TriangleAlert, "Cách ly": TriangleAlert, "Cần theo dõi": Eye };
 // Vạch dọc 3px bên trái hàng "Cần chú ý" (chỉ vạch, không tô nền)
-const STATUS_BAR = { "Đang điều trị": "border-l-[#c0262d]", "Cần theo dõi": "border-l-[#c2570c]" };
+const STATUS_BAR = { "Đang điều trị": "border-l-[#c0262d]", "Chấn thương": "border-l-[#c0262d]", "Cách ly": "border-l-[#c0262d]", "Cần theo dõi": "border-l-[#c2570c]" };
 
 // Ô Tình trạng (icon + chữ màu) và ô Khám gần nhất — dùng chung cho nhóm "Cần chú ý" và "Tình trạng tốt"
 export function StatusCell({ status }) {

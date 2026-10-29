@@ -35,7 +35,8 @@ function alertsForHorse({ health, latestExamDate, vaccinations, sessions, today,
   const daysSinceExam = latestExamDate ? daysSince(latestExamDate) : null;
   const examText = (days) => (days === null ? "chưa có lần khám nào" : `lần khám gần nhất cách đây ${days} ngày`);
 
-  if (health?.TrangThai === "Đang điều trị" && (daysSinceExam === null || daysSinceExam > thresholds.recheckDaysTreating)) {
+  const treating = health?.TrangThai === "Đang điều trị" || health?.TrangThai === "Chấn thương" || health?.TrangThai === "Cách ly";
+  if (treating && (daysSinceExam === null || daysSinceExam > thresholds.recheckDaysTreating)) {
     alerts.push({ type: ALERT_TYPES.RECHECK_TREATING, message: `Cần tái khám: ${examText(daysSinceExam)}.` });
   }
 

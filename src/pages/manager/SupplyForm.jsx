@@ -18,33 +18,39 @@ export default function SupplyForm() {
   const [supplyTypes, setSupplyTypes] = useState([]); // gợi ý cho ô Loại
   const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock supplyService)
   useEffect(() => {
     let ignore = false;
-    Promise.all([getSupplies(), getStaffMembers()]).then(([supplyList, staffList]) => {
-      if (ignore) return;
-      setSupplyTypes([...new Set(supplyList.map((s) => s.Loai))].sort((a, b) => a.localeCompare(b, "vi")));
-      setStaffMembers(staffList);
-      if (isEdit) {
-        const supply = supplyList.find((s) => s.SupplyID === Number(id));
-        if (supply) {
-          setForm({
-            TenVatTu: supply.TenVatTu,
-            Loai: supply.Loai,
-            SoLuongTon: String(supply.SoLuongTon),
-            DonGia: String(supply.DonGia ?? ""),
-            ManagedBy: String(supply.ManagedBy),
-          });
-        } else {
-          setNotFound(true);
+    Promise.all([getSupplies(), getStaffMembers()])
+      .then(([supplyList, staffList]) => {
+        if (ignore) return;
+        setSupplyTypes([...new Set(supplyList.map((s) => s.Loai))].sort((a, b) => a.localeCompare(b, "vi")));
+        setStaffMembers(staffList);
+        if (isEdit) {
+          const supply = supplyList.find((s) => s.SupplyID === Number(id));
+          if (supply) {
+            setForm({
+              TenVatTu: supply.TenVatTu,
+              Loai: supply.Loai,
+              SoLuongTon: String(supply.SoLuongTon),
+              DonGia: String(supply.DonGia ?? ""),
+              ManagedBy: String(supply.ManagedBy),
+            });
+          } else {
+            setNotFound(true);
+          }
         }
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được vật tư.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -86,13 +92,21 @@ export default function SupplyForm() {
       navigate("/manager/supplies", {
         state: { message: isEdit ? `Đã cập nhật vật tư "${saved.TenVatTu}".` : `Đã thêm vật tư "${saved.TenVatTu}".` },
       });
-    } catch {
-      setErrors({ form: "Không lưu được vật tư, vui lòng thử lại." });
+    } catch (err) {
+      setErrors({ form: err.message || "Không lưu được vật tư, vui lòng thử lại." });
       setSubmitting(false);
     }
   };
 
   if (loading) return <LoadingState />;
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
+      </div>
+    );
+  }
 
   if (notFound) {
     return (

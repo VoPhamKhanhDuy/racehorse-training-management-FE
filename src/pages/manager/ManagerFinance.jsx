@@ -79,6 +79,7 @@ export default function ManagerFinance() {
   const [registrations, setRegistrations] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const [tab, setTab] = useState("expense");
   const [selectedMonths, setSelectedMonths] = useState({ expense: null, reward: null }); // mỗi tab nhớ tháng riêng
@@ -123,7 +124,11 @@ export default function ManagerFinance() {
           setToast({ text: `Có ${alertList.length} kết quả thi đấu đã đổi, cần nhập lại tiền thưởng`, error: true });
         }
       }
-    );
+    ).catch((err) => {
+      if (ignore) return;
+      setLoadError(err.message || "Không tải được chi phí và tiền thưởng.");
+      setLoading(false);
+    });
     return () => {
       ignore = true;
     };
@@ -279,6 +284,8 @@ export default function ManagerFinance() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <>
           {/* Kết quả thi đấu đã đổi làm mất tiền thưởng cũ → Quản lý cần nhập lại */}

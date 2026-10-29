@@ -4,15 +4,17 @@ import LoadingState from "../../components/LoadingState";
 import TabFilter from "../../components/TabFilter";
 import HorseProfileRow from "./HorseProfileRow";
 import PlanPagination from "./PlanPagination";
+import { isInjuryHealth, isReadyHealth } from "../../utils/healthGroups";
 import { getActiveTrainingLocks, getHealthStatuses, getHorses, getUsers } from "../../services/trainerService";
 
 // Tab lọc: 3 trạng thái HEALTHSTATUS + ngựa đang khóa tập (TRAININGLOCK chưa gỡ)
 const LOCKED_FILTER = "locked";
 const FILTERS = [
   { code: "", label: "Tất cả" },
-  { code: "Tốt", label: "Tốt" },
+  { code: "Đủ điều kiện", label: "Đủ điều kiện" },
   { code: "Cần theo dõi", label: "Cần theo dõi" },
-  { code: "Đang điều trị", label: "Đang điều trị" },
+  { code: "Chấn thương", label: "Chấn thương" },
+  { code: "Cách ly", label: "Cách ly" },
   { code: LOCKED_FILTER, label: "Đang khóa tập" },
 ];
 
@@ -48,8 +50,14 @@ export default function HorseProfiles() {
 
   // Tìm theo tên + lọc tab, kết hợp AND
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const matchesFilter = (horse, code) =>
-    !code || (code === LOCKED_FILTER ? lockedHorseIds.has(horse.HorseID) : healthByHorse[horse.HorseID] === code);
+  const matchesFilter = (horse, code) => {
+    if (!code) return true;
+    if (code === LOCKED_FILTER) return lockedHorseIds.has(horse.HorseID);
+    const status = healthByHorse[horse.HorseID];
+    if (code === "Đủ điều kiện") return isReadyHealth(status);
+    if (code === "Chấn thương") return isInjuryHealth(status);
+    return status === code;
+  };
   const visibleHorses = horses.filter((h) => h.Ten.toLowerCase().includes(normalizedKeyword) && matchesFilter(h, filter));
 
   // Số lượng nhỏ sau nhãn tab (đếm trên toàn bộ ngựa, không phụ thuộc ô tìm kiếm)
