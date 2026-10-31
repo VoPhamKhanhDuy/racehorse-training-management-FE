@@ -47,12 +47,42 @@ export function mapHorseFromApi(raw) {
   };
 }
 
+/**
+ * Chuẩn hóa trạng thái sức khỏe từ Backend DB ("Đủ điều kiện", "Chấn thương", "Cách ly")
+ * về 3 nhãn nguyên mẫu của FE ("Tốt", "Cần theo dõi", "Đang điều trị")
+ * để mọi badge, bộ lọc và logic cảnh báo trên giao diện giữ nguyên 100%.
+ */
+export function toFeHealthStatus(status) {
+  const s = typeof status === "string" ? status.trim() : "";
+  if (s === "Đủ điều kiện" || s === "Tốt") return "Tốt";
+  if (s === "Cần theo dõi") return "Cần theo dõi";
+  if (s === "Chấn thương" || s === "Cách ly" || s === "Đang điều trị") return "Đang điều trị";
+  return s;
+}
+
 function mapHealthFromApi(raw) {
   return {
     HorseID: extractHorseId(raw) ?? 0,
-    TrangThai: pick(raw, "trangThai", "TrangThai") ?? "",
+    TrangThai: toFeHealthStatus(pick(raw, "trangThai", "TrangThai") ?? ""),
     NgayCapNhat: pick(raw, "ngayCapNhat", "NgayCapNhat") ?? "",
   };
+}
+
+function upsertLocalHealth(item) {
+  if (!item || !item.HorseID) return;
+  const current = healthStore.find((h) => h.HorseID === Number(item.HorseID));
+  if (current) {
+    Object.assign(current, {
+      TrangThai: item.TrangThai,
+      NgayCapNhat: item.NgayCapNhat,
+    });
+  } else {
+    healthStore.push({
+      HorseID: Number(item.HorseID),
+      TrangThai: item.TrangThai,
+      NgayCapNhat: item.NgayCapNhat,
+    });
+  }
 }
 
 function isStoredPhotoUrl(value) {
@@ -221,18 +251,43 @@ export async function deleteHorse(horseId) {
 }
 
 export async function getHealthStatuses() {
-  const data = await apiRequest("/horses/health-statuses");
-  return (data ?? []).map(mapHealthFromApi);
+  try {
+    const data = await apiRequest("/horses/health-statuses");
+    const mapped = (data ?? []).map(mapHealthFromApi);
+    mapped.forEach(upsertLocalHealth);
+    healthList.save();
+    return mapped;
+  } catch {
+    return healthStore.map((h) => ({
+      ...h,
+      TrangThai: toFeHealthStatus(h.TrangThai),
+    }));
+  }
 }
 
-/** Vet mock — chưa có API cập nhật sức khỏe; giữ local để màn bác sĩ không vỡ luồng. */
+/** Cập nhật trạng thái sức khỏe qua BE (/api/medical/horses/:horseId/health) đồng thời đồng bộ local store. */
 export async function updateHealthStatus(horseId, trangThai, ngay) {
-  const current = healthStore.find((h) => h.HorseID === Number(horseId));
-  if (current && ngay < current.NgayCapNhat) return false;
-  if (current) Object.assign(current, { TrangThai: trangThai, NgayCapNhat: ngay });
-  else healthStore.push({ HorseID: Number(horseId), TrangThai: trangThai, NgayCapNhat: ngay });
-  healthList.save();
-  return true;
+  const normalized = toFeHealthStatus(trangThai);
+  try {
+    const updated = await apiRequest(`/medical/horses/${Number(horseId)}/health`, {
+      method: "PUT",
+      body: { trangThai: normalized, ngay },
+    });
+    if (updated === false) return false;
+    upsertLocalHealth({ HorseID: Number(horseId), TrangThai: normalized, NgayCapNhat: ngay });
+    healthList.save();
+    return true;
+  } catch (err) {
+    if (err?.code === "NO_API_SESSION" || err?.code === "NETWORK_ERROR" || err?.status === 401 || err?.status === 403) {
+      const current = healthStore.find((h) => h.HorseID === Number(horseId));
+      if (current && ngay < current.NgayCapNhat) return false;
+      if (current) Object.assign(current, { TrangThai: normalized, NgayCapNhat: ngay });
+      else healthStore.push({ HorseID: Number(horseId), TrangThai: normalized, NgayCapNhat: ngay });
+      healthList.save();
+      return true;
+    }
+    throw err;
+  }
 }
 
 export async function getHorseOwners() {
