@@ -49,6 +49,16 @@ function mapRaceAchievements(items) {
   };
 }
 
+function mapActivities(items) {
+  if (!items?.length) return [];
+  return items.map((item) => ({
+    Ngay: pick(item, "ngay", "Ngay") ?? "",
+    Loai: pick(item, "loai", "Loai") ?? "",
+    TieuDe: pick(item, "tieuDe", "TieuDe") ?? "",
+    ChiTiet: pick(item, "chiTiet", "ChiTiet") ?? null,
+  }));
+}
+
 /** Chi tiết ngựa cho chủ (một API): hồ sơ + chuồng + lịch + khẩu phần + thi đấu. */
 export async function getOwnerHorseDetail(horseId) {
   try {
@@ -58,6 +68,7 @@ export async function getOwnerHorseDetail(horseId) {
     const lich = pick(raw, "lichSinhHoat", "LichSinhHoat") ?? [];
     const khauPhan = pick(raw, "khauPhan", "KhauPhan") ?? [];
     const thanhTich = pick(raw, "thanhTichThiDau", "ThanhTichThiDau") ?? [];
+    const hoatDong = pick(raw, "hoatDong", "HoatDong") ?? [];
 
     const horse = mapHorseFromApi(raw);
     if (horse) {
@@ -75,6 +86,7 @@ export async function getOwnerHorseDetail(horseId) {
         feeding: [],
       },
       achievements: mapRaceAchievements(thanhTich),
+      activities: mapActivities(hoatDong),
     };
   } catch (err) {
     if (err.status === 404) return null;

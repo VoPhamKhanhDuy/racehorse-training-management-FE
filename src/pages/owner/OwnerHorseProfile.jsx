@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import LoadingState from "../../components/LoadingState";
+import useHorseRealtime from "../../hooks/useHorseRealtime";
 import OwnerHorseDetail from "./OwnerHorseDetail";
 import { getHealthStatuses, getLockedHorseIds, getOwnerHorseDetail } from "../../services/ownerService";
 
@@ -9,34 +10,57 @@ import { getHealthStatuses, getLockedHorseIds, getOwnerHorseDetail } from "../..
 export default function OwnerHorseProfile() {
   const { id } = useParams();
 
-  const [data, setData] = useState(null); // { horse, health, locked, care, achievements } hoặc null
+  const [data, setData] = useState(null); // { horse, health, locked, care, achievements, activities } hoặc null
   const [loading, setLoading] = useState(true);
+  const [missing, setMissing] = useState(false);
+
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const [detail, healthList, locked] = await Promise.all([
+        getOwnerHorseDetail(id),
+        getHealthStatuses(),
+        getLockedHorseIds(),
+      ]);
+      if (!detail?.horse) {
+        setMissing(true);
+        setData(null);
+        return;
+      }
+      setMissing(false);
+      setData({
+        horse: detail.horse,
+        health: healthList.find((h) => h.HorseID === detail.horse.HorseID),
+        locked: locked.has(detail.horse.HorseID),
+        care: detail.care,
+        achievements: detail.achievements,
+        activities: detail.activities ?? [],
+      });
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     let ignore = false;
-    setLoading(true);
-    Promise.all([getOwnerHorseDetail(id), getHealthStatuses(), getLockedHorseIds()]).then(
-      ([detail, healthList, locked]) => {
-        if (ignore) return;
-        setData(
-          detail?.horse && {
-            horse: detail.horse,
-            health: healthList.find((h) => h.HorseID === detail.horse.HorseID),
-            locked: locked.has(detail.horse.HorseID),
-            care: detail.care,
-            achievements: detail.achievements,
-          }
-        );
-        setLoading(false);
-      }
-    );
+    (async () => {
+      await load();
+      if (ignore) return;
+    })();
     return () => {
       ignore = true;
     };
-  }, [id]);
+  }, [load]);
 
-  if (loading) return <LoadingState />;
-  if (!data) return <Navigate to="/owner/horses" replace />;
+  useHorseRealtime(
+    () => {
+      load({ silent: true });
+    },
+    { horseIdFilter: id }
+  );
+
+  if (loading && !data) return <LoadingState />;
+  if (missing || !data) return <Navigate to="/owner/horses" replace />;
 
   return (
     <div className="max-w-[1040px]">

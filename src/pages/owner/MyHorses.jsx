@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HorseCard from "../../components/HorseCard";
 import LoadingState from "../../components/LoadingState";
 import useAuth from "../../hooks/useAuth";
+import useHorseRealtime from "../../hooks/useHorseRealtime";
 import { getHealthStatuses, getLockedHorseIds, getOwnerHorses, getStableNumbers } from "../../services/ownerService";
 import { toUserID } from "../../utils/userId";
 
@@ -21,22 +22,31 @@ export default function MyHorses() {
   const [stables, setStables] = useState({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let ignore = false;
-    Promise.all([getOwnerHorses(ownerId), getHealthStatuses(), getLockedHorseIds(), getStableNumbers()]).then(
-      ([horseList, healthList, locked, stableMap]) => {
-        if (ignore) return;
-        setHorses(horseList);
-        setHealthByHorse(Object.fromEntries(healthList.map((h) => [h.HorseID, h.TrangThai])));
-        setLockedIds(locked);
-        setStables(stableMap);
-        setLoading(false);
-      }
-    );
-    return () => {
-      ignore = true;
-    };
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const [horseList, healthList, locked, stableMap] = await Promise.all([
+        getOwnerHorses(ownerId),
+        getHealthStatuses(),
+        getLockedHorseIds(),
+        getStableNumbers(),
+      ]);
+      setHorses(horseList);
+      setHealthByHorse(Object.fromEntries(healthList.map((h) => [h.HorseID, h.TrangThai])));
+      setLockedIds(locked);
+      setStables(stableMap);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [ownerId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useHorseRealtime(() => {
+    load({ silent: true });
+  });
 
   return (
     <div>

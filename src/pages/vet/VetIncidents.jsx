@@ -6,7 +6,7 @@ import useAuth from "../../hooks/useAuth";
 import IncidentFilterTabs from "../manager/IncidentFilterTabs";
 import VetIncidentDrawer from "./VetIncidentDrawer";
 import VetIncidentRow from "./VetIncidentRow";
-import { getHorses, getIncidentsForVet, getStableNumbers, updateHealthIncidentStatus } from "../../services/careService";
+import { getHorses, getIncidentsForVet, updateHealthIncidentStatus } from "../../services/careService";
 import { getActiveTrainingLocks } from "../../services/vetService";
 import { addAuditLog } from "../../services/auditService";
 import { INCIDENT_STATUS, INCIDENT_STATUSES } from "../../data/incidentOptions";
@@ -20,32 +20,37 @@ const STATUS_TABS = [
 const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
 
 // Bác sĩ thú y xử lý báo cáo sự cố về sức khỏe ngựa (Vết thương, Khập khiễng, Bỏ ăn) do nhân viên chăm sóc gửi.
-// Dữ liệu mock chung với trang Groom / Manager (careService, store "incidentReports").
+// API: GET/POST /api/vet/incidents. Số chuồng lấy từ SoChuong trên DTO (không gọi /groom/stables — vet bị 403).
 export default function VetIncidents() {
   const { user } = useAuth();
   const [reports, setReports] = useState([]);
   const [horses, setHorses] = useState([]);
-  const [stables, setStables] = useState({});
   const [lockDates, setLockDates] = useState({}); // HorseID → ngày đặt lệnh khóa đang hiệu lực (đọc từ kho lệnh khóa của Vet)
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [statusTab, setStatusTab] = useState("all");
   const [keyword, setKeyword] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock careService)
   useEffect(() => {
     let ignore = false;
-    // Không đọc được lệnh khóa thì bỏ qua (drawer chỉ không hiện dòng khóa tập)
+    // Lệnh khóa: phụ trợ — lỗi thì bỏ qua (API incidents vẫn hiện)
     const locksPromise = getActiveTrainingLocks().catch(() => []);
-    Promise.all([getIncidentsForVet(), getHorses(), getStableNumbers(), locksPromise]).then(([list, horseList, stableMap, lockList]) => {
-      if (ignore) return;
-      setLockDates(Object.fromEntries(lockList.map((l) => [l.HorseID, l.NgayDat])));
-      setReports(list);
-      setHorses(horseList);
-      setStables(stableMap);
-      setLoading(false);
-    });
+    Promise.all([getIncidentsForVet(), getHorses(), locksPromise])
+      .then(([list, horseList, lockList]) => {
+        if (ignore) return;
+        setLockDates(Object.fromEntries(lockList.map((l) => [l.HorseID, l.NgayDat])));
+        setReports(list);
+        setHorses(horseList);
+        setLoadError(null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được danh sách sự cố.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -66,15 +71,22 @@ export default function VetIncidents() {
   // Lưu trạng thái + ghi nhật ký; cập nhật danh sách, đóng ngăn và báo toast (lỗi ném lại cho ngăn hiện)
   const handleUpdate = async (report, changes) => {
     const vetId = toUserID(user.id);
-    const updated = await updateHealthIncidentStatus(report.ReportID, changes, vetId);
+    const updated = await updateHealthIncidentStatus(report.ReportID, changes);
     addAuditLog({
       UserID: vetId,
       HanhDong: updated.TrangThai === INCIDENT_STATUS.DONE ? "Đánh dấu đã xử lý sự cố" : "Nhận xử lý sự cố",
       TargetTable: "INCIDENTREPORT",
       TargetID: updated.ReportID,
-      targetLabel: report.HorseName,
+      targetLabel: report.HorseName || updated.HorseName,
     });
-    const merged = { ...report, ...updated, HandlerName: user.fullName };
+    const merged = {
+      ...report,
+      ...updated,
+      HorseName: updated.HorseName || report.HorseName,
+      ReporterName: updated.ReporterName || report.ReporterName,
+      HandlerName: updated.HandlerName || user.fullName,
+      SoChuong: updated.SoChuong || report.SoChuong,
+    };
     setReports((prev) => prev.map((r) => (r.ReportID === merged.ReportID ? merged : r)));
     setSelectedId(null);
     setToast({ text: updated.TrangThai === INCIDENT_STATUS.DONE ? "Đã đánh dấu đã xử lý" : "Đã nhận xử lý sự cố" });
@@ -87,6 +99,8 @@ export default function VetIncidents() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 border-l-2 border-[#c0262d] bg-[#c0262d]/5 px-4 py-3 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <div className="mt-6 space-y-5">
           <div className="flex flex-col gap-3 border-b border-[#d9cfba] pb-3 md:flex-row md:items-end md:justify-between md:gap-6 md:pb-0">
@@ -134,7 +148,7 @@ export default function VetIncidents() {
                       key={r.ReportID}
                       report={r}
                       horse={horseById[r.HorseID]}
-                      stable={stables[r.HorseID]}
+                      stable={r.SoChuong}
                       onSelect={(report) => setSelectedId(report.ReportID)}
                     />
                   ))}
@@ -152,7 +166,7 @@ export default function VetIncidents() {
         key={selected?.ReportID}
         report={selected}
         horse={selected && horseById[selected.HorseID]}
-        stable={selected && stables[selected.HorseID]}
+        stable={selected?.SoChuong}
         lockedSince={selected ? lockDates[selected.HorseID] : undefined}
         onClose={() => setSelectedId(null)}
         onUpdate={handleUpdate}

@@ -1,15 +1,20 @@
 import { createContext, useEffect, useState } from "react";
 import { changePassword as changePasswordApi, findUserByEmail, findUserById } from "../services/accountService";
 import { apiRequest, setAccessToken } from "../services/apiClient";
-import { clearApiSession, getApiSession, saveApiSession, setUnauthorizedHandler } from "../services/apiSession";
+import {
+  clearApiSession,
+  getApiSession,
+  getApiSessionStorageKey,
+  saveApiSession,
+  setUnauthorizedHandler,
+} from "../services/apiSession";
 
 export const AuthContext = createContext(null);
 
 // Hai loại phiên đăng nhập:
 // - Phiên BE (services/apiSession.js): đăng nhập qua POST /api/auth/login, có JWT — các màn đã nối API thật
 //   (giáo án, lịch tập, buổi tập của HLV; lịch được giao của nhân viên chăm sóc) cần phiên này.
-// - Phiên mock: chỉ lưu user id vào sessionStorage (không lưu mật khẩu/role) để F5 / hot reload vẫn giữ đúng tài khoản.
-//   Dùng khi BE chưa chạy hoặc tài khoản chỉ có trong mock (data/users.js) — các màn còn đọc mock vẫn chạy như cũ.
+// - Phiên mock: chỉ lưu user id (không lưu mật khẩu/role). Cả hai dùng localStorage để mọi tab cùng một phiên.
 const SESSION_KEY = "equitrack.sessionUserId";
 
 // Không bao giờ lưu password vào state
@@ -33,11 +38,20 @@ function toApiSessionUser(apiUser) {
   };
 }
 
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 function saveSession(user) {
   try {
-    sessionStorage.setItem(SESSION_KEY, user.id);
+    localStorage.setItem(SESSION_KEY, user.id);
+    sessionStorage.removeItem(SESSION_KEY);
   } catch {
-    // Trình duyệt chặn sessionStorage: vẫn đăng nhập được, chỉ mất phiên khi tải lại
+    // Trình duyệt chặn storage: vẫn đăng nhập được, chỉ mất phiên khi tải lại
   }
 }
 
@@ -45,8 +59,13 @@ function clearSession() {
   clearApiSession();
   setAccessToken(null); // token kiểu cũ của authApi.js
   try {
+    localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem("equitrack.session"); // phiên kiểu cũ (localStorage) — dọn đi
+    sessionStorage.removeItem("equitrack.authUser"); // authApi.js
+    sessionStorage.removeItem("equitrack.accessToken");
+    localStorage.removeItem("equitrack.authUser");
+    localStorage.removeItem("equitrack.accessToken");
+    localStorage.removeItem("equitrack.session"); // phiên kiểu cũ
   } catch {
     // bỏ qua
   }
@@ -58,8 +77,12 @@ function restoreSession() {
   const apiSession = getApiSession();
   if (apiSession) return apiSession.user;
   try {
-    const found = findUserById(sessionStorage.getItem(SESSION_KEY));
-    if (found && found.status === "approved" && found.isActive !== false) return toSessionUser(found);
+    const found = findUserById(readStorage(SESSION_KEY));
+    if (found && found.status === "approved" && found.isActive !== false) {
+      // Nâng mock session lên localStorage nếu còn nằm ở sessionStorage
+      saveSession(found);
+      return toSessionUser(found);
+    }
   } catch {
     // dữ liệu hỏng → coi như chưa đăng nhập
   }
@@ -97,8 +120,20 @@ export function AuthProvider({ children }) {
     setUnauthorizedHandler(() => {
       clearSession();
       setUser(null);
+      window.location.assign("/login");
     });
     return () => setUnauthorizedHandler(null);
+  }, []);
+
+  // Tab khác đăng nhập / đăng xuất → tải lại để áp phiên + role mới (storage event chỉ fire ở tab khác)
+  useEffect(() => {
+    const apiKey = getApiSessionStorageKey();
+    const onStorage = (event) => {
+      if (event.key !== apiKey && event.key !== SESSION_KEY) return;
+      window.location.reload();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // Thành công → { user }. Sai email/mật khẩu → { error } (không nói gì về trạng thái).
@@ -139,9 +174,11 @@ export function AuthProvider({ children }) {
     return result;
   };
 
+  // Xóa sạch phiên rồi tải lại /login — tránh F5 vẫn kẹt URL/trang cũ hoặc state React của user trước
   const logout = () => {
     setUser(null);
     clearSession();
+    window.location.assign("/login");
   };
 
   // TODO: thay bằng gọi API thật khi BE xong

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import LoadingState from "../../components/LoadingState";
 import useAuth from "../../hooks/useAuth";
+import useHorseRealtime from "../../hooks/useHorseRealtime";
 import OwnerHealthRow from "./OwnerHealthRow";
 import OwnerVaccineStatus from "./OwnerVaccineStatus";
 import { getActiveLockDates, getHealthStatuses, getOwnerHorses, getOwnerVaccinations } from "../../services/ownerService";
@@ -27,24 +28,32 @@ export default function OwnerHealth() {
   const [vaccinations, setVaccinations] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock ownerService)
-  useEffect(() => {
-    let ignore = false;
-    (async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
       const horseList = await getOwnerHorses(ownerId);
       const ids = horseList.map((h) => h.HorseID);
-      const [healthList, locks, vaccineList] = await Promise.all([getHealthStatuses(), getActiveLockDates(ids), getOwnerVaccinations(ids)]);
-      if (ignore) return;
+      const [healthList, locks, vaccineList] = await Promise.all([
+        getHealthStatuses(),
+        getActiveLockDates(ids),
+        getOwnerVaccinations(ids),
+      ]);
       setHorses(horseList);
       setHealthByHorse(Object.fromEntries(healthList.map((h) => [h.HorseID, h])));
       setLockByHorse(locks);
       setVaccinations(vaccineList);
-      setLoading(false);
-    })();
-    return () => {
-      ignore = true;
-    };
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [ownerId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useHorseRealtime(() => {
+    load({ silent: true });
+  });
 
   const horseName = (horseId) => horses.find((h) => h.HorseID === horseId)?.Ten ?? `Ngựa #${horseId}`;
   // vaccinations đã sắp NgayHen tăng dần: mũi chưa tiêm trước, đã tiêm sau cùng (mỗi nhóm vẫn theo ngày tăng dần)

@@ -1,6 +1,6 @@
 import { CARE_TASK_SCHEDULE } from "../config/careTaskSchedule";
 
-// Mock data — bảng STABLEASSIGNMENT (phân chuồng) trong ERD: StableID, HorseID, SoChuong, LichSinhHoat
+// Mock data — bảng STABLEASSIGNMENT (phân chuồng) trong ERD: AssignmentID, StableID, HorseID, SoChuong, LichSinhHoat
 // Mỗi ngựa 1 chuồng (A1–A3, B1–B3). LichSinhHoat: chuỗi nhiều dòng "HH:mm Việc" — giờ lấy từ config/careTaskSchedule.js
 // để luôn khớp giờ chuẩn của các loại việc; "Kiểm tra chuồng" (20:00) là mốc cuối ngày chưa có trong cấu hình việc.
 // Các ngựa khác nhau chút ít (vd Thunder thêm dắt đi bộ, Storm đang nghỉ nên không tắm/kiểm tra móng).
@@ -22,12 +22,12 @@ const schedule = (items, extra = []) =>
     .join("\n");
 
 const stableAssignments = [
-  { StableID: 1, HorseID: 1, SoChuong: "A1", LichSinhHoat: schedule([FEED_AM, CLEAN, HOOF, FEED_PM], [{ gio: "12:30", viec: "Dắt đi bộ" }]) }, // Thunder
-  { StableID: 2, HorseID: 2, SoChuong: "A2", LichSinhHoat: schedule([FEED_AM, CLEAN, WASH, HOOF, FEED_PM]) }, // Lightning
-  { StableID: 3, HorseID: 3, SoChuong: "A3", LichSinhHoat: schedule([FEED_AM, CLEAN, FEED_PM]) }, // Storm — đang nghỉ
-  { StableID: 4, HorseID: 4, SoChuong: "B1", LichSinhHoat: schedule([FEED_AM, CLEAN, WASH, HOOF, FEED_PM]) }, // Blaze
-  { StableID: 5, HorseID: 5, SoChuong: "B2", LichSinhHoat: schedule([FEED_AM, CLEAN, HOOF, FEED_PM], [{ gio: "16:00", viec: "Chải lông" }]) }, // Shadow
-  { StableID: 6, HorseID: 6, SoChuong: "B3", LichSinhHoat: schedule([FEED_AM, CLEAN, WASH, FEED_PM]) }, // Spirit
+  { AssignmentID: 1, StableID: 1, HorseID: 1, SoChuong: "A1", LichSinhHoat: schedule([FEED_AM, CLEAN, HOOF, FEED_PM], [{ gio: "12:30", viec: "Dắt đi bộ" }]) }, // Thunder
+  { AssignmentID: 2, StableID: 2, HorseID: 2, SoChuong: "A2", LichSinhHoat: schedule([FEED_AM, CLEAN, WASH, HOOF, FEED_PM]) }, // Lightning
+  { AssignmentID: 3, StableID: 3, HorseID: 3, SoChuong: "A3", LichSinhHoat: schedule([FEED_AM, CLEAN, FEED_PM]) }, // Storm — đang nghỉ
+  { AssignmentID: 4, StableID: 4, HorseID: 4, SoChuong: "B1", LichSinhHoat: schedule([FEED_AM, CLEAN, WASH, HOOF, FEED_PM]) }, // Blaze
+  { AssignmentID: 5, StableID: 5, HorseID: 5, SoChuong: "B2", LichSinhHoat: schedule([FEED_AM, CLEAN, HOOF, FEED_PM], [{ gio: "16:00", viec: "Chải lông" }]) }, // Shadow
+  { AssignmentID: 6, StableID: 6, HorseID: 6, SoChuong: "B3", LichSinhHoat: schedule([FEED_AM, CLEAN, WASH, FEED_PM]) }, // Spirit
 ];
 
 export default stableAssignments;

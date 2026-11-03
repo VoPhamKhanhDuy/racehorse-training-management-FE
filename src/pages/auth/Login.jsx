@@ -67,8 +67,11 @@ export default function Login() {
       navigate("/change-password", { replace: true });
       return;
     }
-    // Quay lại trang bị chặn nếu có, không thì về trang chủ của role
-    navigate(blockedPath || roleHomePaths[result.user.roleId] || "/", { replace: true });
+    // Chỉ quay lại trang bị chặn nếu thuộc đúng khu vực role vừa đăng nhập — tránh user mới bị đẩy vào trang của user cũ
+    const home = roleHomePaths[result.user.roleId] || "/";
+    const canReturn =
+      blockedPath && (blockedPath === home || blockedPath.startsWith(`${home}/`));
+    navigate(canReturn ? blockedPath : home, { replace: true });
   };
 
   return (

@@ -4,6 +4,9 @@ export const INCIDENT_TYPES = ["Vết thương", "Khập khiễng", "Bỏ ăn", 
 // Các loại sự cố liên quan sức khỏe ngựa (pill tông cam để nổi hơn loại về chuồng/thiết bị)
 export const HEALTH_INCIDENT_TYPES = ["Vết thương", "Khập khiễng", "Bỏ ăn"];
 
+// Sự cố chuồng trại / thiết bị — Club Manager xử lý, không hiện cho bác sĩ thú y
+export const FACILITY_INCIDENT_TYPES = ["Chuồng/thiết bị hỏng"];
+
 // Mô tả (MoTa): không bắt buộc, tối đa 300 ký tự
 export const INCIDENT_DESCRIPTION_MAX = 300;
 

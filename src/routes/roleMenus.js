@@ -1,7 +1,6 @@
 import {
   CalendarCheck,
   CalendarDays,
-  ChartColumn,
   ClipboardList,
   FolderOpen,
   HeartPulse,
@@ -56,7 +55,7 @@ const roleMenus = {
     { label: "Quản lý nhân sự", path: "/manager/staff", icon: Users },
     { label: "Quản lý vật tư", path: "/manager/supplies", icon: Package },
     { label: "Sự cố", path: "/manager/incidents", icon: TriangleAlert },
-    { label: "Báo cáo hiệu suất & tài chính", path: "/manager/reports", icon: ChartColumn },
+    // Ẩn tạm: Báo cáo hiệu suất & tài chính (/manager/reports)
     { label: "Chi phí & tiền thưởng", path: "/manager/finance", icon: Wallet },
     { label: "Nhật ký thao tác", path: "/manager/audit-log", icon: History },
   ],

@@ -1,9 +1,6 @@
 import { Fragment } from "react";
 import HorseAvatar from "../../components/HorseAvatar";
 
-// Số thứ tự trong chuồng: "A12" → 12 (để A2 đứng trước A10)
-const stableIndex = (soChuong) => Number(soChuong.replace(/^\D+/, "")) || 0;
-
 const WALL = "border-[#b9a58a]"; // nâu đậm nhạt: viền tòa nhà + vách ngăn
 const AISLE_BG = "bg-[#efe4d0]";
 const COLUMNS = 3; // mỗi dãy 3 cột, quá 3 chuồng thì xuống hàng
@@ -34,7 +31,7 @@ function StableCell({ stable, horse, status, mine, selected, bordered, onSelect 
   return (
     <button
       type="button"
-      onClick={() => onSelect(stable.StableID)}
+      onClick={() => onSelect(stable.AssignmentID)}
       aria-pressed={selected}
       aria-label={`Chuồng ${stable.SoChuong}, ${name}${mine ? ", bạn phụ trách" : ""}`}
       className={`relative flex h-[120px] w-full cursor-pointer flex-col px-2.5 py-2 text-left outline-none transition-colors min-[900px]:px-3 ${WALL} ${
@@ -62,19 +59,25 @@ function StableCell({ stable, horse, status, mine, selected, bordered, onSelect 
   );
 }
 
-// Mặt bằng chuồng ngựa trong 1 khung "tòa nhà": mỗi dãy (chữ cái đầu của SoChuong) là 1 hàng ô chuồng 3 cột ngăn bằng vách;
+// Mặt bằng chuồng ngựa trong 1 khung "tòa nhà": mỗi StableID là 1 dãy (nhãn SoChuong), trong dãy mỗi AssignmentID là 1 ô;
 // giữa 2 dãy là LỐI ĐI (dải ~44px nền be đậm, đường nét đứt mảnh ở giữa, chữ "LỐI ĐI" đè lên đường kẻ).
 // assignments: STABLEASSIGNMENT; myHorseIds: ngựa nhân viên phụ trách; statusByHorse: { [HorseID]: { pending, nextTime, late } }.
 export default function StableFloorPlan({ assignments, horseById, myHorseIds, statusByHorse, selectedId, onSelect }) {
   const rows = Object.values(
     assignments.reduce((acc, a) => {
-      const key = a.SoChuong.charAt(0).toUpperCase();
-      (acc[key] ??= { key, stables: [] }).stables.push(a);
+      const key = String(a.StableID || a.SoChuong);
+      (acc[key] ??= { key, label: a.SoChuong || key, stables: [] }).stables.push(a);
       return acc;
     }, {})
   )
-    .sort((a, b) => a.key.localeCompare(b.key))
-    .map((row) => ({ ...row, stables: row.stables.sort((a, b) => stableIndex(a.SoChuong) - stableIndex(b.SoChuong)) }));
+    .sort((a, b) => a.label.localeCompare(b.label, "vi", { numeric: true }))
+    .map((row) => ({
+      ...row,
+      stables: row.stables.sort((a, b) => {
+        const byName = (horseById[a.HorseID]?.Ten ?? "").localeCompare(horseById[b.HorseID]?.Ten ?? "", "vi");
+        return byName || a.AssignmentID - b.AssignmentID;
+      }),
+    }));
 
   return (
     <div className={`overflow-hidden rounded-[6px] border-[1.5px] bg-[#faf7f1] ${WALL}`}>
@@ -88,17 +91,17 @@ export default function StableFloorPlan({ assignments, horseById, myHorseIds, st
             </div>
           )}
 
-          <div role="group" aria-label={`Dãy ${row.key}`} className="px-3 py-2.5">
-            <p className="mb-1.5 text-[11px] font-medium tracking-wide text-stone uppercase">Dãy {row.key}</p>
+          <div role="group" aria-label={`Dãy ${row.label}`} className="px-3 py-2.5">
+            <p className="mb-1.5 text-[11px] font-medium tracking-wide text-stone uppercase">Dãy {row.label}</p>
             <div className={`grid overflow-hidden border ${WALL}`} style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}>
               {row.stables.map((stable, index) => (
                 <StableCell
-                  key={stable.StableID}
+                  key={stable.AssignmentID}
                   stable={stable}
                   horse={horseById[stable.HorseID]}
                   status={statusByHorse[stable.HorseID]}
                   mine={myHorseIds.has(stable.HorseID)}
-                  selected={stable.StableID === selectedId}
+                  selected={stable.AssignmentID === selectedId}
                   bordered={{ left: index % COLUMNS !== 0, top: index >= COLUMNS }}
                   onSelect={onSelect}
                 />

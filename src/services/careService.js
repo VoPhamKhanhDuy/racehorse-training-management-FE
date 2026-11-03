@@ -1,12 +1,7 @@
 // Flow 4 gọi API /api/groom. Phiếu việc, chuồng, khẩu phần và báo cáo sự cố nằm trên máy chủ.
 import { apiRequest } from "./apiClient";
 import { getHorses } from "./horseService";
-import incidentReports from "../data/incidentReports";
-import { HEALTH_INCIDENT_TYPES, INCIDENT_DESCRIPTION_MAX, INCIDENT_STATUS } from "../data/incidentOptions";
-import { toISODateTime } from "../utils/date";
-import { createPersistedList } from "./persistedStore";
-import { getUsers } from "./accountService";
-import { toUserID } from "../utils/userId";
+import { FACILITY_INCIDENT_TYPES, HEALTH_INCIDENT_TYPES, INCIDENT_STATUS } from "../data/incidentOptions";
 
 export { getHorses };
 
@@ -35,9 +30,13 @@ function mapTask(raw) {
 }
 
 function mapStable(raw) {
+  const horseId = Number(pick(raw, "horseID", "HorseID"));
+  const assignmentId = Number(pick(raw, "assignmentID", "AssignmentID"));
   return {
+    // AssignmentID = từng ô; StableID = cả cụm chuồng (nhiều ngựa có thể chung StableID)
+    AssignmentID: Number.isFinite(assignmentId) && assignmentId > 0 ? assignmentId : horseId,
     StableID: Number(pick(raw, "stableID", "StableID")),
-    HorseID: Number(pick(raw, "horseID", "HorseID")),
+    HorseID: horseId,
     SoChuong: pick(raw, "soChuong", "SoChuong") ?? "",
     LichSinhHoat: pick(raw, "lichSinhHoat", "LichSinhHoat") ?? "",
   };
@@ -55,6 +54,7 @@ function mapMeal(raw) {
 }
 
 function mapReport(raw) {
+  const handledBy = pick(raw, "handledBy", "HandledBy");
   return {
     ReportID: Number(pick(raw, "reportID", "ReportID")),
     HorseID: Number(pick(raw, "horseID", "HorseID")),
@@ -63,6 +63,14 @@ function mapReport(raw) {
     MoTa: pick(raw, "moTa", "MoTa") ?? "",
     HinhAnh: pick(raw, "hinhAnh", "HinhAnh") ?? "",
     Ngay: asDate(pick(raw, "ngay", "Ngay")),
+    TrangThai: pick(raw, "trangThai", "TrangThai") ?? INCIDENT_STATUS.NEW,
+    GhiChuXuLy: pick(raw, "ghiChuXuLy", "GhiChuXuLy") ?? "",
+    HandledBy: handledBy == null || handledBy === "" ? null : Number(handledBy),
+    HandledAt: pick(raw, "handledAt", "HandledAt") ?? null,
+    HorseName: pick(raw, "horseName", "HorseName") ?? "",
+    ReporterName: pick(raw, "reporterName", "ReporterName") ?? "",
+    HandlerName: pick(raw, "handlerName", "HandlerName") ?? null,
+    SoChuong: pick(raw, "soChuong", "SoChuong") ?? "",
   };
 }
 
@@ -110,79 +118,41 @@ export async function createIncidentReport(data) {
   return mapReport(saved);
 }
 
-// ---- Xử lý sự cố (Club Manager / Bác sĩ thú y): CHƯA có API, tạm dùng mock lưu bền trong localStorage ----
-// TODO: thay bằng gọi API thật khi BE có endpoint xử lý sự cố.
-const NETWORK_DELAY_MS = 400;
-
-function delay(ms = NETWORK_DELAY_MS) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const reportList = createPersistedList("incidentReports", incidentReports, "ReportID");
-const reportStore = reportList.items;
-
-// Bản ghi cũ chưa có trường xử lý → mặc định "Mới", chưa ai xử lý
-const withHandling = (r) => ({
-  ...r,
-  TrangThai: r.TrangThai ?? INCIDENT_STATUS.NEW,
-  GhiChuXuLy: r.GhiChuXuLy ?? "",
-  HandledBy: r.HandledBy ?? null,
-  HandledAt: r.HandledAt ?? null,
-});
-
-// Mọi báo cáo sự cố (cho Club Manager xem), mới → cũ theo Ngay, kèm tên ngựa, tên người báo và người xử lý ("—" nếu không tra được).
+// Club Manager: xem mọi sự cố — GET /api/manager/incidents
 export async function getAllIncidentReports() {
-  const [horses, users] = await Promise.all([getHorses(), getUsers(), delay()]);
-  const horseNames = Object.fromEntries(horses.map((h) => [h.HorseID, h.Ten]));
-  const userNames = Object.fromEntries(users.map((u) => [toUserID(u.id), u.fullName]));
-  return reportStore
-    .map((r) => {
-      const report = withHandling(r);
-      return {
-        ...report,
-        HorseName: horseNames[r.HorseID] ?? "—",
-        ReporterName: userNames[r.GroomID] ?? "—",
-        HandlerName: report.HandledBy ? (userNames[report.HandledBy] ?? "—") : null,
-      };
-    })
-    .sort((a, b) => b.Ngay.localeCompare(a.Ngay) || b.ReportID - a.ReportID);
+  const rows = await apiRequest("/manager/incidents");
+  return (rows ?? []).map(mapReport);
 }
 
-// Manager đổi trạng thái / ghi chú xử lý. Ràng buộc (BE cũng phải kiểm tra lại): chỉ sự cố chuồng/thiết bị và "Khác"
-// (sự cố sức khỏe ngựa do bác sĩ thú y xử lý), trạng thái hợp lệ, đã xử lý thì không đổi nữa.
-export async function updateIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, userId) {
-  await delay();
-  const report = reportStore.find((r) => r.ReportID === Number(reportId));
-  if (!report) throw new Error("Không tìm thấy báo cáo sự cố");
-  if (HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo)) throw new Error("Sự cố sức khỏe ngựa do bác sĩ thú y xử lý.");
-  if (![INCIDENT_STATUS.IN_PROGRESS, INCIDENT_STATUS.DONE].includes(TrangThai)) throw new Error("Trạng thái không hợp lệ.");
-  if (report.TrangThai === INCIDENT_STATUS.DONE) throw new Error("Sự cố này đã được xử lý.");
-  const note = (GhiChuXuLy ?? "").trim();
-  if (note.length > INCIDENT_DESCRIPTION_MAX) throw new Error(`Ghi chú tối đa ${INCIDENT_DESCRIPTION_MAX} ký tự.`);
-  Object.assign(report, { TrangThai, GhiChuXuLy: note, HandledBy: Number(userId), HandledAt: toISODateTime(new Date()) });
-  reportList.save();
-  return withHandling(report);
+// Manager chỉ cập nhật sự cố chuồng trại / thiết bị — POST /api/manager/incidents/{id}/status
+export async function updateIncidentStatus(reportId, { TrangThai, GhiChuXuLy }) {
+  const saved = await apiRequest(`/manager/incidents/${Number(reportId)}/status`, {
+    method: "POST",
+    body: {
+      trangThai: TrangThai,
+      ghiChuXuLy: (GhiChuXuLy ?? "").trim(),
+    },
+  });
+  return mapReport(saved);
 }
 
-// Sự cố sức khỏe ngựa (Vết thương, Khập khiễng, Bỏ ăn) cho Bác sĩ thú y, mới → cũ theo Ngay, kèm tên ngựa / người báo / người xử lý.
+// Sự cố sức khỏe ngựa cho Bác sĩ thú y — GET /api/vet/incidents
+// Chỉ giữ loại sức khỏe; loại trừ chuồng trại / thiết bị (dù BE đã lọc).
 export async function getIncidentsForVet() {
-  const all = await getAllIncidentReports();
-  return all.filter((r) => HEALTH_INCIDENT_TYPES.includes(r.LoaiSuCo));
+  const rows = await apiRequest("/vet/incidents");
+  return (rows ?? [])
+    .map(mapReport)
+    .filter((r) => HEALTH_INCIDENT_TYPES.includes(r.LoaiSuCo) && !FACILITY_INCIDENT_TYPES.includes(r.LoaiSuCo));
 }
 
-// Bác sĩ thú y đổi trạng thái / ghi chú xử lý sự cố sức khỏe ngựa: Mới → Đang xử lý → Đã xử lý (không bỏ qua bước, không quay lại).
-// Ràng buộc (BE cũng phải kiểm tra lại): đúng loại sức khỏe, đúng thứ tự trạng thái, ghi chú ≤ 300 ký tự.
-export async function updateHealthIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, userId) {
-  await delay();
-  const report = reportStore.find((r) => r.ReportID === Number(reportId));
-  if (!report) throw new Error("Không tìm thấy báo cáo sự cố");
-  if (!HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo)) throw new Error("Chỉ xử lý sự cố về sức khỏe ngựa.");
-  const current = report.TrangThai ?? INCIDENT_STATUS.NEW;
-  const nextAllowed = { [INCIDENT_STATUS.NEW]: INCIDENT_STATUS.IN_PROGRESS, [INCIDENT_STATUS.IN_PROGRESS]: INCIDENT_STATUS.DONE };
-  if (nextAllowed[current] !== TrangThai) throw new Error("Không thể chuyển sang trạng thái này.");
-  const note = (GhiChuXuLy ?? "").trim();
-  if (note.length > INCIDENT_DESCRIPTION_MAX) throw new Error(`Ghi chú tối đa ${INCIDENT_DESCRIPTION_MAX} ký tự.`);
-  Object.assign(report, { TrangThai, GhiChuXuLy: note, HandledBy: Number(userId), HandledAt: toISODateTime(new Date()) });
-  reportList.save();
-  return withHandling(report);
+// Bác sĩ thú y đổi trạng thái: Mới → Đang xử lý → Đã xử lý — POST /api/vet/incidents/{id}/status
+export async function updateHealthIncidentStatus(reportId, { TrangThai, GhiChuXuLy }) {
+  const saved = await apiRequest(`/vet/incidents/${Number(reportId)}/status`, {
+    method: "POST",
+    body: {
+      trangThai: TrangThai,
+      ghiChuXuLy: (GhiChuXuLy ?? "").trim(),
+    },
+  });
+  return mapReport(saved);
 }
