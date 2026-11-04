@@ -1,6 +1,7 @@
 import SectionTitle from "../../components/SectionTitle";
 import OwnerDottedRow from "./OwnerDottedRow";
 import OwnerHorseAchievements from "./OwnerHorseAchievements";
+import OwnerHorseActivityLog from "./OwnerHorseActivityLog";
 import styles from "./OwnerHorseCard.module.css";
 import { FEED_COMPONENTS, FEED_MEALS } from "../../data/feedingOptions";
 import { formatBirthDateWithAge } from "../../utils/date";
@@ -40,7 +41,7 @@ function formatFeeding(feeding) {
 // tập (KHÔNG hiện lý do), rồi bảng "Hồ sơ" đường chấm; cột phải căn đỉnh theo đỉnh ảnh.
 // Bên dưới: "Chăm sóc hằng ngày" | "Thành tích thi đấu" cạnh nhau (≥ 1100px) hoặc xếp dọc full-width.
 // care: { stable, feeding } từ getHorseDailyCare.
-export default function OwnerHorseDetail({ horse, health, locked, care, achievements }) {
+export default function OwnerHorseDetail({ horse, health, locked, care, achievements, activities }) {
   const healthLine = HEALTH_LINES[health?.TrangThai];
 
   return (
@@ -111,6 +112,8 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
 
         <OwnerHorseAchievements achievements={achievements} />
       </div>
+
+      <OwnerHorseActivityLog activities={activities} />
     </article>
   );
 }

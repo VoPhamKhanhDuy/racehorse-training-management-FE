@@ -20,7 +20,10 @@ const VIEW_MODES = [
   { code: "horse", label: "Theo ngựa" },
   { code: "staff", label: "Theo người phụ trách" },
 ];
+const FILTER_CONTROL =
+  "h-9 w-full rounded border border-[#cfc4ad] bg-white px-2.5 text-sm text-[#2b2118] outline-none transition-colors focus:border-[#c2570c]";
 const UNASSIGNED_KEY = "staff-none";
+const UNASSIGNED_FILTER = "none";
 // Tên rút gọn trên chip: người phụ trách lấy tên gọi (chữ cuối)
 const givenName = (fullName) => (fullName ?? "").trim().split(/\s+/).pop();
 
@@ -41,6 +44,8 @@ export default function Schedule() {
   const mode = searchParams.get("view") === "staff" ? "staff" : "horse";
 
   const [keyword, setKeyword] = useState("");
+  const [horseFilter, setHorseFilter] = useState(""); // "" = tất cả
+  const [staffFilter, setStaffFilter] = useState(""); // "" = tất cả, "none" = chưa phân công
   const [message, setMessage] = useState(state?.message ?? "");
   const [openSessionId, setOpenSessionId] = useState(null);
   const [weekHorse, setWeekHorse] = useState(null); // ngựa đang xem lịch 7 ngày
@@ -53,6 +58,7 @@ export default function Schedule() {
   const sessionsResource = useApiResource(() => searchTrainingSessions({ from: weekStart, to: weekEnd }), weekStart);
   const [horses = [], staffList = [], activePlans = []] = baseResource.data ?? [];
   const staff = [...staffList].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
+  const sortedHorses = [...horses].sort((a, b) => a.name.localeCompare(b.name, "vi"));
   const sessions = sessionsResource.data ?? [];
   const error = baseResource.error ?? sessionsResource.error;
   const loading = baseResource.loading || sessionsResource.loading;
@@ -71,7 +77,15 @@ export default function Schedule() {
   };
 
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const weekSessions = sessions.filter((s) => (s.horseName ?? "").toLowerCase().includes(normalizedKeyword));
+  const weekSessions = sessions.filter((s) => {
+    if (horseFilter && String(s.horseId) !== horseFilter) return false;
+    if (staffFilter === UNASSIGNED_FILTER && s.assignedToUserId) return false;
+    if (staffFilter && staffFilter !== UNASSIGNED_FILTER && String(s.assignedToUserId) !== staffFilter) return false;
+    if (!normalizedKeyword) return true;
+    const horseHit = (s.horseName ?? "").toLowerCase().includes(normalizedKeyword);
+    if (mode === "horse") return horseHit;
+    return horseHit || (s.assignedToName ?? "").toLowerCase().includes(normalizedKeyword);
+  });
   const activeCount = (list) => list.filter((s) => s.status !== "Cancelled").length;
   const countLabel = (list) => (activeCount(list) ? `${activeCount(list)} buổi` : "Chưa có buổi");
 
@@ -82,8 +96,16 @@ export default function Schedule() {
   let rowKeyOf;
   if (mode === "horse") {
     rowKeyOf = (s) => `horse-${s.horseId}`;
-    rows = horses
-      .filter((h) => h.name.toLowerCase().includes(normalizedKeyword))
+    rows = sortedHorses
+      .filter((h) => {
+        if (horseFilter && String(h.horseId) !== horseFilter) return false;
+        if (normalizedKeyword && !h.name.toLowerCase().includes(normalizedKeyword)) return false;
+        // Lọc người phụ trách: chỉ hiện ngựa có buổi (sau filter) của người đó trong tuần
+        if (staffFilter) {
+          return weekSessions.some((s) => s.horseId === h.horseId);
+        }
+        return true;
+      })
       .map((h) => {
         const plan = activePlanByHorse[h.horseId];
         const horseSessions = weekSessions.filter((s) => s.horseId === h.horseId);
@@ -103,14 +125,29 @@ export default function Schedule() {
     weekSessions.forEach((s) => {
       if (s.assignedToUserId && !people.has(s.assignedToUserId)) people.set(s.assignedToUserId, s.assignedToName ?? `#${s.assignedToUserId}`);
     });
-    rows = [...people.entries()].map(([userId, fullName]) => ({
-      key: `staff-${userId}`,
-      kind: "staff",
-      title: fullName,
-      subtitle: countLabel(weekSessions.filter((s) => s.assignedToUserId === userId)),
-    }));
+    rows = [...people.entries()]
+      .map(([userId, fullName]) => ({
+        key: `staff-${userId}`,
+        kind: "staff",
+        userId,
+        title: fullName,
+        subtitle: countLabel(weekSessions.filter((s) => s.assignedToUserId === userId)),
+      }))
+      .filter((row) => {
+        if (staffFilter === UNASSIGNED_FILTER) return false;
+        if (staffFilter && String(row.userId) !== staffFilter) return false;
+        if (!normalizedKeyword) return true;
+        return row.title.toLowerCase().includes(normalizedKeyword) || weekSessions.some((s) => s.assignedToUserId === row.userId);
+      })
+      .sort((a, b) => a.title.localeCompare(b.title, "vi"));
     const unassigned = weekSessions.filter((s) => !s.assignedToUserId);
-    if (unassigned.length > 0) rows.unshift({ key: UNASSIGNED_KEY, kind: "staff", title: "Chưa phân công", subtitle: countLabel(unassigned) });
+    const showUnassigned =
+      unassigned.length > 0 &&
+      (!staffFilter || staffFilter === UNASSIGNED_FILTER) &&
+      (!normalizedKeyword || "chưa phân công".includes(normalizedKeyword));
+    if (showUnassigned) {
+      rows.unshift({ key: UNASSIGNED_KEY, kind: "staff", title: "Chưa phân công", subtitle: countLabel(unassigned) });
+    }
   }
 
   const sessionsByCell = weekSessions.reduce((acc, s) => {
@@ -175,22 +212,61 @@ export default function Schedule() {
         <LoadingState />
       ) : (
         <div className="space-y-4">
-          {/* 1 hàng: tab chế độ xem bên trái, tìm kiếm bên phải; đường kẻ chạy hết chiều rộng bên dưới cả hàng */}
+          {/* 1 hàng: tab chế độ xem bên trái; tìm kiếm + lọc sổ xuống bên phải */}
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-[#ece5d6]">
             <TabFilter ariaLabel="Chế độ xem" options={VIEW_MODES} value={mode} onChange={(code) => updateParams({ view: code })} />
-            <div className="relative w-full pb-2 sm:w-64">
-              <label htmlFor="scheduleKeyword" className="sr-only">
-                Tìm theo tên ngựa
-              </label>
-              <Search className="pointer-events-none absolute top-[18px] left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" />
-              <input
-                id="scheduleKeyword"
-                type="search"
-                placeholder="Tìm theo tên ngựa..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="h-9 w-full rounded border border-[#cfc4ad] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
-              />
+            <div className="flex w-full flex-wrap items-center gap-2 pb-2 sm:w-auto">
+              <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
+                <label htmlFor="scheduleKeyword" className="sr-only">
+                  Tìm theo tên ngựa
+                </label>
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6055]" />
+                <input
+                  id="scheduleKeyword"
+                  type="search"
+                  placeholder="Tìm theo tên ngựa..."
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  className="h-9 w-full rounded border border-[#cfc4ad] bg-white pr-3 pl-9 text-sm text-[#2b2118] outline-none transition-colors placeholder:text-[#6b6055]/60 focus:border-[#c2570c]"
+                />
+              </div>
+              <div className="w-[calc(50%-0.25rem)] sm:w-40">
+                <label htmlFor="scheduleHorseFilter" className="sr-only">
+                  Lọc ngựa
+                </label>
+                <select
+                  id="scheduleHorseFilter"
+                  value={horseFilter}
+                  onChange={(e) => setHorseFilter(e.target.value)}
+                  className={FILTER_CONTROL}
+                >
+                  <option value="">Tất cả ngựa</option>
+                  {sortedHorses.map((horse) => (
+                    <option key={horse.horseId} value={horse.horseId}>
+                      {horse.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-[calc(50%-0.25rem)] sm:w-48">
+                <label htmlFor="scheduleStaffFilter" className="sr-only">
+                  Lọc người phụ trách
+                </label>
+                <select
+                  id="scheduleStaffFilter"
+                  value={staffFilter}
+                  onChange={(e) => setStaffFilter(e.target.value)}
+                  className={FILTER_CONTROL}
+                >
+                  <option value="">Tất cả người phụ trách</option>
+                  <option value={UNASSIGNED_FILTER}>Chưa phân công</option>
+                  {staff.map((person) => (
+                    <option key={person.userId} value={person.userId}>
+                      {person.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

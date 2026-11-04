@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
 // Báo lỗi khi gọi API thật thất bại (ApiError: message + details, vd lý do thể trạng của lỗi 422 HORSE_NOT_FIT).
@@ -6,7 +5,6 @@ import useAuth from "../hooks/useAuth";
 // Chưa có phiên BE (đăng nhập bằng tài khoản mock) hoặc phiên hết hạn → nút Đăng nhập lại.
 export default function ApiErrorNotice({ error, variant = "inline", onRetry }) {
   const { logout } = useAuth();
-  const navigate = useNavigate();
   if (!error) return null;
 
   const message = error.message || "Đã có lỗi xảy ra, vui lòng thử lại.";
@@ -14,8 +12,7 @@ export default function ApiErrorNotice({ error, variant = "inline", onRetry }) {
   const needLogin = error.code === "NO_API_SESSION" || error.status === 401;
 
   const handleLogin = () => {
-    logout();
-    navigate("/login", { replace: true });
+    logout(); // đã chuyển /login và tải lại trang
   };
 
   if (variant === "page") {

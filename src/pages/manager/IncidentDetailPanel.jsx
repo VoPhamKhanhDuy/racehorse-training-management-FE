@@ -3,7 +3,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import Drawer from "../../components/Drawer";
 import { getIncidentStatusColor, getIncidentTypeColor } from "./IncidentTableRow";
 import { formatDate } from "../../utils/date";
-import { HEALTH_INCIDENT_TYPES, INCIDENT_DESCRIPTION_MAX, INCIDENT_STATUS } from "../../data/incidentOptions";
+import { FACILITY_INCIDENT_TYPES, HEALTH_INCIDENT_TYPES, INCIDENT_DESCRIPTION_MAX, INCIDENT_STATUS } from "../../data/incidentOptions";
 
 const BLOCK = "border-b border-[#d9cfba] py-4 last:border-b-0";
 const LABEL = "text-xs text-[#6b6055]";
@@ -20,9 +20,8 @@ const ACTIONS = [
 const formatHandledAt = (isoDateTime) =>
   isoDateTime ? `${formatDate(isoDateTime.slice(0, 10))} ${isoDateTime.slice(11, 16)}` : "—";
 
-// Ngăn chi tiết 1 báo cáo sự cố cho Club Manager. Sự cố sức khỏe ngựa: chỉ đọc (bác sĩ thú y xử lý).
-// Sự cố chuồng/thiết bị và "Khác": Manager ghi chú xử lý + đổi trạng thái (qua hộp xác nhận). Không sửa/xóa báo cáo.
-// onUpdate(report, { TrangThai, GhiChuXuLy }) trả Promise; lỗi thì ném ra để hiện trong ngăn.
+// Ngăn chi tiết 1 báo cáo sự cố cho Club Manager. Xem mọi loại; chỉ sự cố chuồng/thiết bị được xử lý.
+// Sức khỏe ngựa → bác sĩ thú y; "Khác" → chỉ xem. onUpdate(report, { TrangThai, GhiChuXuLy }).
 export default function IncidentDetailPanel({ report, onClose, onUpdate }) {
   const [note, setNote] = useState(report?.GhiChuXuLy ?? "");
   const [pendingAction, setPendingAction] = useState(null);
@@ -32,8 +31,9 @@ export default function IncidentDetailPanel({ report, onClose, onUpdate }) {
   if (!report) return null;
 
   const isHealth = HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo);
+  const canHandle = FACILITY_INCIDENT_TYPES.includes(report.LoaiSuCo);
   const isDone = report.TrangThai === INCIDENT_STATUS.DONE;
-  const actions = ACTIONS.filter((a) => a.from.includes(report.TrangThai));
+  const actions = canHandle ? ACTIONS.filter((a) => a.from.includes(report.TrangThai)) : [];
   const noteTooLong = note.trim().length > INCIDENT_DESCRIPTION_MAX;
 
   const handleConfirm = async () => {
@@ -67,7 +67,7 @@ export default function IncidentDetailPanel({ report, onClose, onUpdate }) {
           </div>
         }
         footer={
-          !isHealth && actions.length > 0 ? (
+          actions.length > 0 ? (
             actions.map((a) => (
               <button
                 key={a.status}
@@ -112,49 +112,46 @@ export default function IncidentDetailPanel({ report, onClose, onUpdate }) {
           </section>
         )}
 
-        {isHealth ? (
-          <section className={BLOCK}>
-            <h3 className={LABEL}>Xử lý</h3>
+        <section className={BLOCK}>
+          <h3 className={LABEL}>Xử lý</h3>
+          {isHealth ? (
             <p className="mt-1 text-sm text-[#2b2118]">Do bác sĩ thú y xử lý</p>
-          </section>
-        ) : (
-          <section className={BLOCK}>
-            <h3 className={LABEL}>Xử lý</h3>
-            {isDone ? (
-              <>
-                <p className="mt-1 text-sm leading-relaxed whitespace-pre-line text-[#2b2118]">
-                  {report.GhiChuXuLy || "Không có ghi chú xử lý"}
+          ) : !canHandle ? (
+            <p className="mt-1 text-sm text-[#2b2118]">Chỉ xem — Manager chỉ xử lý sự cố chuồng trại / thiết bị</p>
+          ) : isDone ? (
+            <>
+              <p className="mt-1 text-sm leading-relaxed whitespace-pre-line text-[#2b2118]">
+                {report.GhiChuXuLy || "Không có ghi chú xử lý"}
+              </p>
+              <p className="mt-2 text-xs text-[#6b6055]">
+                {report.HandlerName ?? "—"} · {formatHandledAt(report.HandledAt)}
+              </p>
+            </>
+          ) : (
+            <>
+              <label htmlFor="incidentHandleNote" className="sr-only">
+                Ghi chú xử lý
+              </label>
+              <textarea
+                id="incidentHandleNote"
+                rows={4}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Ghi chú xử lý"
+                className="mt-2 w-full resize-none rounded-[4px] border border-[#b9ab90] bg-white px-3 py-2 text-sm text-[#2b2118] outline-none placeholder:text-[#6b6055]/70 focus:border-[#c2570c]"
+              />
+              <p className={`mt-1 text-right text-xs tabular-nums ${noteTooLong ? "text-[#c0262d]" : "text-[#6b6055]"}`}>
+                {note.trim().length}/{INCIDENT_DESCRIPTION_MAX}
+              </p>
+              {report.HandlerName && (
+                <p className="mt-1 text-xs text-[#6b6055]">
+                  Nhận xử lý bởi {report.HandlerName} · {formatHandledAt(report.HandledAt)}
                 </p>
-                <p className="mt-2 text-xs text-[#6b6055]">
-                  {report.HandlerName ?? "—"} · {formatHandledAt(report.HandledAt)}
-                </p>
-              </>
-            ) : (
-              <>
-                <label htmlFor="incidentHandleNote" className="sr-only">
-                  Ghi chú xử lý
-                </label>
-                <textarea
-                  id="incidentHandleNote"
-                  rows={4}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Ghi chú xử lý"
-                  className="mt-2 w-full resize-none rounded-[4px] border border-[#b9ab90] bg-white px-3 py-2 text-sm text-[#2b2118] outline-none placeholder:text-[#6b6055]/70 focus:border-[#c2570c]"
-                />
-                <p className={`mt-1 text-right text-xs tabular-nums ${noteTooLong ? "text-[#c0262d]" : "text-[#6b6055]"}`}>
-                  {note.trim().length}/{INCIDENT_DESCRIPTION_MAX}
-                </p>
-                {report.HandlerName && (
-                  <p className="mt-1 text-xs text-[#6b6055]">
-                    Nhận xử lý bởi {report.HandlerName} · {formatHandledAt(report.HandledAt)}
-                  </p>
-                )}
-              </>
-            )}
-            {error && <p className="mt-2 text-sm text-[#c0262d]">{error}</p>}
-          </section>
-        )}
+              )}
+            </>
+          )}
+          {error && <p className="mt-2 text-sm text-[#c0262d]">{error}</p>}
+        </section>
       </Drawer>
 
       <ConfirmDialog

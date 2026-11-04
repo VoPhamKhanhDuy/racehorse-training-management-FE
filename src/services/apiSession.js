@@ -1,8 +1,27 @@
 // Phiên đăng nhập với BE thật: JWT + user do POST /api/auth/login trả về.
-// Lưu sessionStorage (giống phiên mock trong AuthContext) để F5 vẫn giữ đăng nhập, đóng tab là hết.
+// Lưu localStorage (chung mọi tab cùng origin) — đăng nhập/đăng xuất ở tab khác sẽ đồng bộ khi F5 hoặc qua sự kiện storage.
 const API_SESSION_KEY = "equitrack.apiSession";
 
 let unauthorizedHandler = null;
+
+function readRaw(storage) {
+  try {
+    return storage.getItem(API_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeRaw(value) {
+  try {
+    if (value == null) localStorage.removeItem(API_SESSION_KEY);
+    else localStorage.setItem(API_SESSION_KEY, value);
+    // Dọn bản cũ theo tab (sessionStorage) để tránh tab cũ F5 lại phiên lệch
+    sessionStorage.removeItem(API_SESSION_KEY);
+  } catch {
+    // bỏ qua
+  }
+}
 
 // Payload JWT (base64url) → object; hỏng thì null
 function decodeTokenPayload(token) {
@@ -19,19 +38,37 @@ function isTokenExpired(token) {
   return typeof exp === "number" && exp * 1000 <= Date.now();
 }
 
-// { token, user } còn hạn; không có / hết hạn → null (và dọn phiên hết hạn)
-export function getApiSession() {
+function parseSession(raw) {
+  if (!raw) return null;
   try {
-    const session = JSON.parse(sessionStorage.getItem(API_SESSION_KEY));
+    const session = JSON.parse(raw);
     if (!session?.token || !session.user) return null;
-    if (isTokenExpired(session.token)) {
-      sessionStorage.removeItem(API_SESSION_KEY);
-      return null;
-    }
+    if (isTokenExpired(session.token)) return null;
     return session;
   } catch {
     return null;
   }
+}
+
+// { token, user } còn hạn; không có / hết hạn → null (và dọn phiên hết hạn)
+export function getApiSession() {
+  let session = parseSession(readRaw(localStorage));
+  if (session) return session;
+
+  // Một lần: nâng phiên cũ từ sessionStorage (theo tab) lên localStorage (chung tab)
+  const legacy = parseSession(readRaw(sessionStorage));
+  if (legacy) {
+    writeRaw(JSON.stringify(legacy));
+    return legacy;
+  }
+
+  try {
+    localStorage.removeItem(API_SESSION_KEY);
+    sessionStorage.removeItem(API_SESSION_KEY);
+  } catch {
+    // bỏ qua
+  }
+  return null;
 }
 
 export function getApiToken() {
@@ -39,19 +76,15 @@ export function getApiToken() {
 }
 
 export function saveApiSession(session) {
-  try {
-    sessionStorage.setItem(API_SESSION_KEY, JSON.stringify(session));
-  } catch {
-    // Trình duyệt chặn sessionStorage: vẫn chạy được, chỉ mất phiên khi tải lại
-  }
+  writeRaw(JSON.stringify(session));
 }
 
 export function clearApiSession() {
-  try {
-    sessionStorage.removeItem(API_SESSION_KEY);
-  } catch {
-    // bỏ qua
-  }
+  writeRaw(null);
+}
+
+export function getApiSessionStorageKey() {
+  return API_SESSION_KEY;
 }
 
 // AuthContext đăng ký: BE trả 401 với token đang dùng (hết hạn / bị thu hồi) → đăng xuất

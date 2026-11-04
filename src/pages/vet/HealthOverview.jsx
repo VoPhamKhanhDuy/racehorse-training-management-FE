@@ -15,27 +15,26 @@ import { daysSince, formatDate, formatDayMonth, todayISO } from "../../utils/dat
 const MAX_ACTIONS = 5; // hàng đợi tối đa 5 việc
 const VISIBLE_ACTIONS = 3; // hiện sẵn 3 việc, còn lại gom vào "Xem thêm"
 const ATTENTION_ORDER = { "Đang điều trị": 0, "Chấn thương": 0, "Cách ly": 1, "Cần theo dõi": 2 };
-const SECTION_TITLE = "font-serif text-xl font-semibold text-[#2b2118]";
+const PAGE_TABS = [
+  { value: "actions", label: "Cần xử lý" },
+  { value: "board", label: "Bảng theo dõi" },
+];
+const BOARD_FILTERS = [
+  { value: "all", label: "Tất cả" },
+  { value: "attention", label: "Cần chú ý" },
+  { value: "good", label: "Tình trạng tốt" },
+];
 const FRAME = "mt-3 overflow-hidden rounded-[4px] border border-[#b9ab90] bg-white";
 const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
 const PAGE = "mx-auto w-full max-w-[1280px] md:px-8";
 
-// Hàng tiêu đề nhóm trong Bảng theo dõi: nền be, chữ đậm + số lượng
-function GroupRow({ title, count }) {
-  return (
-    <tr>
-      <td colSpan={4} className="border-y border-[#d9cfba] bg-[#f3ede0] px-4 py-2.5 text-[13px] font-semibold text-[#2b2118]">
-        {title} <span className="font-normal text-[#6b6055]">· {count}</span>
-      </td>
-    </tr>
-  );
-}
-
-// Tổng quan sức khỏe (trang đích của bác sĩ thú y): mục "Cần xử lý" (tính bằng utils/healthAlerts.js theo ngưỡng
-// ở config/healthThresholds.js) và "Bảng theo dõi" chia 2 nhóm: Cần chú ý (dòng đầy đủ) / Tình trạng tốt (dòng mỏng).
+// Tổng quan sức khỏe: 2 tab cấp trang — "Cần xử lý" và "Bảng theo dõi"; trong bảng có lọc
+// Tất cả / Cần chú ý / Tình trạng tốt. Ngưỡng cảnh báo: utils/healthAlerts.js + config/healthThresholds.js.
 export default function HealthOverview() {
   const today = todayISO();
   const [data, setData] = useState(null);
+  const [pageTab, setPageTab] = useState("actions"); // cần xử lý | bảng theo dõi
+  const [boardFilter, setBoardFilter] = useState("all"); // tất cả | cần chú ý | tình trạng tốt
   const [showAllActions, setShowAllActions] = useState(false);
 
   useEffect(() => {
@@ -84,6 +83,7 @@ export default function HealthOverview() {
   const actions = getHealthAlerts({ horses, healthStatuses, latestExamDates, vaccinations, sessions, today }).slice(0, MAX_ACTIONS);
   const visibleActions = showAllActions ? actions : actions.slice(0, VISIBLE_ACTIONS);
   const hiddenCount = actions.length - VISIBLE_ACTIONS;
+  const actionCount = newIncidents.length + actions.length;
 
   // Vắc-xin cần nhắc của 1 ngựa (vaccinations đã sắp theo NgayHen): mũi quá hạn lâu nhất, hoặc mũi sắp tới gần nhất (getVaccineState)
   const vaccineOf = (horseId) => {
@@ -111,88 +111,151 @@ export default function HealthOverview() {
     .filter((h) => statusOf(h.HorseID) in ATTENTION_ORDER)
     .sort((a, b) => ATTENTION_ORDER[statusOf(a.HorseID)] - ATTENTION_ORDER[statusOf(b.HorseID)] || byName(a, b));
   const goodHorses = horses.filter((h) => !(statusOf(h.HorseID) in ATTENTION_ORDER)).sort(byName);
+  const tabCounts = { actions: actionCount, board: horses.length };
+  const boardFilterCounts = {
+    all: horses.length,
+    attention: attentionHorses.length,
+    good: goodHorses.length,
+  };
+  const showAttention = boardFilter === "all" || boardFilter === "attention";
+  const showGood = boardFilter === "all" || boardFilter === "good";
+  const boardEmpty =
+    boardFilter === "attention"
+      ? "Không có ngựa cần chú ý."
+      : boardFilter === "good"
+        ? "Không có ngựa ở tình trạng tốt."
+        : "Chưa có ngựa nào.";
+  const boardHasRows =
+    (showAttention && attentionHorses.length > 0) || (showGood && goodHorses.length > 0);
 
   return (
     <div className={PAGE}>
       <OverviewHeader today={today} />
 
-      <section aria-labelledby="overview-actions" className="mt-8">
-        <h2 id="overview-actions" className={SECTION_TITLE}>
-          Cần xử lý
-        </h2>
-        {actions.length === 0 && newIncidents.length === 0 ? (
-          <p className="py-6 text-sm text-[#4a3f33]">Hôm nay không có việc cần xử lý.</p>
-        ) : (
-          <div className={FRAME}>
-            <ul id="overview-action-list">
-              {newIncidents.map((report) => (
-                <OverviewIncidentItem key={`incident-${report.ReportID}`} report={report} horse={horses.find((h) => h.HorseID === report.HorseID)} />
-              ))}
-              {visibleActions.map((item) => (
-                <OverviewActionItem key={item.horse.HorseID} {...item} />
-              ))}
-            </ul>
-            {hiddenCount > 0 && (
-              <div className="border-t border-[#d9cfba] px-5 py-3">
+      <div role="tablist" aria-label="Tổng quan sức khỏe" className="mt-8 flex flex-wrap gap-x-8 border-b border-[#d9cfba]">
+        {PAGE_TABS.map((tab) => {
+          const active = pageTab === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls={`overview-${tab.value}-panel`}
+              id={`overview-${tab.value}-tab`}
+              onClick={() => setPageTab(tab.value)}
+              className={`-mb-px cursor-pointer border-b-2 px-1 pb-2.5 text-base transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
+                active
+                  ? "border-[#c2570c] font-semibold text-[#2b2118]"
+                  : "border-transparent text-[#4a3f33] hover:text-[#2b2118]"
+              }`}
+            >
+              {tab.label} <span className="tabular-nums">({tabCounts[tab.value]})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {pageTab === "actions" ? (
+        <section role="tabpanel" id="overview-actions-panel" aria-labelledby="overview-actions-tab" className="mt-5">
+          <h2 className="sr-only">Cần xử lý</h2>
+          {actionCount === 0 ? (
+            <p className="py-6 text-sm text-[#4a3f33]">Hôm nay không có việc cần xử lý.</p>
+          ) : (
+            <div className={FRAME}>
+              <ul id="overview-action-list">
+                {newIncidents.map((report) => (
+                  <OverviewIncidentItem key={`incident-${report.ReportID}`} report={report} horse={horses.find((h) => h.HorseID === report.HorseID)} />
+                ))}
+                {visibleActions.map((item) => (
+                  <OverviewActionItem key={item.horse.HorseID} {...item} />
+                ))}
+              </ul>
+              {hiddenCount > 0 && (
+                <div className="border-t border-[#d9cfba] px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllActions((prev) => !prev)}
+                    aria-expanded={showAllActions}
+                    aria-controls="overview-action-list"
+                    className="cursor-pointer text-sm font-semibold text-[#c2570c] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+                  >
+                    {showAllActions ? "Thu gọn" : `Xem thêm ${hiddenCount} việc`}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      ) : (
+        <section role="tabpanel" id="overview-board-panel" aria-labelledby="overview-board-tab" className="mt-5">
+          <h2 className="sr-only">Bảng theo dõi</h2>
+
+          <div role="tablist" aria-label="Lọc bảng theo dõi" className="flex flex-wrap gap-x-6 border-b border-[#d9cfba]">
+            {BOARD_FILTERS.map((tab) => {
+              const active = boardFilter === tab.value;
+              return (
                 <button
+                  key={tab.value}
                   type="button"
-                  onClick={() => setShowAllActions((prev) => !prev)}
-                  aria-expanded={showAllActions}
-                  aria-controls="overview-action-list"
-                  className="cursor-pointer text-sm font-semibold text-[#c2570c] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setBoardFilter(tab.value)}
+                  className={`-mb-px cursor-pointer border-b-2 pb-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
+                    active
+                      ? "border-[#c2570c] font-semibold text-[#2b2118]"
+                      : "border-transparent text-[#4a3f33] hover:text-[#2b2118]"
+                  }`}
                 >
-                  {showAllActions ? "Thu gọn" : `Xem thêm ${hiddenCount} việc`}
+                  {tab.label} <span className="tabular-nums">({boardFilterCounts[tab.value]})</span>
                 </button>
-              </div>
-            )}
+              );
+            })}
           </div>
-        )}
-      </section>
 
-      <section aria-labelledby="overview-board" className="mt-8">
-        <h2 id="overview-board" className={SECTION_TITLE}>
-          Bảng theo dõi
-        </h2>
-
-        {/* Nhóm rỗng thì ẩn hẳn, kể cả hàng tiêu đề nhóm */}
-        <div className={`${FRAME} overflow-x-auto`}>
-          <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
-            <thead>
-              <tr>
-                <th className={HEAD}>Ngựa</th>
-                <th className={HEAD}>Tình trạng</th>
-                <th className={HEAD}>Khám gần nhất</th>
-                <th className={`${HEAD} w-[220px] min-w-[220px]`}>Lưu ý / Vắc-xin</th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:last-child>td]:border-b-0">
-              {attentionHorses.length > 0 && <GroupRow title="Cần chú ý" count={attentionHorses.length} />}
-              {attentionHorses.map((horse) => (
-                <OverviewAttentionRow
-                  key={horse.HorseID}
-                  horse={horse}
-                  status={statusOf(horse.HorseID)}
-                  latestRecord={latestRecordByHorse[horse.HorseID]}
-                  note={noteOf(horse.HorseID)}
-                />
-              ))}
-              {goodHorses.length > 0 && <GroupRow title="Tình trạng tốt" count={goodHorses.length} />}
-              {goodHorses.map((horse) => {
-                const { overdue, dueSoon } = vaccineOf(horse.HorseID);
-                return (
-                  <OverviewGoodRow
-                    key={horse.HorseID}
-                    horse={horse}
-                    status={statusOf(horse.HorseID)}
-                    latestRecord={latestRecordByHorse[horse.HorseID]}
-                    vaccine={overdue ?? dueSoon}
-                  />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+          {!boardHasRows ? (
+            <p className="py-6 text-sm text-[#4a3f33]">{boardEmpty}</p>
+          ) : (
+            <div className={`${FRAME} overflow-x-auto`}>
+              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={HEAD}>Ngựa</th>
+                    <th className={HEAD}>Tình trạng</th>
+                    <th className={HEAD}>Khám gần nhất</th>
+                    <th className={`${HEAD} w-[220px] min-w-[220px]`}>Lưu ý / Vắc-xin</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr:last-child>td]:border-b-0">
+                  {showAttention &&
+                    attentionHorses.map((horse) => (
+                      <OverviewAttentionRow
+                        key={horse.HorseID}
+                        horse={horse}
+                        status={statusOf(horse.HorseID)}
+                        latestRecord={latestRecordByHorse[horse.HorseID]}
+                        note={noteOf(horse.HorseID)}
+                      />
+                    ))}
+                  {showGood &&
+                    goodHorses.map((horse) => {
+                      const { overdue, dueSoon } = vaccineOf(horse.HorseID);
+                      return (
+                        <OverviewGoodRow
+                          key={horse.HorseID}
+                          horse={horse}
+                          status={statusOf(horse.HorseID)}
+                          latestRecord={latestRecordByHorse[horse.HorseID]}
+                          vaccine={overdue ?? dueSoon}
+                        />
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

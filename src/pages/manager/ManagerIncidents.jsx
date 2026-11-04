@@ -8,14 +8,12 @@ import IncidentFilterTabs from "./IncidentFilterTabs";
 import IncidentTableRow from "./IncidentTableRow";
 import { getAllIncidentReports, updateIncidentStatus } from "../../services/careService";
 import { addAuditLog } from "../../services/auditService";
-import { HEALTH_INCIDENT_TYPES, INCIDENT_STATUS, INCIDENT_STATUSES } from "../../data/incidentOptions";
+import { FACILITY_INCIDENT_TYPES, HEALTH_INCIDENT_TYPES, INCIDENT_STATUS, INCIDENT_STATUSES } from "../../data/incidentOptions";
 import { toUserID } from "../../utils/userId";
-
-const FACILITY_TYPES = ["Chuồng/thiết bị hỏng"];
 
 // Nhóm lọc theo loại sự cố; "Khác" = mọi loại không thuộc sức khỏe ngựa hoặc chuồng trại
 const isHealth = (r) => HEALTH_INCIDENT_TYPES.includes(r.LoaiSuCo);
-const isFacility = (r) => FACILITY_TYPES.includes(r.LoaiSuCo);
+const isFacility = (r) => FACILITY_INCIDENT_TYPES.includes(r.LoaiSuCo);
 const TABS = [
   { value: "all", label: "Tất cả loại", match: () => true },
   { value: "health", label: "Sức khỏe ngựa", match: isHealth },
@@ -30,10 +28,11 @@ const STATUS_TABS = [
 
 const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 font-medium whitespace-nowrap text-[#f3ede0]";
 
-// Club Manager xem báo cáo sự cố của nhân sự chuồng trại (chỉ xem, cùng nguồn dữ liệu với trang Groom)
+// Club Manager: xem mọi sự cố (GET /api/manager/incidents); chỉ xử lý được sự cố chuồng trại / thiết bị.
 export default function ManagerIncidents() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [tab, setTab] = useState("all");
   const [keyword, setKeyword] = useState("");
   const [statusTab, setStatusTab] = useState("all");
@@ -41,14 +40,20 @@ export default function ManagerIncidents() {
   const [toast, setToast] = useState(null);
   const { user } = useAuth();
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock careService)
   useEffect(() => {
     let ignore = false;
-    getAllIncidentReports().then((list) => {
-      if (ignore) return;
-      setReports(list);
-      setLoading(false);
-    });
+    getAllIncidentReports()
+      .then((list) => {
+        if (ignore) return;
+        setReports(list);
+        setLoadError(null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được danh sách sự cố.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -66,15 +71,21 @@ export default function ManagerIncidents() {
   // Lưu trạng thái + ghi nhật ký; cập nhật danh sách và ngăn đang mở (lỗi ném lại cho ngăn hiện)
   const handleUpdate = async (report, changes) => {
     const managerId = toUserID(user.id);
-    const updated = await updateIncidentStatus(report.ReportID, changes, managerId);
+    const updated = await updateIncidentStatus(report.ReportID, changes);
     addAuditLog({
       UserID: managerId,
       HanhDong: updated.TrangThai === INCIDENT_STATUS.DONE ? "Đánh dấu đã xử lý sự cố" : "Nhận xử lý sự cố",
       TargetTable: "INCIDENTREPORT",
       TargetID: updated.ReportID,
-      targetLabel: report.HorseName,
+      targetLabel: report.HorseName || updated.HorseName,
     });
-    const merged = { ...report, ...updated, HandlerName: user.fullName };
+    const merged = {
+      ...report,
+      ...updated,
+      HorseName: updated.HorseName || report.HorseName,
+      ReporterName: updated.ReporterName || report.ReporterName,
+      HandlerName: updated.HandlerName || user.fullName,
+    };
     setReports((prev) => prev.map((r) => (r.ReportID === merged.ReportID ? merged : r)));
     setSelected(null); // đóng ngăn để toast (nằm dưới lớp phủ) hiện rõ
     setToast({ text: updated.TrangThai === INCIDENT_STATUS.DONE ? "Đã đánh dấu đã xử lý" : "Đã nhận xử lý sự cố" });
@@ -88,6 +99,8 @@ export default function ManagerIncidents() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-[#c0262d] bg-[#c0262d]/5 px-4 py-3 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <div className="space-y-5">
           <div className="flex flex-col gap-3 border-b border-[#d9cfba] pb-3 md:flex-row md:items-end md:justify-between md:gap-6 md:pb-0">

@@ -23,7 +23,7 @@ export default function StableMap() {
   const [myTasks, setMyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [pickedId, setPickedId] = useState(null); // StableID do người dùng chọn
+  const [pickedId, setPickedId] = useState(null); // AssignmentID do người dùng chọn
 
   useEffect(() => {
     let ignore = false;
@@ -69,10 +69,10 @@ export default function StableMap() {
   const sorted = [...assignments].sort(bySoChuong);
   // Mặc định: chuồng đầu tiên của nhân viên; không có thì chuồng đầu tiên
   const defaultStable = sorted.find((s) => myHorseIds.has(s.HorseID)) ?? sorted[0];
-  const selected = sorted.find((s) => s.StableID === pickedId) ?? defaultStable;
+  const selected = sorted.find((s) => s.AssignmentID === pickedId) ?? defaultStable;
 
-  const handleSelect = (stableId) => {
-    setPickedId(stableId);
+  const handleSelect = (assignmentId) => {
+    setPickedId(assignmentId);
     // Màn hẹp: chi tiết nằm dưới sơ đồ → cuộn tới để thấy ngay
     if (window.matchMedia(NARROW_QUERY).matches) {
       requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
@@ -98,7 +98,7 @@ export default function StableMap() {
               horseById={horseById}
               myHorseIds={myHorseIds}
               statusByHorse={statusByHorse}
-              selectedId={selected?.StableID}
+              selectedId={selected?.AssignmentID}
               onSelect={handleSelect}
             />
           </section>

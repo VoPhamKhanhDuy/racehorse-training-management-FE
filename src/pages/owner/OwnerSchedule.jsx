@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, TriangleAlert } from "lucide-react";
 import HorseAvatar from "../../components/HorseAvatar";
 import LoadingState from "../../components/LoadingState";
 import useAuth from "../../hooks/useAuth";
+import useHorseRealtime from "../../hooks/useHorseRealtime";
 import {
   getActiveLockDates,
   getOwnerHorses,
@@ -42,37 +43,37 @@ export default function OwnerSchedule() {
   const [loadError, setLoadError] = useState("");
   const [showAllDays, setShowAllDays] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock ownerService)
-  useEffect(() => {
-    let ignore = false;
-    (async () => {
-      try {
-        const horseList = await getOwnerHorses(ownerId);
-        const ids = horseList.map((h) => h.HorseID);
-        const [locks, overview, raceList, registrationList] = await Promise.all([
-          getActiveLockDates(ids),
-          getOwnerTrainingOverview(ids),
-          getRaces(),
-          getRaceRegistrations(),
-        ]);
-        if (ignore) return;
-        setHorses(horseList);
-        setLockByHorse(locks);
-        setTraining(overview);
-        setRaces(raceList);
-        setRegistrations(registrationList.filter((r) => ids.includes(r.HorseID)));
-        setLoading(false);
-      } catch (err) {
-        if (!ignore) {
-          setLoadError(err.message || "Không tải được lịch trình.");
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      ignore = true;
-    };
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const horseList = await getOwnerHorses(ownerId);
+      const ids = horseList.map((h) => h.HorseID);
+      const [locks, overview, raceList, registrationList] = await Promise.all([
+        getActiveLockDates(ids),
+        getOwnerTrainingOverview(ids),
+        getRaces(),
+        getRaceRegistrations(),
+      ]);
+      setHorses(horseList);
+      setLockByHorse(locks);
+      setTraining(overview);
+      setRaces(raceList);
+      setRegistrations(registrationList.filter((r) => ids.includes(r.HorseID)));
+      setLoadError("");
+    } catch (err) {
+      if (!silent) setLoadError(err.message || "Không tải được lịch trình.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [ownerId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useHorseRealtime(() => {
+    load({ silent: true });
+  });
 
   const today = todayISO();
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));

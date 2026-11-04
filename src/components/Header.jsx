@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, RotateCcw } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import { clearDemoData } from "../services/persistedStore";
@@ -39,7 +38,6 @@ function Avatar({ user, size }) {
 // Thanh trên cùng: nút tài khoản (avatar + chevron) mở menu (tên, email, vai trò, Đăng xuất). onMenuClick mở sidebar trên mobile.
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const roleName = roles.find((role) => role.id === user.roleId)?.name ?? user.roleId;
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -78,8 +76,7 @@ export default function Header({ onMenuClick }) {
 
   const handleLogout = () => {
     setMenuOpen(false);
-    logout();
-    navigate("/");
+    logout(); // AuthContext: xóa session + chuyển /login (tải lại trang)
   };
 
   return (
