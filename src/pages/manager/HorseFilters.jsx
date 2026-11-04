@@ -6,8 +6,8 @@ const SORT_OPTIONS = [
   { key: "CanNang", label: "Cân nặng tăng dần" },
 ];
 
-// Dropdown giữ <select> gốc (bàn phím, trình đọc màn hình chạy sẵn), chỉ đổi kiểu thành pill.
-// Đang lọc (có giá trị) thì pill viền cam để dễ nhận ra.
+// Dropdown giữ <select> gốc để hỗ trợ bàn phím và trình đọc màn hình.
+// Đang lọc (có giá trị) thì dùng viền cam để dễ nhận ra.
 function PillSelect({ id, label, value, onChange, children }) {
   return (
     <div className="relative">
@@ -19,7 +19,7 @@ function PillSelect({ id, label, value, onChange, children }) {
         name={id}
         value={value}
         onChange={onChange}
-        className={`cursor-pointer appearance-none rounded-full border py-2 pr-9 pl-4 text-sm text-ink outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brass/40 ${
+        className={`cursor-pointer appearance-none rounded-lg border py-2 pr-9 pl-4 text-sm text-ink outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brass/40 ${
           value ? "border-brass bg-brass/10" : "border-stone/25 bg-white hover:border-stone/40"
         }`}
       >
@@ -30,7 +30,7 @@ function PillSelect({ id, label, value, onChange, children }) {
   );
 }
 
-// Bộ lọc dạng pill: tìm tên + giống + chủ ngựa (kết hợp AND), và hàng chọn cách sắp xếp
+// Bộ lọc: tìm tên + giống + chủ ngựa (kết hợp AND), và hàng chọn cách sắp xếp
 export default function HorseFilters({ filters, breeds, owners, sortKey, onChange, onSortChange }) {
   const handleChange = (e) => {
     onChange({ ...filters, [e.target.name]: e.target.value });
@@ -39,7 +39,7 @@ export default function HorseFilters({ filters, breeds, owners, sortKey, onChang
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full sm:w-[25rem]">
           <label htmlFor="keyword" className="sr-only">
             Tìm theo tên ngựa
           </label>
@@ -51,7 +51,7 @@ export default function HorseFilters({ filters, breeds, owners, sortKey, onChang
             placeholder="Tìm theo tên ngựa"
             value={filters.keyword}
             onChange={handleChange}
-            className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+            className="w-full rounded-lg border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
           />
         </div>
         <PillSelect id="breed" label="Lọc theo giống" value={filters.breed} onChange={handleChange}>
@@ -82,7 +82,7 @@ export default function HorseFilters({ filters, breeds, owners, sortKey, onChang
               type="button"
               onClick={() => onSortChange(option.key)}
               aria-pressed={active}
-              className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+              className={`cursor-pointer rounded-lg border px-3.5 py-1.5 text-sm transition-colors ${
                 active
                   ? "border-brass bg-brass/15 font-medium text-brass-deep"
                   : "border-stone/25 bg-white text-ink hover:border-stone/40"

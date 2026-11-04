@@ -90,12 +90,6 @@ export default function Welcome() {
               >
                 Bắt đầu ngay
               </Link>
-              <Link
-                to="/login"
-                className="rounded-lg border border-[#F2A71B] px-6 py-3 font-semibold text-[#C65D18] transition hover:bg-[#F2A71B]/10"
-              >
-                Xem demo
-              </Link>
             </div>
           </div>
 
