@@ -128,7 +128,7 @@ export default function VetIncidents() {
           </div>
 
           {visible.length === 0 ? (
-            <p className="rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">Chưa có sự cố nào cần xử lý.</p>
+            <p className="rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">{reports.length === 0 ? "Chưa có báo cáo sự cố." : "Chưa có sự cố nào cần xử lý."}</p>
           ) : (
             <div className="overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white">
               <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">

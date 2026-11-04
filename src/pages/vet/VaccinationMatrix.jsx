@@ -75,22 +75,12 @@ export default function VaccinationMatrix({ horses, items, keyword, highlightHor
     })
     .sort((a, b) => a.rank - b.rank || a.horse.Ten.localeCompare(b.horse.Ten, "vi"));
 
-  const allCells = rows.flatMap((r) => r.cells);
-  const summary = [
-    [allCells.filter((c) => c?.state === "Quá hạn").length, "quá hạn"],
-    [allCells.filter((c) => c?.state === "Sắp tới").length, "sắp tới"],
-    [allCells.filter((c) => !c).length, "ô chưa có lịch"],
-  ]
-    .map(([n, label]) => `${n} ${label}`)
-    .join(" · ");
-
   if (rows.length === 0 || columns.length === 0) {
     return <p className="mt-4 rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">Không có lịch tiêm nào khớp bộ lọc.</p>;
   }
 
   return (
     <>
-      <p className="mt-3 text-sm text-[#4a3f33]">{summary}</p>
       <div className="mt-3 overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white caret-transparent">
         {/* table-fixed: cột Ngựa 220px, các cột vắc-xin chia đều (tối thiểu 160px mỗi cột) */}
         <table

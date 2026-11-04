@@ -52,6 +52,7 @@ export default function Vaccinations() {
   const [items, setItems] = useState([]);
   const [horses, setHorses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [view, setView] = useState("matrix"); // "matrix" | "list" — chỉ giữ trong state của trang
   const [openCell, setOpenCell] = useState(null); // { horseId, type } ô ma trận đang mở ngăn chi tiết
   const [statusFilter, setStatusFilter] = useState("all");
@@ -69,16 +70,20 @@ export default function Vaccinations() {
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getVaccinations(), getHorses()]).then(
-      ([itemList, horseList]) => {
+    Promise.all([getVaccinations(), getHorses()])
+      .then(([itemList, horseList]) => {
         if (ignore) return;
         setItems(itemList);
         setHorses(
           [...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")),
         );
-        setLoading(false);
-      },
-    );
+      })
+      .catch((err) => {
+        if (!ignore) setLoadError(err.message || "Không tải được lịch tiêm phòng.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -207,6 +212,8 @@ export default function Vaccinations() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <>
           {/* Thanh công cụ: tìm kiếm + chọn ngựa bên trái; chế độ xem (tab chữ) bên phải, ẩn ở màn hẹp vì luôn là Danh sách */}

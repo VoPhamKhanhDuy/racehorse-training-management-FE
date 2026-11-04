@@ -40,6 +40,7 @@ export default function TrainingLocks() {
   const [raceRegs, setRaceRegs] = useState([]); // đăng ký kèm ngày giải: [{ HorseID, Ngay }]
   const [vetNames, setVetNames] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("horse") ? "all" : "active");
   const [keyword, setKeyword] = useState("");
   const [selectedId, setSelectedId] = useState(null); // LockID đang mở trong ngăn chi tiết
@@ -54,8 +55,8 @@ export default function TrainingLocks() {
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getTrainingLocks(), getHorses(), getMedicalRecords(), getSchedules(), getRaceRegistrations(), getRaces(), getVets()]).then(
-      ([lockList, horseList, recordList, scheduleList, regList, raceList, vetList]) => {
+    Promise.all([getTrainingLocks(), getHorses(), getMedicalRecords(), getSchedules(), getRaceRegistrations(), getRaces(), getVets()])
+      .then(([lockList, horseList, recordList, scheduleList, regList, raceList, vetList]) => {
         if (ignore) return;
         setLocks(lockList);
         setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
@@ -63,9 +64,13 @@ export default function TrainingLocks() {
         setSchedules(scheduleList);
         setRaceRegs(regList.map((r) => ({ HorseID: r.HorseID, Ngay: raceList.find((race) => race.RaceID === r.RaceID)?.Ngay ?? "" })));
         setVetNames(Object.fromEntries(vetList.map((v) => [v.UserID, v.HoTen])));
-        setLoading(false);
-      }
-    );
+      })
+      .catch((err) => {
+        if (!ignore) setLoadError(err.message || "Không tải được lệnh khóa huấn luyện.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -145,6 +150,8 @@ export default function TrainingLocks() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
