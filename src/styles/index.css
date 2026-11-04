@@ -9,6 +9,155 @@
   --color-stone: #6e6e76; /* chữ phụ, nhãn, đường kẻ */
   --color-alert: #c0392b; /* xóa, cảnh báo */
 
+  /* Tông dữ liệu cho trang Kết quả buổi tập (biểu đồ, sparkline, thanh dữ liệu) */
+  --color-bark: #4a2f1b; /* mực nâu: đường vận tốc, số liệu chính */
+  --color-moss: #5f6f3a; /* olive: đường nhịp tim, chênh lệch, nhãn "cao nhất" */
+  --color-gridline: #e6dfd2; /* vạch lưới biểu đồ */
+  --color-sand: #d9c3a0; /* be: cột mini các buổi cũ */
+  --color-track: #efe9dd; /* nền thanh dữ liệu */
+  --color-taupe: #7a6857; /* xám nâu: chữ trạng thái "Đang điều trị" */
+  --color-rust: #a3563f; /* nâu đỏ nhạt: thông báo lỗi dưới ô nhập (form hồ sơ ngựa) */
+
+  /* Loại sự cố (trang Báo cáo sự cố của nhân viên chăm sóc) */
+  --color-incident-animal: #c0262d; /* đỏ: sự cố liên quan ngựa (chữ + vạch trái hàng) */
+  --color-incident-facility: #6b5b3e; /* nâu olive: chuồng/thiết bị, khác */
+
+  /* Trạng thái tài khoản USER (components/AccountStatusText.jsx) */
+  --color-account-pending: #d97706; /* Chờ duyệt */
+  --color-account-active: #2f7d4f; /* Đã duyệt / Đang hoạt động */
+  --color-account-blocked: #c0262d; /* Từ chối / Bị khóa */
+
+  /* Nút hành động chính (.btn-primary): nền = --color-brass-deep */
+  --color-primary-hover: #a8480a;
+  --color-primary-disabled: #e5cdb8;
+
+  /* Ngăn trượt từ phải (components/Drawer.jsx) */
+  --animate-drawer-in: drawer-in 200ms ease-out;
+  --animate-fade-in: fade-in 200ms ease-out;
+  @keyframes drawer-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   /* Font serif cho tiêu đề (Source Serif 4 nạp trong index.html, weight 500/600), phần còn lại giữ font sans mặc định */
   --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
+}
+
+/* Nút hành động chính dùng chung mọi role: nút "+ ..." đầu trang, nút gửi/lưu của form, nút xác nhận của hộp thoại.
+   Nền cam đậm chữ trắng, cao 40px, không full-width. KHÔNG dùng cho nút trên từng hàng, nút Hủy/Quay lại, chip lọc.
+   Đặt trong layer components để class tiện ích (ml-auto, gap-2...) vẫn ghi đè được. */
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    height: 2.5rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-brass-deep);
+    padding-inline: 1.25rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: 600;
+    white-space: nowrap;
+    color: #fff;
+    outline: none;
+    transition: background-color 150ms ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+  .btn-primary:focus-visible {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px color-mix(in oklab, var(--color-brass) 60%, transparent);
+  }
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    background-color: var(--color-primary-disabled);
+    color: rgb(255 255 255 / 0.85);
+  }
+}
+
+/* Thu nhỏ toàn bộ giao diện còn 90% (đổi hệ số ở --app-zoom). Đơn vị vh không được zoom theo nên chia lại để
+   các khối "cao bằng màn hình" (min-h-screen, sidebar h-screen) vẫn phủ kín khung nhìn. */
+:root {
+  --app-zoom: 0.9;
+}
+
+html {
+  zoom: var(--app-zoom);
+}
+
+.min-h-screen {
+  min-height: calc(100vh / var(--app-zoom));
+}
+
+@media (min-width: 1024px) {
+  .lg\:h-screen {
+    height: calc(100vh / var(--app-zoom));
+  }
+}
+
+/* In / Lưu PDF chứng từ (pages/owner/DocumentViewer.jsx): chỉ in tờ giấy, khổ A4, lề 18mm, chữ đen, không viền ngoài */
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm;
+  }
+
+  html {
+    zoom: 1;
+  }
+
+  /* Ứng dụng nằm trong #root; khung chứng từ render qua portal vào <body> nên vẫn in được */
+  #root,
+  .doc-no-print {
+    display: none !important;
+  }
+
+  body {
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  #document-print-root {
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  #document-print-root .doc-modal {
+    display: block !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  #document-print-root .doc-modal > div {
+    overflow: visible !important;
+  }
+
+  #document-sheet {
+    width: 100% !important;
+    border: 0 !important;
+    padding: 0 !important;
+    color: #000 !important;
+  }
 }

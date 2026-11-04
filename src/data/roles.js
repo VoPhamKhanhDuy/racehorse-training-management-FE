@@ -7,4 +7,7 @@ const roles = [
   { id: "club_manager", name: "Quản lý CLB", description: "Quản lý nhân sự, duyệt tài khoản" },
 ];
 
+// Vai trò nhân sự nội bộ: tài khoản do Quản lý CLB tạo (không qua duyệt), quản lý ở /manager/staff
+export const STAFF_ROLE_IDS = ["head_trainer", "veterinarian", "groom"];
+
 export default roles;

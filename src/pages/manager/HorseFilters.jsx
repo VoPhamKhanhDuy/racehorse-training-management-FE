@@ -2,7 +2,7 @@ import { ChevronDown, Search } from "lucide-react";
 
 const SORT_OPTIONS = [
   { key: "Ten", label: "Tên A-Z" },
-  { key: "Tuoi", label: "Tuổi tăng dần" },
+  { key: "NgaySinh", label: "Tuổi tăng dần" }, // sắp theo NgaySinh giảm dần (trẻ nhất trước)
   { key: "CanNang", label: "Cân nặng tăng dần" },
 ];
 
@@ -30,7 +30,7 @@ function PillSelect({ id, label, value, onChange, children }) {
   );
 }
 
-// Bộ lọc dạng pill: tìm tên + giống + chủ sở hữu (kết hợp AND), và hàng chọn cách sắp xếp
+// Bộ lọc dạng pill: tìm tên + giống + chủ ngựa (kết hợp AND), và hàng chọn cách sắp xếp
 export default function HorseFilters({ filters, breeds, owners, sortKey, onChange, onSortChange }) {
   const handleChange = (e) => {
     onChange({ ...filters, [e.target.name]: e.target.value });
@@ -62,8 +62,8 @@ export default function HorseFilters({ filters, breeds, owners, sortKey, onChang
             </option>
           ))}
         </PillSelect>
-        <PillSelect id="ownerId" label="Lọc theo chủ sở hữu" value={filters.ownerId} onChange={handleChange}>
-          <option value="">Tất cả chủ sở hữu</option>
+        <PillSelect id="ownerId" label="Lọc theo chủ ngựa" value={filters.ownerId} onChange={handleChange}>
+          <option value="">Tất cả chủ ngựa</option>
           {owners.map((owner) => (
             <option key={owner.UserID} value={owner.UserID}>
               {owner.HoTen}

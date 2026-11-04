@@ -1,4 +1,4 @@
-// Class theo kiểu hiển thị, cùng 2 kiểu với FormField: "filled" (mặc định) và "line" (giao diện mới, đang thử)
+// Class theo kiểu hiển thị, cùng các kiểu với FormField: "filled" (mặc định), "line" và "outline"
 const variantStyles = {
   filled: {
     label: "mb-1.5 block text-sm font-medium text-gray-600",
@@ -10,7 +10,15 @@ const variantStyles = {
   line: {
     label: "mb-1 block font-serif text-sm font-semibold text-stone",
     select: "w-full cursor-pointer border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors",
-    selectState: (error) => (error ? "border-alert" : "border-stone/50 focus:border-brass"),
+    selectState: (error) => (error ? "border-rust" : "border-stone/50 focus:border-brass"),
+    error: "text-rust",
+  },
+  // "outline": viền đủ 4 cạnh, bo nhẹ — cùng kiểu FormField variant="outline"
+  outline: {
+    label: "mb-1.5 block font-serif text-sm font-semibold text-stone",
+    select:
+      "w-full cursor-pointer rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 disabled:text-stone",
+    selectState: (error) => (error ? "border-alert focus:ring-alert/20" : "border-stone/25 focus:border-brass"),
     error: "text-alert",
   },
 };

@@ -1,10 +1,14 @@
 import { ChevronRight } from "lucide-react";
-import HealthStatusBadge from "../../components/HealthStatusBadge";
-import HorseIcon from "../../components/HorseIcon";
-import { getHealthStyle } from "../../utils/healthStatusStyles";
+import HealthStatusBadge from "./HealthStatusBadge";
+import HorseIcon from "./HorseIcon";
+import { getHealthStyle } from "../utils/healthStatusStyles";
+import { formatHorseAge } from "../utils/date";
 
-// Thẻ 1 con ngựa trong lưới. Bấm cả thẻ để mở modal chi tiết (Sửa/Xóa nằm trong modal, không đặt trên thẻ).
-export default function HorseCard({ horse, ownerName, healthStatus, onClick }) {
+// Thẻ 1 con ngựa trong lưới — dùng chung: Quản lý hồ sơ ngựa (Quản lý CLB) và Ngựa của tôi (Chủ ngựa).
+// Bấm cả thẻ → onClick(horse) (Quản lý: mở modal chi tiết; Chủ ngựa: sang trang chi tiết).
+// meta: dòng chữ nhỏ dưới "Giống · tuổi · cân nặng" (vd "Chủ ngựa: …" / "Chuồng A1"); note: dòng nhắc nâu cam bên dưới
+// (vd "Đang tạm ngưng huấn luyện").
+export default function HorseCard({ horse, healthStatus, meta, note, onClick }) {
   return (
     <button
       type="button"
@@ -35,9 +39,10 @@ export default function HorseCard({ horse, ownerName, healthStatus, onClick }) {
       <div className="px-3.5 py-2.5">
         <p className="truncate font-serif text-lg leading-snug font-semibold text-ink">{horse.Ten}</p>
         <p className="mt-0.5 truncate text-sm text-stone">
-          {[horse.Giong, `${horse.Tuoi} tuổi`, `${horse.CanNang.toLocaleString("vi-VN")} kg`].filter(Boolean).join(" · ")}
+          {[horse.Giong, formatHorseAge(horse.NgaySinh), `${horse.CanNang.toLocaleString("vi-VN")} kg`].filter(Boolean).join(" · ")}
         </p>
-        <p className="mt-1 truncate text-xs text-stone/70">Chủ sở hữu: {ownerName ?? "Chưa rõ"}</p>
+        {meta && <p className="mt-1 truncate text-xs text-stone/70">{meta}</p>}
+        {note && <p className="mt-0.5 truncate text-xs font-medium text-brass-deep">{note}</p>}
       </div>
     </button>
   );
