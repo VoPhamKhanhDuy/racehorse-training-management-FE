@@ -28,6 +28,7 @@ export default function VetIncidents() {
   const [stables, setStables] = useState({});
   const [lockDates, setLockDates] = useState({}); // HorseID → ngày đặt lệnh khóa đang hiệu lực (đọc từ kho lệnh khóa của Vet)
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [statusTab, setStatusTab] = useState("all");
   const [keyword, setKeyword] = useState("");
   const [selectedId, setSelectedId] = useState(null);
@@ -38,14 +39,22 @@ export default function VetIncidents() {
     let ignore = false;
     // Không đọc được lệnh khóa thì bỏ qua (drawer chỉ không hiện dòng khóa tập)
     const locksPromise = getActiveTrainingLocks().catch(() => []);
-    Promise.all([getIncidentsForVet(), getHorses(), getStableNumbers(), locksPromise]).then(([list, horseList, stableMap, lockList]) => {
-      if (ignore) return;
-      setLockDates(Object.fromEntries(lockList.map((l) => [l.HorseID, l.NgayDat])));
-      setReports(list);
-      setHorses(horseList);
-      setStables(stableMap);
-      setLoading(false);
-    });
+    // Số chuồng chỉ để hiển thị thêm (API /groom/stables có thể không cho Vet): lỗi thì bỏ qua
+    const stablesPromise = getStableNumbers().catch(() => ({}));
+    Promise.all([getIncidentsForVet(), getHorses(), stablesPromise, locksPromise])
+      .then(([list, horseList, stableMap, lockList]) => {
+        if (ignore) return;
+        setLockDates(Object.fromEntries(lockList.map((l) => [l.HorseID, l.NgayDat])));
+        setReports(list);
+        setHorses(horseList);
+        setStables(stableMap);
+      })
+      .catch((err) => {
+        if (!ignore) setLoadError(err.message || "Không tải được danh sách sự cố.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -87,6 +96,8 @@ export default function VetIncidents() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <div className="mt-6 space-y-5">
           <div className="flex flex-col gap-3 border-b border-[#d9cfba] pb-3 md:flex-row md:items-end md:justify-between md:gap-6 md:pb-0">
@@ -114,7 +125,7 @@ export default function VetIncidents() {
           </div>
 
           {visible.length === 0 ? (
-            <p className="rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">Chưa có sự cố nào cần xử lý.</p>
+            <p className="rounded-[4px] border border-[#d9cfba] bg-white py-12 text-center text-sm text-[#4a3f33]">{reports.length === 0 ? "Chưa có báo cáo sự cố." : "Chưa có sự cố nào cần xử lý."}</p>
           ) : (
             <div className="overflow-x-auto rounded-[4px] border border-[#b9ab90] bg-white">
               <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">

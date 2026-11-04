@@ -81,8 +81,13 @@ export default function VaccinationForm() {
         const presetType = searchParams.get("type") ?? "";
         setForm((prev) => ({ ...prev, HorseID: preset ? String(preset.HorseID) : prev.HorseID, Loai: presetType }));
       }
-      setLoading(false);
-    });
+    })
+      .catch((err) => {
+        if (!ignore) setBlockedReason(err.message || "Không tải được dữ liệu.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };

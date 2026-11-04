@@ -131,11 +131,52 @@ const withHandling = (r) => ({
 });
 
 // Mọi báo cáo sự cố (cho Club Manager xem), mới → cũ theo Ngay, kèm tên ngựa, tên người báo và người xử lý ("—" nếu không tra được).
-export async function getAllIncidentReports() {
-  const [horses, users] = await Promise.all([getHorses(), getUsers(), delay()]);
+// Đọc danh sách sự cố từ BE cho Manager / Vet. /groom/incidents chỉ cho role Groom (và chỉ trả báo cáo của chính họ) nên
+// Manager / Vet cần endpoint riêng: GET /api/manager/incidents, GET /api/vet/incidents (BE CHƯA CÓ — xem TODO).
+// Lỗi thì in console.error (URL + status) rồi dùng mock, không nuốt âm thầm.
+// TODO: khi BE thêm 2 endpoint trên (trả IncidentReport kèm tên ngựa / người báo), FE tự đọc được.
+const remoteById = new Map(); // ReportID → báo cáo BE gần nhất (để xử lý sự cố chỉ có trên BE)
+
+async function fetchRemoteReports(path) {
+  try {
+    const rows = await apiRequest(path);
+    return (rows ?? []).map(mapReport);
+  } catch (err) {
+    console.error(`[careService] GET /api${path} lỗi${err.status ? ` (HTTP ${err.status})` : ""}: ${err.message}`);
+    return [];
+  }
+}
+
+// Gộp BE (ưu tiên) với mock: trùng ReportID thì lấy bản BE; trạng thái xử lý chỉ lấy từ kho nếu bản đó đã nạp từ BE (Source "api").
+async function getMergedReports(path) {
+  const remote = await fetchRemoteReports(path);
+  remote.forEach((r) => remoteById.set(r.ReportID, r));
+  const remoteIds = new Set(remote.map((r) => r.ReportID));
+  const stored = new Map(reportStore.filter((r) => r.Source === "api").map((r) => [r.ReportID, r]));
+  const fromApi = remote.map((r) => ({ ...r, ...(stored.get(r.ReportID) ?? {}), Source: "api" }));
+  const mock = reportStore.filter((r) => r.Source !== "api" && !remoteIds.has(r.ReportID));
+  return [...fromApi, ...mock];
+}
+
+// Sự cố từ BE được nạp vào kho (thay bản mock trùng id) trước khi xử lý để lưu bền trạng thái xử lý
+async function findReportForUpdate(reportId) {
+  const id = Number(reportId);
+  const stored = reportStore.find((r) => r.ReportID === id);
+  if (stored?.Source === "api" || (stored && !remoteById.has(id))) return stored;
+  const remote = remoteById.get(id);
+  if (!remote) return stored;
+  const index = reportStore.findIndex((r) => r.ReportID === id);
+  const report = { ...remote, Source: "api" };
+  if (index >= 0) reportStore[index] = report;
+  else reportStore.push(report);
+  return report;
+}
+
+export async function getAllIncidentReports(remotePath = "/manager/incidents") {
+  const [horses, users, merged] = await Promise.all([getHorses().catch(() => []), getUsers().catch(() => []), getMergedReports(remotePath), delay()]);
   const horseNames = Object.fromEntries(horses.map((h) => [h.HorseID, h.Ten]));
   const userNames = Object.fromEntries(users.map((u) => [toUserID(u.id), u.fullName]));
-  return reportStore
+  return merged
     .map((r) => {
       const report = withHandling(r);
       return {
@@ -152,7 +193,7 @@ export async function getAllIncidentReports() {
 // (sự cố sức khỏe ngựa do bác sĩ thú y xử lý), trạng thái hợp lệ, đã xử lý thì không đổi nữa.
 export async function updateIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, userId) {
   await delay();
-  const report = reportStore.find((r) => r.ReportID === Number(reportId));
+  const report = await findReportForUpdate(reportId);
   if (!report) throw new Error("Không tìm thấy báo cáo sự cố");
   if (HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo)) throw new Error("Sự cố sức khỏe ngựa do bác sĩ thú y xử lý.");
   if (![INCIDENT_STATUS.IN_PROGRESS, INCIDENT_STATUS.DONE].includes(TrangThai)) throw new Error("Trạng thái không hợp lệ.");
@@ -166,7 +207,7 @@ export async function updateIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, 
 
 // Sự cố sức khỏe ngựa (Vết thương, Khập khiễng, Bỏ ăn) cho Bác sĩ thú y, mới → cũ theo Ngay, kèm tên ngựa / người báo / người xử lý.
 export async function getIncidentsForVet() {
-  const all = await getAllIncidentReports();
+  const all = await getAllIncidentReports("/vet/incidents");
   return all.filter((r) => HEALTH_INCIDENT_TYPES.includes(r.LoaiSuCo));
 }
 
@@ -174,7 +215,7 @@ export async function getIncidentsForVet() {
 // Ràng buộc (BE cũng phải kiểm tra lại): đúng loại sức khỏe, đúng thứ tự trạng thái, ghi chú ≤ 300 ký tự.
 export async function updateHealthIncidentStatus(reportId, { TrangThai, GhiChuXuLy }, userId) {
   await delay();
-  const report = reportStore.find((r) => r.ReportID === Number(reportId));
+  const report = await findReportForUpdate(reportId);
   if (!report) throw new Error("Không tìm thấy báo cáo sự cố");
   if (!HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo)) throw new Error("Chỉ xử lý sự cố về sức khỏe ngựa.");
   const current = report.TrangThai ?? INCIDENT_STATUS.NEW;

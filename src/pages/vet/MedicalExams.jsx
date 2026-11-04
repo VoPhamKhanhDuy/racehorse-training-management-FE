@@ -29,6 +29,7 @@ export default function MedicalExams() {
   const [locks, setLocks] = useState([]);
   const [vetNames, setVetNames] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [keyword, setKeyword] = useState("");
   const [injuryOnly, setInjuryOnly] = useState(false);
   const [selectedId, setSelectedId] = useState(null); // RecordID đang mở trong ngăn chi tiết
@@ -41,14 +42,20 @@ export default function MedicalExams() {
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getMedicalRecords(), getHorses(), getTrainingLocks(), getVets()]).then(([recordList, horseList, lockList, vetList]) => {
-      if (ignore) return;
-      setRecords(recordList);
-      setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
-      setLocks(lockList);
-      setVetNames(Object.fromEntries(vetList.map((v) => [v.UserID, v.HoTen])));
-      setLoading(false);
-    });
+    Promise.all([getMedicalRecords(), getHorses(), getTrainingLocks(), getVets()])
+      .then(([recordList, horseList, lockList, vetList]) => {
+        if (ignore) return;
+        setRecords(recordList);
+        setHorses([...horseList].sort((a, b) => a.Ten.localeCompare(b.Ten, "vi")));
+        setLocks(lockList);
+        setVetNames(Object.fromEntries(vetList.map((v) => [v.UserID, v.HoTen])));
+      })
+      .catch((err) => {
+        if (!ignore) setLoadError(err.message || "Không tải được dữ liệu khám bệnh.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -106,6 +113,8 @@ export default function MedicalExams() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="mt-6 text-sm text-[#c0262d]">{loadError}</p>
       ) : (
         <>
           {/* Thanh lọc 1 hàng: tìm kiếm, chọn ngựa, bật/tắt "Có chấn thương" */}

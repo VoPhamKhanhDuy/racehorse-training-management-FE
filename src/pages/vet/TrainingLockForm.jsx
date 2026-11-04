@@ -48,8 +48,8 @@ export default function TrainingLockForm() {
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getHorses(), getActiveTrainingLocks(), getHealthStatuses(), getMedicalRecords()]).then(
-      ([horseList, lockList, healthStatuses, recordList]) => {
+    Promise.all([getHorses(), getActiveTrainingLocks(), getHealthStatuses(), getMedicalRecords()])
+      .then(([horseList, lockList, healthStatuses, recordList]) => {
         if (ignore) return;
         const lockedIds = new Set(lockList.map((l) => l.HorseID));
         const available = horseList.filter((h) => !lockedIds.has(h.HorseID)).sort((a, b) => a.Ten.localeCompare(b.Ten, "vi"));
@@ -59,9 +59,13 @@ export default function TrainingLockForm() {
         // Vào từ bộ lọc (?horse=) thì điền sẵn — chỉ khi ngựa đó chưa bị khóa
         const preset = available.find((h) => String(h.HorseID) === searchParams.get("horse"));
         if (preset) setForm((prev) => ({ ...prev, HorseID: String(preset.HorseID) }));
-        setLoading(false);
-      }
-    );
+      })
+      .catch((err) => {
+        if (!ignore) setErrors({ form: err.message || "Không tải được dữ liệu." });
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };

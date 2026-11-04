@@ -131,8 +131,13 @@ export default function MedicalExamForm() {
           setForm((prev) => ({ ...prev, HorseID: String(presetHorse.HorseID), TrangThai: currentHealth(presetHorse.HorseID) }));
         }
       }
-      setLoading(false);
-    });
+    })
+      .catch((err) => {
+        if (!ignore) setBlockedReason(err.message || "Không tải được dữ liệu.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
     return () => {
       ignore = true;
     };
