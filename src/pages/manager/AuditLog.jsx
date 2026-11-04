@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Search, SearchX } from "lucide-react";
+import { CalendarDays, ChevronDown, Search, SearchX, UserRound } from "lucide-react";
 import LoadingState from "../../components/LoadingState";
 import AuditLogItem from "./AuditLogItem";
 import { STAFF_ROLE_IDS } from "../../data/roles";
@@ -18,18 +18,11 @@ const TIME_RANGES = [
 // Người thực hiện thao tác: nhân sự nội bộ + Quản lý CLB
 const ACTOR_ROLE_IDS = [...STAFF_ROLE_IDS, "club_manager"];
 
-// Cùng kiểu pill lọc ở các trang danh sách
-const pillClass = (active) =>
-  `cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
-    active ? "border-brass bg-brass/15 font-medium text-brass-deep" : "border-stone/25 bg-white text-ink hover:border-stone/40"
-  }`;
-
 export default function AuditLog() {
   const [logs, setLogs] = useState([]);
   const [actors, setActors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
-  const [category, setCategory] = useState(""); // "" = tất cả
   const [actorId, setActorId] = useState(""); // "" = mọi người
   const [timeRange, setTimeRange] = useState("30d");
 
@@ -52,18 +45,13 @@ export default function AuditLog() {
     };
   }, []);
 
-  // Pill nhóm hành động lấy động từ dữ liệu
-  const categories = [...new Set(logs.map((log) => log.category))].sort((a, b) => a.localeCompare(b, "vi"));
-  const categoryFilters = [{ value: "", label: "Tất cả" }, ...categories.map((c) => ({ value: c, label: c }))];
-
-  // Các bộ lọc kết hợp AND: từ khóa (người / hành động / đối tượng), nhóm, người thực hiện, khoảng thời gian
+  // Các bộ lọc kết hợp AND: từ khóa (người / hành động / đối tượng), người thực hiện, khoảng thời gian
   const normalizedKeyword = keyword.trim().toLowerCase();
   const startDate = TIME_RANGES.find((r) => r.key === timeRange).startDate();
   const visibleLogs = logs.filter(
     (log) =>
       (!normalizedKeyword ||
         [log.actorName, log.HanhDong, log.targetName].some((text) => text.toLowerCase().includes(normalizedKeyword))) &&
-      (!category || log.category === category) &&
       (!actorId || log.UserID === Number(actorId)) &&
       log.ThoiGian.slice(0, 10) >= startDate
   );
@@ -78,76 +66,69 @@ export default function AuditLog() {
         <LoadingState />
       ) : (
         <div className="space-y-5">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Ô tìm kiếm cùng kiểu các trang danh sách */}
-              <div className="relative w-full sm:w-80">
-                <label htmlFor="auditKeyword" className="sr-only">
-                  Tìm theo người thực hiện hoặc hành động
-                </label>
-                <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" />
-                <input
-                  id="auditKeyword"
-                  type="search"
-                  placeholder="Tìm theo người hoặc hành động..."
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
-                />
-              </div>
-
-              {/* Dropdown dạng pill, cùng kiểu PillSelect ở bộ lọc hồ sơ ngựa */}
-              <div className="relative">
-                <label htmlFor="auditActor" className="sr-only">
-                  Lọc theo người thực hiện
-                </label>
-                <select
-                  id="auditActor"
-                  value={actorId}
-                  onChange={(e) => setActorId(e.target.value)}
-                  className={`cursor-pointer appearance-none rounded-full border py-2 pr-9 pl-4 text-sm text-ink outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brass/40 ${
-                    actorId ? "border-brass bg-brass/10" : "border-stone/25 bg-white hover:border-stone/40"
-                  }`}
-                >
-                  <option value="">Mọi người thực hiện</option>
-                  {actors.map((actor) => (
-                    <option key={actor.UserID} value={actor.UserID}>
-                      {actor.fullName}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone" />
-              </div>
+          <div className="w-full max-w-xl space-y-3">
+            <div className="relative w-full">
+              <label htmlFor="auditKeyword" className="sr-only">
+                Tìm theo người thực hiện hoặc hành động
+              </label>
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" />
+              <input
+                id="auditKeyword"
+                type="search"
+                placeholder="Tìm theo người hoặc hành động..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="w-full rounded-lg border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+              />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Lọc theo nhóm hành động">
-              {categoryFilters.map((f) => (
-                <button
-                  key={f.label}
-                  type="button"
-                  onClick={() => setCategory(f.value)}
-                  aria-pressed={category === f.value}
-                  className={pillClass(category === f.value)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0 space-y-1.5">
+                <label htmlFor="auditActor" className="flex items-center gap-2 text-sm font-semibold text-stone">
+                  <UserRound aria-hidden="true" className="h-4 w-4 text-stone" />
+                  Người thực hiện
+                </label>
+                <div className="relative">
+                  <select
+                    id="auditActor"
+                    value={actorId}
+                    onChange={(e) => setActorId(e.target.value)}
+                    className={`w-full cursor-pointer appearance-none truncate rounded-lg border py-2 pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brass/40 ${
+                      actorId ? "border-brass bg-brass/10" : "border-stone/25 bg-white hover:border-stone/40"
+                    }`}
+                  >
+                    <option value="">Tất cả</option>
+                    {actors.map((actor) => (
+                      <option key={actor.UserID} value={actor.UserID}>
+                        {actor.fullName}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone" />
+                </div>
+              </div>
 
-            {/* Khoảng thời gian: có nhãn đứng trước như hàng "Sắp xếp theo" ở trang hồ sơ ngựa */}
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Khoảng thời gian">
-              <span className="mr-1 text-sm text-stone">Thời gian</span>
-              {TIME_RANGES.map((range) => (
-                <button
-                  key={range.key}
-                  type="button"
-                  onClick={() => setTimeRange(range.key)}
-                  aria-pressed={timeRange === range.key}
-                  className={pillClass(timeRange === range.key)}
-                >
-                  {range.label}
-                </button>
-              ))}
+              <div className="min-w-0 space-y-1.5">
+                <label htmlFor="auditTimeRange" className="flex items-center gap-2 text-sm font-semibold text-stone">
+                  <CalendarDays aria-hidden="true" className="h-4 w-4 text-stone" />
+                  Thời gian
+                </label>
+                <div className="relative">
+                  <select
+                    id="auditTimeRange"
+                    value={timeRange}
+                    onChange={(e) => setTimeRange(e.target.value)}
+                    className="w-full cursor-pointer appearance-none rounded-lg border border-stone/25 bg-white py-2 pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors hover:border-stone/40 focus-visible:ring-2 focus-visible:ring-brass/40"
+                  >
+                    {TIME_RANGES.map((range) => (
+                      <option key={range.key} value={range.key}>
+                        {range.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone" />
+                </div>
+              </div>
             </div>
           </div>
 

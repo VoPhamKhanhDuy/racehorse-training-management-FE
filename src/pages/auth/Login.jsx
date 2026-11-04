@@ -90,6 +90,7 @@ export default function Login() {
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <FormField
           label="Email"
+          variant="filledContrast"
           id="email"
           name="email"
           type="email"
@@ -102,6 +103,7 @@ export default function Login() {
         <div>
           <FormField
             label="Mật khẩu"
+            variant="filledContrast"
             id="password"
             name="password"
             type="password"

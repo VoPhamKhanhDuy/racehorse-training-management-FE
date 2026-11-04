@@ -1,18 +1,30 @@
 import { useState } from "react";
 
+const filledStyles = {
+  label: "mb-1.5 block text-sm font-medium text-gray-600",
+  input:
+    "w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-2 autofill:shadow-[inset_0_0_0_1000px_#f9fafb] autofill:[-webkit-text-fill-color:#232328]",
+  inputState: (error) =>
+    error ? "bg-red-50 ring-1 ring-red-300 focus:ring-red-300" : "bg-gray-50 focus:ring-[#F2A71B]",
+  iconPadding: "pl-11",
+  iconBox: "w-11 text-gray-400",
+  error: "text-red-500",
+};
+
 // Class theo kiểu hiển thị:
-// - "filled" (mặc định): ô nền xám bo tròn, viền cam khi focus — dùng ở Login/Register/...
-// - "line": kiểu "điền form giấy", chỉ có gạch chân, focus đổi màu cam (giao diện mới, đang thử)
+// - "filled" (mặc định): ô nền xám bo tròn, viền cam khi focus
+// - "filledContrast": nền xám và viền rõ hơn — dùng ở trang đăng nhập
+// - "line": kiểu "điền form giấy", chỉ có gạch chân, focus đổi màu cam
 const variantStyles = {
-  filled: {
-    label: "mb-1.5 block text-sm font-medium text-gray-600",
+  filled: filledStyles,
+  filledContrast: {
+    ...filledStyles,
     input:
-      "w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-2 autofill:shadow-[inset_0_0_0_1000px_#f9fafb] autofill:[-webkit-text-fill-color:#232328]",
+      "w-full rounded-xl border px-4 py-3 text-ink outline-none transition-colors placeholder:text-gray-500 focus:bg-white focus:ring-2 autofill:shadow-[inset_0_0_0_1000px_#f3f4f6] autofill:[-webkit-text-fill-color:#232328]",
     inputState: (error) =>
-      error ? "bg-red-50 ring-1 ring-red-300 focus:ring-red-300" : "bg-gray-50 focus:ring-[#F2A71B]",
-    iconPadding: "pl-11",
-    iconBox: "w-11 text-gray-400",
-    error: "text-red-500",
+      error
+        ? "border-red-300 bg-red-50 focus:ring-red-300"
+        : "border-gray-300 bg-gray-100 hover:border-gray-400 focus:border-brass focus:ring-brass/30",
   },
   line: {
     label: "mb-1 block font-serif text-sm font-semibold text-stone",
