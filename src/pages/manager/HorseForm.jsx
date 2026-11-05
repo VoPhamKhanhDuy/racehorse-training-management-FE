@@ -6,7 +6,7 @@ import SelectField from "../../components/SelectField";
 import HorsePhotoPicker from "./HorsePhotoPicker";
 import { getHorseById, getHorseOwners, getHorses, saveHorseWithPhoto } from "../../services/horseService";
 import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_GENDER_LABELS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../../data/horseOptions";
-import { getHorseAge, todayISO } from "../../utils/date";
+import { getHorseAge, todayISO, yearsFromToday } from "../../utils/date";
 import GenderChips from "./GenderChips";
 
 const emptyForm = { Ten: "", Giong: "", NgaySinh: "", GioiTinh: "", MauLong: "", CanNang: "", DongDoi: "", OwnerID: "", photo: null };
@@ -246,6 +246,7 @@ export default function HorseForm() {
               id="NgaySinh"
               name="NgaySinh"
               type="date"
+              min={yearsFromToday(-40)}
               max={todayISO()}
               value={form.NgaySinh}
               onChange={handleChange}

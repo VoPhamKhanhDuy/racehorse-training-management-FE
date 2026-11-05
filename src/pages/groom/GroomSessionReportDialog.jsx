@@ -8,7 +8,7 @@ import useAuth from "../../hooks/useAuth";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { submitSessionReport } from "../../services/sessionReviewMock";
 import { formatDate, weekdayName } from "../../utils/date";
-import { HORSE_REACTIONS, REPORT_DISTANCE_MAX, REPORT_NOTE_MAX, REPORT_RESULTS, reactionLabel, resultLabel } from "../../utils/sessionReview";
+import { HORSE_REACTIONS, REPORT_DISTANCE_MAX, hasSessionStarted, REPORT_NOTE_MAX, REPORT_RESULTS, reactionLabel, resultLabel } from "../../utils/sessionReview";
 import { formatKm, formatTimeRange } from "../../utils/trainingFormat";
 
 const SECTION_TITLE = "font-serif text-base font-semibold text-[#2b2118]";
@@ -42,6 +42,7 @@ export default function GroomSessionReportDialog({ session, record, onClose, onS
   };
 
   const notTrained = form.result === "NotTrained";
+  const notStarted = !report && !hasSessionStarted(session); // buổi chưa đến giờ: chỉ xem thông tin, không báo cáo được
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,9 +77,9 @@ export default function GroomSessionReportDialog({ session, record, onClose, onS
     </div>
   );
 
-  const footer = report ? (
+  const footer = report || notStarted ? (
     <div className="flex justify-end">
-      <button type="button" onClick={onClose} className="btn-primary">
+      <button type="button" onClick={onClose} className={notStarted ? OUTLINE_BUTTON : "btn-primary"}>
         Đóng
       </button>
     </div>
@@ -129,6 +130,8 @@ export default function GroomSessionReportDialog({ session, record, onClose, onS
             )}
           </dl>
         </section>
+      ) : notStarted ? (
+        <p className="mt-6 border-t border-stone/15 pt-6 text-sm text-[#6b6b6b]">Chưa đến giờ tập, chưa thể báo cáo buổi này.</p>
       ) : (
         <form id="sessionReportForm" onSubmit={handleSubmit} noValidate className="mt-6 space-y-5 border-t border-stone/15 pt-6">
           <div className="grid gap-5 sm:grid-cols-2">

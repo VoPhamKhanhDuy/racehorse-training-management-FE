@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "../../components/Modal";
 import { todayISO } from "../../utils/date";
+import DateInput from "../../components/DateInput";
 
 const NOTE_MAX = 120;
 const FIELD =
@@ -30,9 +31,8 @@ export default function PaymentConfirmDialog({ title, message, dateLabel, onConf
             <label htmlFor="paymentDate" className="mb-1.5 block text-[13px] font-semibold text-[#4a3f33]">
               {dateLabel}
             </label>
-            <input
+            <DateInput
               id="paymentDate"
-              type="date"
               max={todayISO()}
               value={date}
               onChange={(e) => {

@@ -5,6 +5,7 @@ import roleMenus from "../routes/roleMenus";
 import roleHomePaths from "../routes/roleHomePaths";
 import usePlanApprovalBadge from "../hooks/usePlanApprovalBadge";
 import useRaceRegistrationBadge from "../hooks/useRaceRegistrationBadge";
+import useSupplyRequestBadge from "../hooks/useSupplyRequestBadge";
 
 // Mục menu hiện huy hiệu "Mới" khi có thông báo duyệt kế hoạch: Trainer → Giáo án tập luyện, Chủ ngựa → Lịch trình
 const BADGE_PATHS = ["/trainer/plans", "/owner/schedule"];
@@ -18,7 +19,9 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
   const menuItems = roleMenus[user.roleId] || [];
   const newCount = usePlanApprovalBadge(user.roleId);
   const raceCount = useRaceRegistrationBadge(user.roleId);
-  const badgeCountOf = (path) => (BADGE_PATHS.includes(path) ? newCount : RACE_BADGE_PATHS.includes(path) ? raceCount : 0);
+  const supplyCount = useSupplyRequestBadge(user.roleId);
+  const badgeCountOf = (path) =>
+    BADGE_PATHS.includes(path) ? newCount : RACE_BADGE_PATHS.includes(path) ? raceCount : path === "/manager/supplies" ? supplyCount : 0;
 
   return (
     <>

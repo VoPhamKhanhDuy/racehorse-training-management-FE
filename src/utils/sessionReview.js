@@ -65,27 +65,40 @@ export function isSessionPast(session, now = new Date()) {
   return new Date(`${session.trainingDate}T${time}`) < now;
 }
 
+// Buổi đã ĐẾN GIỜ BẮT ĐẦU chưa? (Groom chỉ được báo cáo, Trainer chỉ được đánh giá khi đã đến giờ) — thiếu giờ thì coi là đầu ngày
+export function hasSessionStarted(session, now = new Date()) {
+  if (!session.trainingDate) return false;
+  return new Date(`${session.trainingDate}T${session.startTime || "00:00"}`) <= now;
+}
+
+// Báo cáo / đánh giá chỉ có giá trị khi buổi đã đến giờ bắt đầu; buổi tương lai bỏ qua mọi bản ghi (kể cả bản ghi lỗi còn sót)
+const validRecord = (session, record) => (record && hasSessionStarted(session) ? record : undefined);
+
 // record: bản ghi báo cáo / đánh giá của buổi (services/sessionReviewMock.js) hoặc undefined
 export function sessionState(session, record) {
+  record = validRecord(session, record);
   if (session.status === "Cancelled") return "Cancelled";
   if (record?.review) return "Reviewed";
   if (record?.report) return record.report.result;
   if (session.status === "Completed") return "Completed";
   if (session.status === "InProgress") return "InProgress";
-  return isSessionPast(session) ? "AwaitingReport" : "Scheduled";
+  return hasSessionStarted(session) ? "AwaitingReport" : "Scheduled";
 }
 
 // Tính vào "hoàn thành" / km thực tế: có báo cáo thì theo kết quả Groom báo, không thì theo trạng thái BE
 export function isCompletedSession(session, record) {
+  record = validRecord(session, record);
   return record?.report ? record.report.result === "Completed" : session.status === "Completed";
 }
 
 export function actualDistanceOf(session, record) {
+  record = validRecord(session, record);
   if (record?.report) return record.report.actualDistanceKm;
   return session.status === "Completed" ? session.actualDistanceKm : null;
 }
 
 export function scoreOf(session, record) {
+  record = validRecord(session, record);
   return record?.review?.score ?? session.performanceScore ?? null;
 }
 
@@ -97,10 +110,13 @@ export const STAGES = [
   { code: "Reviewed", label: "Đã đánh giá" },
 ];
 
+// Chưa đến giờ bắt đầu → luôn "Chưa diễn ra"; đã đến giờ → Chờ báo cáo / Chờ đánh giá / Đã đánh giá
 export function sessionStage(session, record) {
+  record = validRecord(session, record);
+  if (!hasSessionStarted(session)) return "Upcoming";
   if (record?.review) return "Reviewed";
   if (record?.report) return "AwaitingReview";
-  return isSessionPast(session) ? "AwaitingReport" : "Upcoming";
+  return "AwaitingReport";
 }
 
 // Màu chữ cột "Trạng thái" của bảng buổi tập theo 4 tình trạng (màu có sẵn trong hệ thống)

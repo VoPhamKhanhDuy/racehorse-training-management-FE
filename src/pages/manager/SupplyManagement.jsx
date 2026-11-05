@@ -4,6 +4,7 @@ import { ChevronDown, Layers, Package, PackageOpen, Search, SearchX, Tags } from
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import StockAdjustModal from "./StockAdjustModal";
+import SupplyRequestsPanel from "./SupplyRequestsPanel";
 import SupplyRow from "./SupplyRow";
 import { adjustStock, deleteSupply, getStaffMembers, getSupplies } from "../../services/supplyService";
 
@@ -127,6 +128,8 @@ export default function SupplyManagement() {
         <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <div className="space-y-5">
+          <SupplyRequestsPanel />
+
           {/* Dải số liệu trong 1 card trắng (giống /manager/staff); vạch dọc ngăn từng ô */}
           <div className="grid grid-cols-3 divide-x divide-stone/20 overflow-hidden rounded-lg border border-stone/15 bg-white shadow-sm">
             {stats.map((stat) => (

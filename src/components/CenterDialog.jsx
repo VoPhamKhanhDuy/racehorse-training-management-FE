@@ -5,6 +5,12 @@ import { X } from "lucide-react";
 // Đóng bằng nút X, phím Esc hoặc bấm nền (không đóng khi busy). header: nội dung đầu; footer: hàng nút cuối (có thể bỏ trống).
 export default function CenterDialog({ label, header, footer, onClose, busy = false, wide = false, narrow = false, maxWidth, children }) {
   const closeRef = useRef(null);
+  const bodyRef = useRef(null);
+
+  // Luôn mở ở đầu nội dung (không giữ vị trí cuộn)
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, []);
 
   useEffect(() => {
     const previousFocus = document.activeElement;
@@ -51,7 +57,9 @@ export default function CenterDialog({ label, header, footer, onClose, busy = fa
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 sm:px-8">{children}</div>
+        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 sm:px-8">
+          {children}
+        </div>
         {footer && <div className="border-t border-stone/15 px-6 pt-4 pb-6 sm:px-8">{footer}</div>}
       </div>
     </div>

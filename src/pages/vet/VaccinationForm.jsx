@@ -16,7 +16,7 @@ import {
 } from "../../services/vetService";
 import { addAuditLog } from "../../services/auditService";
 import { DUPLICATE_PENDING_VACCINE, VACCINE_PENDING, VACCINE_TYPE_LIMITS, VACCINE_TYPES } from "../../data/vaccinationOptions";
-import { todayISO } from "../../utils/date";
+import { todayISO, yearsFromToday } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
 const sameText = (a, b) => a.toLocaleLowerCase("vi") === b.toLocaleLowerCase("vi");
@@ -221,6 +221,7 @@ export default function VaccinationForm() {
               name="NgayHen"
               type="date"
               min={minDate}
+              max={yearsFromToday(2)}
               value={form.NgayHen}
               onChange={(e) => setField("NgayHen", e.target.value)}
               error={errors.NgayHen}

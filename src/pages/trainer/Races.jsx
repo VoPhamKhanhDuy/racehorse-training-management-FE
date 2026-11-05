@@ -18,7 +18,7 @@ import {
 import { buildDirectRegistration, listRaceRegistrations, subscribeRaceRegistrations, syncPendingRegistrations } from "../../services/raceRegistrationMock";
 import { formatDayMonth, todayISO } from "../../utils/date";
 import { RR_STATUS } from "../../utils/raceRegistration";
-import { hasResult } from "../../utils/raceResult";
+import { isResultComplete } from "../../utils/raceResult";
 import useAuth from "../../hooks/useAuth";
 
 const TABS = [
@@ -29,7 +29,7 @@ const TABS = [
 // Kết quả thi đấu (/trainer/races): bảng theo giải — xem ngựa nào đã đăng ký giải nào và nhập kết quả sau giải.
 // KHÔNG đăng ký trực tiếp ở đây: đăng ký thực hiện ở /trainer/race-registrations (luồng Chủ ngựa → Quản lý duyệt).
 // Tab Sắp tới: bấm "Xem" → khung danh sách ngựa của giải, vẫn cho hủy đăng ký (không cần duyệt — cần khi ngựa bị khóa tập).
-// Tab Đã diễn ra: bấm "Nhập kết quả" → khung ghi thứ hạng + tiền thưởng cho từng ngựa.
+// Tab Đã diễn ra: bấm "Xem kết quả" → khung thứ hạng + tiền thưởng (CHỈ ĐỌC — kết quả do Quản lý CLB nhập ở /manager/race-results).
 // Cảnh báo khóa tập: ngựa đang khóa mà còn đăng ký giải sắp tới → dải cảnh báo, "Xử lý" mở khung của giải đó.
 export default function Races() {
   const today = todayISO();
@@ -147,18 +147,10 @@ export default function Races() {
     }
   };
 
-  const handleSaved = (updated, text) => {
-    setRegistrations((prev) => prev.map((r) => updated.find((u) => u.RaceID === r.RaceID && u.HorseID === r.HorseID) ?? r));
-    if (text) {
-      setOpenRaceId(null);
-      setToast({ text });
-    }
-  };
-
   return (
     <div className="mx-auto max-w-[1400px]">
       <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">Kết quả thi đấu</h1>
-      <p className="mt-1 text-sm text-[#6b6055]">Theo dõi ngựa đã đăng ký từng giải và nhập kết quả sau giải.</p>
+      <p className="mt-1 text-sm text-[#6b6055]">Theo dõi kết quả thi đấu của ngựa do bạn huấn luyện.</p>
       <p className="mt-0.5 mb-4 text-[13px] text-[#6b6055]">
         Đăng ký thi đấu thực hiện tại mục{" "}
         <Link to="/trainer/race-registrations" className="font-semibold text-[#c2570c] hover:underline">
@@ -259,7 +251,6 @@ export default function Races() {
             setInfoRaceId(raceId);
           }}
           onCancelRegistration={handleCancelRegistration}
-          onSaved={handleSaved}
         />
       )}
       {infoRaceId != null && races.find((r) => r.RaceID === infoRaceId) && (
@@ -278,8 +269,7 @@ export default function Races() {
           role="head_trainer"
           userName={user.fullName}
           readOnly
-          result={horseViewRace.Ngay < today ? { hasResult: hasResult(horseViewReg), thuHang: horseViewReg.ThuHang, tienThuong: horseViewReg.TienThuong } : null}
-          onEditResult={horseViewRace.Ngay < today ? backToRace : undefined}
+          result={horseViewRace.Ngay < today ? { hasResult: isResultComplete(horseViewReg), thuHang: horseViewReg.ThuHang, tienThuong: horseViewReg.TienThuong } : null}
           onBack={horseView.fromRace ? backToRace : undefined}
           onClose={() => setHorseView(null)}
           onChanged={() => setHorseView(null)}

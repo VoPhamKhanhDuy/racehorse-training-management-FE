@@ -17,11 +17,12 @@ import { addDays, todayISO } from "../../utils/date";
 import { inRange, periodRange } from "../../utils/dateRange";
 import { getCellRepresentative, getVaccineColumns } from "../../utils/vaccinationMatrix";
 import { toUserID } from "../../utils/userId";
+import DateInput from "../../components/DateInput";
 
 const PAGE_SIZE = 10;
 const VIEW_MODES = [
-  { value: "matrix", label: "Ma trận" },
-  { value: "list", label: "Danh sách" },
+  { value: "matrix", label: "Tổng hợp" },
+  { value: "list", label: "Danh sách mũi tiêm" },
 ];
 const STATUS_OPTIONS = [
   { value: "", label: "Trạng thái: Tất cả" },
@@ -295,11 +296,11 @@ export default function Vaccinations() {
               <>
                 <label className="flex items-center gap-2 text-sm whitespace-nowrap text-[#6b6b6b]">
                   Từ ngày
-                  <input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => setFilter({ from: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
+                  <DateInput value={filters.from} max={filters.to || undefined} onChange={(e) => setFilter({ from: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
                 </label>
                 <label className="flex items-center gap-2 text-sm whitespace-nowrap text-[#6b6b6b]">
                   Đến ngày
-                  <input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => setFilter({ to: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
+                  <DateInput value={filters.to} min={filters.from || undefined} onChange={(e) => setFilter({ to: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
                 </label>
               </>
             )}
@@ -338,7 +339,7 @@ export default function Vaccinations() {
                     <th className={TH}>Loại</th>
                     <th className={TH}>Ngày hẹn</th>
                     <th className={TH}>Thời hạn</th>
-                    <th className={TH}>Thao tác</th>
+                    <th className={TH}>Xử lý</th>
                   </tr>
                 </thead>
                 <tbody className="[&>tr:last-child>td]:border-b-0">

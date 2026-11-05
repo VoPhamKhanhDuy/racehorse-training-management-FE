@@ -1,19 +1,21 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import CenterDialog from "../../components/CenterDialog";
-import ConfirmDialog from "../../components/ConfirmDialog";
-import HorseAvatar from "../../components/HorseAvatar";
-import { HEALTH_INCIDENT_TYPES, INCIDENT_DESCRIPTION_MAX, INCIDENT_STATUS } from "../../data/incidentOptions";
-import { formatDate, formatDayMonth } from "../../utils/date";
+import CenterDialog from "./CenterDialog";
+import ConfirmDialog from "./ConfirmDialog";
+import HorseAvatar from "./HorseAvatar";
+import { HEALTH_INCIDENT_TYPES, INCIDENT_STATUS } from "../data/incidentOptions";
+import { formatDate, formatDayMonth } from "../utils/date";
 
 const OUTLINE_BUTTON =
   "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-[#1f1f1f] transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
 const LABEL = "text-xs text-[#6b6055]";
-const GROUP_TITLE = "font-serif text-base font-semibold text-[#2b2118]";
+const GROUP_TITLE = "text-base font-semibold text-[#1f1f1f]";
+const DISABLED_LINK =
+  "inline-flex h-10 cursor-not-allowed items-center rounded-[4px] border border-[#E3E3E3] bg-white px-5 text-sm font-semibold text-[#8a8a8a]";
 
-// Mỗi trạng thái hiện đúng 1 nút chính: Mới → "Tiếp nhận"; Đang xử lý → "Hoàn tất xử lý" (bắt buộc ghi chú); Đã xử lý → không còn nút
+// Mỗi trạng thái hiện đúng 1 nút chính: Mới → "Nhận xử lý"; Đang xử lý (do chính mình nhận) → "Hoàn tất xử lý" (bắt buộc ghi chú); Đã xử lý → không còn nút
 const NEXT_ACTION = {
-  [INCIDENT_STATUS.NEW]: { status: INCIDENT_STATUS.IN_PROGRESS, label: "Tiếp nhận" },
+  [INCIDENT_STATUS.NEW]: { status: INCIDENT_STATUS.IN_PROGRESS, label: "Nhận xử lý" },
   [INCIDENT_STATUS.IN_PROGRESS]: { status: INCIDENT_STATUS.DONE, label: "Hoàn tất xử lý" },
 };
 
@@ -30,30 +32,33 @@ function Field({ label, children }) {
   );
 }
 
-// Chi tiết sự cố sức khỏe ngựa cho Bác sĩ thú y — MODAL giữa màn hình (rộng ≤ 620px, đầu + chân cố định, chỉ thân cuộn):
-// Thông tin, Tiến trình 3 bước, Xử lý (ghi chú khi Đang xử lý), Việc liên quan (ghi lần khám / đặt lệnh khóa). Đổi trạng thái qua hộp xác nhận.
+// Chi tiết sự cố — MODAL giữa màn hình DÙNG CHUNG cho Thú y (role="veterinarian") và Quản lý (role="club_manager"), rộng ≤ 620px, đầu + chân cố định, chỉ thân cuộn:
+// Thông tin, Tiến trình 3 bước, Xử lý (không có ô ghi chú), Việc liên quan (CHỈ Thú y + sự cố sức khỏe). Đổi trạng thái qua hộp xác nhận.
+// Quy tắc nhận: sự cố sức khỏe cả Thú y lẫn Quản lý nhận được — ai "Nhận xử lý" trước thì giữ, người kia chỉ xem ("Đang được xử lý bởi …");
+// chuồng / thiết bị / khác chỉ Quản lý. Không thể "Hoàn tất" khi chưa "Nhận". userId: UserID của người đang đăng nhập (so với report.HandledBy).
 // onUpdate(report, { TrangThai, GhiChuXuLy }) trả Promise; lỗi thì ném ra để hiện trong khung.
-export default function VetIncidentDialog({ report, horse, stable, lockedSince, onClose, onUpdate }) {
-  const [note, setNote] = useState(report.GhiChuXuLy ?? "");
+export default function IncidentDetailDialog({ role, userId, report, horse, stable, lockedSince, onClose, onUpdate }) {
   const [pendingAction, setPendingAction] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [zoomed, setZoomed] = useState(false);
 
-  const action = NEXT_ACTION[report.TrangThai];
+  const isHealth = HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo);
+  const isVet = role === "veterinarian";
+  const canTakeType = isVet ? isHealth : true; // Thú y chỉ sức khỏe; Quản lý mọi loại
+  // Đã có người nhận và không phải mình → chỉ xem
+  const heldByOther = report.TrangThai !== INCIDENT_STATUS.NEW && report.HandledBy != null && report.HandledBy !== userId;
+  const action = canTakeType && !heldByOther ? NEXT_ACTION[report.TrangThai] : undefined;
   const isNew = report.TrangThai === INCIDENT_STATUS.NEW;
   const inProgress = report.TrangThai === INCIDENT_STATUS.IN_PROGRESS;
   const isDone = report.TrangThai === INCIDENT_STATUS.DONE;
-  const noteTooLong = note.trim().length > INCIDENT_DESCRIPTION_MAX;
-  // Hoàn tất bắt buộc có ghi chú; Tiếp nhận thì không
-  const needsNote = action?.status === INCIDENT_STATUS.DONE && note.trim() === "";
-  const isHealth = HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo);
+  const relatedEnabled = inProgress && !heldByOther;
 
   const handleConfirm = async () => {
     setSaving(true);
     setError("");
     try {
-      await onUpdate(report, { TrangThai: pendingAction.status, GhiChuXuLy: note });
+      await onUpdate(report, { TrangThai: pendingAction.status, GhiChuXuLy: report.GhiChuXuLy ?? "" });
       setPendingAction(null);
     } catch (err) {
       setPendingAction(null);
@@ -71,14 +76,14 @@ export default function VetIncidentDialog({ report, horse, stable, lockedSince, 
       key: "accepted",
       current: inProgress,
       reached: inProgress || isDone,
-      text: inProgress || isDone ? `Tiếp nhận — ${report.HandlerName ?? "—"}${inProgress && handledAt ? `, ${handledAt}` : ""}` : "Chưa tiếp nhận",
+      text: inProgress || isDone ? `Nhận xử lý — ${report.HandlerName ?? "—"}${inProgress && handledAt ? `, ${handledAt}` : ""}` : "Chưa có người nhận xử lý",
     },
     {
       key: "done",
       current: isDone,
       reached: isDone,
       text: isDone ? `Hoàn tất${handledAt ? ` — ${handledAt}` : ""}` : "Chưa hoàn tất",
-      note: isDone ? report.GhiChuXuLy || "Không có ghi chú xử lý" : "",
+      note: isDone ? report.GhiChuXuLy : "",
     },
   ];
 
@@ -103,8 +108,7 @@ export default function VetIncidentDialog({ report, horse, stable, lockedSince, 
         </button>
         {action && (
           <span className="flex items-center gap-3">
-            {needsNote && <span className="text-[13px] text-[#6b6055]">Cần ghi chú trước khi hoàn tất</span>}
-            <button type="button" disabled={saving || noteTooLong || needsNote} onClick={() => setPendingAction(action)} className="btn-primary">
+            <button type="button" disabled={saving} onClick={() => setPendingAction(action)} className="btn-primary">
               {action.label}
             </button>
           </span>
@@ -163,40 +167,47 @@ export default function VetIncidentDialog({ report, horse, stable, lockedSince, 
 
         <section className="mt-5">
           <h3 className={GROUP_TITLE}>Xử lý</h3>
-          {isNew && <p className="mt-2 text-sm text-[#6b6055]">Nhấn "Tiếp nhận" để bắt đầu xử lý.</p>}
-          {inProgress && (
+          {isNew && (
+            <p className="mt-2 text-sm text-[#6b6055]">{canTakeType ? "Nhấn 'Nhận xử lý' để bắt đầu." : "Sự cố này do Quản lý CLB xử lý."}</p>
+          )}
+          {inProgress && heldByOther && <p className="mt-2 text-sm font-semibold text-[#1f1f1f]">Đang được xử lý bởi {report.HandlerName ?? "người khác"}</p>}
+          {inProgress && !heldByOther && (
             <>
               {lockedSince && <p className="mt-2 text-sm font-semibold text-[#1f1f1f]">Ngựa đang bị khóa tập từ {formatDayMonth(lockedSince)}</p>}
-              <label htmlFor="vetIncidentNote" className="mt-2 block text-xs text-[#6b6055]">
-                Ghi chú xử lý
-              </label>
-              <textarea
-                id="vetIncidentNote"
-                rows={4}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ghi chú xử lý"
-                className="mt-1 w-full resize-none rounded-[4px] border border-[#E3E3E3] bg-white px-3 py-2 text-sm text-[#2b2118] outline-none placeholder:text-[#6b6055]/70 focus:border-[#c2570c]"
-              />
-              <p className={`mt-1 text-right text-[13px] tabular-nums ${noteTooLong ? "text-[#c0262d]" : "text-[#6b6055]"}`}>
-                {note.trim().length}/{INCIDENT_DESCRIPTION_MAX}
-              </p>
+              <p className="mt-2 text-sm text-[#6b6055]">Nhấn 'Hoàn tất xử lý' khi đã xử lý xong.</p>
             </>
           )}
           {isDone && <p className="mt-2 text-sm text-[#6b6055]">Sự cố đã được xử lý.</p>}
         </section>
 
-        {isHealth && (
+        {/* Việc liên quan: chỉ Thú y + sự cố sức khỏe, ẩn khi Đã xử lý; Mới → vô hiệu; Đang xử lý → chỉ người đã nhận bấm được */}
+        {isVet && isHealth && !isDone && (
           <section className="mt-5">
             <h3 className={GROUP_TITLE}>Việc liên quan</h3>
             <div className="mt-3 flex flex-wrap gap-3">
-              <Link to={`/vet/exams/new?horse=${report.HorseID}`} className={OUTLINE_BUTTON}>
-                Ghi lần khám
-              </Link>
-              <Link to={`/vet/locks/new?horse=${report.HorseID}`} className={OUTLINE_BUTTON}>
-                Đặt lệnh khóa huấn luyện
-              </Link>
+              {relatedEnabled ? (
+                <>
+                  <Link to={`/vet/exams/new?horse=${report.HorseID}`} className={OUTLINE_BUTTON}>
+                    Ghi lần khám
+                  </Link>
+                  <Link to={`/vet/locks/new?horse=${report.HorseID}`} className={OUTLINE_BUTTON}>
+                    Đặt lệnh khóa huấn luyện
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <span aria-disabled="true" className={DISABLED_LINK}>
+                    Ghi lần khám
+                  </span>
+                  <span aria-disabled="true" className={DISABLED_LINK}>
+                    Đặt lệnh khóa huấn luyện
+                  </span>
+                </>
+              )}
             </div>
+            {!relatedEnabled && (
+              <p className="mt-2 text-[13px] text-[#6b6b6b]">{isNew ? "Nhận xử lý để thực hiện các việc này." : "Chỉ người đang xử lý mới thực hiện được."}</p>
+            )}
           </section>
         )}
       </CenterDialog>
@@ -213,7 +224,7 @@ export default function VetIncidentDialog({ report, horse, stable, lockedSince, 
         message={
           pendingAction?.status === INCIDENT_STATUS.DONE
             ? `Đánh dấu sự cố của ${report.HorseName} là đã xử lý? Sau đó không thể đổi lại.`
-            : `Tiếp nhận xử lý sự cố của ${report.HorseName}?`
+            : `Nhận xử lý sự cố của ${report.HorseName}?`
         }
         confirmLabel="Xác nhận"
         danger={false}

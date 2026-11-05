@@ -13,6 +13,7 @@ import { examOutcome } from "../../utils/examOutcome";
 import { inRange, periodRange } from "../../utils/dateRange";
 import { daysFromToday, todayISO } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
+import DateInput from "../../components/DateInput";
 
 const PAGE_SIZE = 10;
 const TH = "border-r border-[#E3E3E3] px-4 text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
@@ -205,11 +206,11 @@ export default function MedicalExams() {
               <>
                 <label className="flex items-center gap-2 text-sm whitespace-nowrap text-[#6b6b6b]">
                   Từ ngày
-                  <input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => setFilter({ from: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
+                  <DateInput value={filters.from} max={filters.to || undefined} onChange={(e) => setFilter({ from: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
                 </label>
                 <label className="flex items-center gap-2 text-sm whitespace-nowrap text-[#6b6b6b]">
                   Đến ngày
-                  <input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => setFilter({ to: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
+                  <DateInput value={filters.to} min={filters.from || undefined} onChange={(e) => setFilter({ to: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
                 </label>
               </>
             )}
@@ -247,7 +248,7 @@ export default function MedicalExams() {
                     <th className={TH}>Kết quả khám</th>
                     <th className={TH}>Vị trí chấn thương</th>
                     <th className={TH}>Bác sĩ khám</th>
-                    <th className={TH}>Thao tác</th>
+                    <th className={TH}>Chi tiết</th>
                   </tr>
                 </thead>
                 <tbody className="[&>tr:last-child>td]:border-b-0">

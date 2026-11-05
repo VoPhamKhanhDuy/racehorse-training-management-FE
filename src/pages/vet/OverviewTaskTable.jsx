@@ -9,7 +9,7 @@ export const TH = "border-r border-[#E3E3E3] px-4 text-[13px] font-semibold text
 export const TD = "border-r border-b border-[#E3E3E3] px-4 py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 
 // Bảng "Cần xử lý" (bảng trung tính: nền trắng, viền #E3E3E3, header #F5F5F5, kẻ ô, không zebra, hover #FAFAFA, không cuộn ngang).
-// Cột: STT | Ngày | Ngựa | Loại việc | Nội dung | Tình trạng (chữ màu đậm, không chấm: "Mới" / "Quá hạn" đỏ, "Cần tái khám" cam, còn lại chữ thường) | Thao tác (link cam theo loại việc).
+// Cột: STT | Ngày | Ngựa | Loại việc | Nội dung | Tình trạng (chữ #1f1f1f thường; chấm cam 6px chỉ cho sự cố "Mới" và "Quá hạn n ngày" — tone "danger") | Xử lý (link cam theo loại việc).
 // items: [{ key, date, horse, kind, content, status, tone (danger | warn | undefined), action: { label, to } }] đã lọc + sắp xếp; phân trang 10 dòng. unit: đơn vị ở chân bảng.
 export default function OverviewTaskTable({ items, emptyText }) {
   const [page, setPage] = useState(1);
@@ -42,7 +42,7 @@ export default function OverviewTaskTable({ items, emptyText }) {
             <th className={TH}>Loại việc</th>
             <th className={TH}>Nội dung</th>
             <th className={TH}>Tình trạng</th>
-            <th className={TH}>Thao tác</th>
+            <th className={TH}>Xử lý</th>
           </tr>
         </thead>
         <tbody className="[&>tr:last-child>td]:border-b-0">
@@ -66,7 +66,10 @@ export default function OverviewTaskTable({ items, emptyText }) {
                 {item.otherCount > 0 && <span className="block text-xs text-[#6b6b6b]">+{item.otherCount} việc khác</span>}
               </td>
               <td className={TD}>
-                <span className={`block truncate ${item.tone === "danger" ? "font-semibold text-[#c0262d]" : item.tone === "warn" ? "font-semibold text-[#c2570c]" : ""}`}>{item.status}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {item.tone === "danger" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c2570c]" aria-hidden="true" />}
+                  <span className="truncate">{item.status}</span>
+                </span>
               </td>
               <td className={TD}>
                 <Link to={item.action.to} className="font-semibold whitespace-nowrap text-[#c2570c] hover:underline">

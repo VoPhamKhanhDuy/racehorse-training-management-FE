@@ -1,8 +1,7 @@
 import { useState } from "react";
 import Modal from "../../components/Modal";
-import TextAreaField from "../../components/TextAreaField";
 import useAuth from "../../hooks/useAuth";
-import { CARE_NOTE_MAX, completeCareTask } from "../../services/careLogMock";
+import { completeCareTask } from "../../services/careLogMock";
 import { toMinutes } from "../../config/careTaskSchedule";
 
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
@@ -163,19 +162,7 @@ export default function GroomCareTable({ tasks, logs, nowMin }) {
               {target.label} – {target.horseName}
               {target.detail ? ` (${target.detail})` : ""}. Xác nhận xong không hoàn tác được.
             </p>
-            <div className="mt-4">
-              <TextAreaField
-                label="Ghi chú"
-                id="careNote"
-                rows={3}
-                value={note}
-                maxLength={CARE_NOTE_MAX}
-                radiusClass="rounded-[4px]"
-                placeholder="Không bắt buộc"
-                onChange={(e) => setNote(e.target.value)}
-                error={error}
-              />
-            </div>
+            {error && <p className="mt-3 text-sm text-alert">{error}</p>}
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"

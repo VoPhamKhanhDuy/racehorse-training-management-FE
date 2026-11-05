@@ -36,6 +36,7 @@ import Races from "./pages/trainer/Races";
 import RaceRegistrations from "./pages/trainer/RaceRegistrations";
 import OwnerRaces from "./pages/owner/OwnerRaces";
 import RaceRegistrationApprovals from "./pages/manager/RaceRegistrationApprovals";
+import RaceResults from "./pages/manager/RaceResults";
 import HorseProfiles from "./pages/trainer/HorseProfiles";
 import HorseProfile from "./pages/trainer/HorseProfile";
 import MedicalExams from "./pages/vet/MedicalExams";
@@ -174,6 +175,7 @@ function App() {
         <Route path="/manager/horses/:id/edit" element={<HorseForm />} />
         <Route path="/manager/approvals" element={<AccountApprovals />} />
         <Route path="/manager/race-registrations" element={<RaceRegistrationApprovals />} />
+        <Route path="/manager/race-results" element={<RaceResults />} />
         <Route path="/manager/finance" element={<ManagerFinance />} />
         <Route path="/manager/staff" element={<StaffManagement />} />
         <Route path="/manager/staff/new" element={<CreateStaffAccount />} />

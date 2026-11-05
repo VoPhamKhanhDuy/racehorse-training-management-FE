@@ -570,7 +570,7 @@ export default function ManagerFinance() {
                               ) : rank === NO_RANK ? (
                                 <span className="text-sm text-[#6b6055]">Không xếp hạng</span>
                               ) : (
-                                <span className="text-sm text-[#6b6055]">Chờ HLV nhập kết quả</span>
+                                <span className="text-sm text-[#6b6055]">Chưa có kết quả</span>
                               )}
                             </td>
                             <td className={`${CELL} text-right whitespace-nowrap`}>

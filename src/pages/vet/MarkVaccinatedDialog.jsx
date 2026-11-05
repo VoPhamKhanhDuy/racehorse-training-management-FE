@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Modal from "../../components/Modal";
 import FormField from "../../components/FormField";
-import { addDays, todayISO } from "../../utils/date";
+import { addDays, todayISO, yearsFromToday } from "../../utils/date";
 
 // Hộp xác nhận đã tiêm. "Hẹn lần tiếp theo" tùy chọn (để trống được; phải sau hôm nay) — có nhập thì tạo thêm lịch chờ tiêm.
 // Không có trường ngày tiêm thực tế (ERD không có). Cùng kiểu nút với ConfirmDialog.
@@ -31,6 +31,7 @@ export default function MarkVaccinatedDialog({ item, horseName, loading, error, 
           id="nextVaccineDate"
           type="date"
           min={minNext}
+          max={yearsFromToday(2)}
           value={nextDate}
           onChange={(e) => {
             setNextDate(e.target.value);

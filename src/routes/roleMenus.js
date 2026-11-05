@@ -56,6 +56,7 @@ const roleMenus = {
     { label: "Quản lý hồ sơ ngựa", path: "/manager/horses", icon: FolderOpen },
     { label: "Duyệt tài khoản", path: "/manager/approvals", icon: UserCheck },
     { label: "Đăng ký thi đấu", path: "/manager/race-registrations", icon: Trophy },
+    { label: "Kết quả thi đấu", path: "/manager/race-results", icon: Trophy },
     { label: "Quản lý nhân sự", path: "/manager/staff", icon: Users },
     { label: "Quản lý vật tư", path: "/manager/supplies", icon: Package },
     { label: "Sự cố", path: "/manager/incidents", icon: TriangleAlert },

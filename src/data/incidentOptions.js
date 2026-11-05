@@ -10,6 +10,9 @@ export const FACILITY_INCIDENT_TYPES = ["Chuồng/thiết bị hỏng"];
 // Mô tả (MoTa): không bắt buộc, tối đa 300 ký tự
 export const INCIDENT_DESCRIPTION_MAX = 300;
 
+// Ghi chú xử lý (GhiChuXuLy) khi hoàn tất: bắt buộc, tối đa 500 ký tự
+export const INCIDENT_HANDLE_NOTE_MAX = 500;
+
 // Ảnh: chỉ jpg/png, tối đa 5MB
 export const INCIDENT_IMAGE = {
   accept: "image/jpeg,image/png",

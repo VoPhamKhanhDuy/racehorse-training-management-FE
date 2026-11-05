@@ -1,9 +1,16 @@
 // Flow 5: giải đua, đăng ký, thứ hạng và tiền thưởng trên /api/races.
 import { apiRequest } from "./apiClient";
+// TODO(BE): Tạm thời, chờ BE cấp quyền cho endpoint lưu kết quả; xóa fallback (raceResultMock) khi xong.
+import {
+  applyLocalResults,
+  listUnsyncedResults,
+  markResultSynced,
+} from "./raceResultMock";
 
 function pick(obj, ...keys) {
   for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
+    if (obj != null && obj[key] !== undefined && obj[key] !== null)
+      return obj[key];
   }
   return undefined;
 }
@@ -51,7 +58,7 @@ export async function getRaces() {
 
 export async function getRaceRegistrations() {
   const rows = await apiRequest("/races/registrations");
-  return (rows ?? []).map(mapRegistration);
+  return applyLocalResults((rows ?? []).map(mapRegistration));
 }
 
 export async function registerHorseForRace(raceId, horseId) {
@@ -63,14 +70,19 @@ export async function registerHorseForRace(raceId, horseId) {
 }
 
 export async function cancelRaceRegistration(raceId, horseId) {
-  await apiRequest(`/races/${raceId}/registrations/${horseId}`, { method: "DELETE" });
+  await apiRequest(`/races/${raceId}/registrations/${horseId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function updateRaceResult(raceId, horseId, thuHang) {
-  const raw = await apiRequest(`/races/${raceId}/registrations/${horseId}/result`, {
-    method: "PUT",
-    body: { thuHang },
-  });
+  const raw = await apiRequest(
+    `/races/${raceId}/registrations/${horseId}/result`,
+    {
+      method: "PUT",
+      body: { thuHang },
+    },
+  );
   return {
     registration: mapRegistration(pick(raw, "registration", "Registration")),
     prizeCleared: Boolean(pick(raw, "prizeCleared", "PrizeCleared")),
@@ -78,11 +90,32 @@ export async function updateRaceResult(raceId, horseId, thuHang) {
 }
 
 export async function setRaceRegistrationPrize(raceId, horseId, amount) {
-  const saved = await apiRequest(`/races/${raceId}/registrations/${horseId}/prize`, {
-    method: "PUT",
-    body: { amount: Number(amount) },
-  });
+  const saved = await apiRequest(
+    `/races/${raceId}/registrations/${horseId}/prize`,
+    {
+      method: "PUT",
+      body: { amount: Number(amount) },
+    },
+  );
   return mapRegistration(saved);
+}
+
+// Thử đẩy lại các kết quả đã lưu cục bộ (do 403) lên BE; trả { synced, pending }. Lỗi 403 tiếp tục thì giữ nguyên bản cục bộ.
+export async function syncLocalRaceResults() {
+  let synced = 0;
+  for (const r of listUnsyncedResults()) {
+    try {
+      if (r.thuHang !== null && r.thuHang !== undefined)
+        await updateRaceResult(r.raceId, r.horseId, r.thuHang);
+      if (r.tienThuong !== null && r.tienThuong !== undefined)
+        await setRaceRegistrationPrize(r.raceId, r.horseId, r.tienThuong);
+      markResultSynced(r.raceId, r.horseId);
+      synced += 1;
+    } catch {
+      // vẫn bị chặn / lỗi mạng: để lần mở trang sau
+    }
+  }
+  return { synced, pending: listUnsyncedResults().length };
 }
 
 export async function getPrizeAlerts() {
