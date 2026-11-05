@@ -1,41 +1,61 @@
 import { useEffect, useState } from "react";
 import LoadingState from "../../components/LoadingState";
-import OverviewActionItem from "./OverviewActionItem";
-import OverviewAttentionRow from "./OverviewAttentionRow";
-import OverviewGoodRow from "./OverviewGoodRow";
-import OverviewIncidentItem from "./OverviewIncidentItem";
+import OverviewBoardTable from "./OverviewBoardTable";
+import OverviewFilterBar from "./OverviewFilterBar";
+import OverviewTaskTable from "./OverviewTaskTable";
 import { getActiveTrainingLocks, getHealthStatuses, getHorses, getMedicalRecords, getRecentSessionVitals, getVaccinations } from "../../services/vetService";
 // Sự cố sức khỏe ngựa mới (mock dùng chung với trang Sự cố) — chỉ đọc
 import { getIncidentsForVet } from "../../services/careService";
 import { NO_INJURY } from "../../data/medicalRecordOptions";
-import { getHealthAlerts, getVaccineState } from "../../utils/healthAlerts";
+import { ALERT_TYPES, getHealthAlerts, getVaccineState } from "../../utils/healthAlerts";
 import { INCIDENT_STATUS } from "../../data/incidentOptions";
+import { inRange, periodRange } from "../../utils/dateRange";
 import { daysSince, formatDate, formatDayMonth, todayISO } from "../../utils/date";
 
-const MAX_ACTIONS = 5; // hàng đợi tối đa 5 việc
-const VISIBLE_ACTIONS = 3; // hiện sẵn 3 việc, còn lại gom vào "Xem thêm"
 const ATTENTION_ORDER = { "Đang điều trị": 0, "Chấn thương": 0, "Cách ly": 1, "Cần theo dõi": 2 };
 const PAGE_TABS = [
   { value: "actions", label: "Cần xử lý" },
   { value: "board", label: "Bảng theo dõi" },
 ];
-const BOARD_FILTERS = [
-  { value: "all", label: "Tất cả" },
+const KINDS = { INCIDENT: "Sự cố", RECHECK: "Tái khám", VACCINE: "Tiêm phòng" };
+const TASK_KIND_OPTIONS = [
+  { value: "", label: "Loại việc: Tất cả" },
+  ...Object.values(KINDS).map((kind) => ({ value: kind, label: kind })),
+];
+const BOARD_STATUS_OPTIONS = [
+  { value: "", label: "Tình trạng: Tất cả" },
   { value: "attention", label: "Cần chú ý" },
   { value: "good", label: "Tình trạng tốt" },
 ];
-const FRAME = "mt-3 overflow-hidden rounded-[4px] border border-[#b9ab90] bg-white";
-const HEAD = "border-b border-[#b9ab90] bg-[#4a3a2a] px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#f3ede0]";
+const EMPTY_FILTERS = { keyword: "", extra: "", period: "all", from: "", to: "" };
 const PAGE = "mx-auto w-full max-w-[1280px] md:px-8";
 
-// Tổng quan sức khỏe: 2 tab cấp trang — "Cần xử lý" và "Bảng theo dõi"; trong bảng có lọc
-// Tất cả / Cần chú ý / Tình trạng tốt. Ngưỡng cảnh báo: utils/healthAlerts.js + config/healthThresholds.js.
+const capitalizeFirst = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+// Nội dung ngắn của 1 việc (bỏ phần đã có ở cột Loại việc / Tình trạng)
+function contentOf(alert) {
+  const message = alert.message.replace(/\.$/, "");
+  switch (alert.type) {
+    case ALERT_TYPES.VACCINE_OVERDUE:
+      return message.replace(/ quá hạn \d+ ngày$/, "");
+    case ALERT_TYPES.VACCINE_DUE_SOON:
+      return message.replace(/ đến hạn ngày .*$/, "");
+    case ALERT_TYPES.RECHECK_TREATING:
+      return capitalizeFirst(message.replace(/^Cần tái khám:\s*/, ""));
+    default:
+      return message;
+  }
+}
+
+// Tổng quan sức khỏe: 2 tab cấp trang — "Cần xử lý" (bảng: sự cố mới + tái khám + tiêm phòng, có lọc loại việc / thời gian) và
+// "Bảng theo dõi" (bảng tình trạng từng ngựa, lọc tình trạng / thời gian theo "Khám gần nhất"). Ngưỡng cảnh báo: utils/healthAlerts.js + config/healthThresholds.js.
+// Bộ lọc nhớ trong phiên (state của trang).
 export default function HealthOverview() {
   const today = todayISO();
   const [data, setData] = useState(null);
   const [pageTab, setPageTab] = useState("actions"); // cần xử lý | bảng theo dõi
-  const [boardFilter, setBoardFilter] = useState("all"); // tất cả | cần chú ý | tình trạng tốt
-  const [showAllActions, setShowAllActions] = useState(false);
+  const [taskFilters, setTaskFilters] = useState(EMPTY_FILTERS);
+  const [boardFilters, setBoardFilters] = useState(EMPTY_FILTERS);
 
   useEffect(() => {
     let ignore = false;
@@ -72,6 +92,7 @@ export default function HealthOverview() {
   }
 
   const { horses, healthStatuses, records, locks, vaccinations, sessions, incidents } = data;
+  const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
   const newIncidents = incidents.filter((r) => r.TrangThai === INCIDENT_STATUS.NEW);
   const statusOf = (horseId) => healthStatuses.find((h) => h.HorseID === horseId)?.TrangThai;
   // records đã sắp mới → cũ: bản ghi đầu tiên của mỗi ngựa là lần khám gần nhất
@@ -80,12 +101,56 @@ export default function HealthOverview() {
   const latestExamDates = Object.fromEntries(Object.values(latestRecordByHorse).map((r) => [r.HorseID, r.Ngay]));
   const lockByHorse = Object.fromEntries(locks.map((l) => [l.HorseID, l]));
 
-  const actions = getHealthAlerts({ horses, healthStatuses, latestExamDates, vaccinations, sessions, today }).slice(0, MAX_ACTIONS);
-  const visibleActions = showAllActions ? actions : actions.slice(0, VISIBLE_ACTIONS);
-  const hiddenCount = actions.length - VISIBLE_ACTIONS;
-  const actionCount = newIncidents.length + actions.length;
+  // ---- Danh sách "Cần xử lý": sự cố Mới + việc sức khỏe (mỗi ngựa 1 việc ưu tiên cao nhất, như trước) — HIỂN THỊ ĐỦ, không giới hạn số việc ----
+  const alerts = getHealthAlerts({ horses, healthStatuses, latestExamDates, vaccinations, sessions, today });
+  const taskItems = [
+    ...newIncidents.map((report) => ({
+      key: `incident-${report.ReportID}`,
+      group: 0,
+      date: report.Ngay,
+      horse: horseById[report.HorseID] ?? { HorseID: report.HorseID, Ten: report.HorseName },
+      kind: KINDS.INCIDENT,
+      content: `${report.LoaiSuCo}, báo bởi ${report.ReporterName}`,
+      status: "Mới",
+      tone: "danger",
+      action: { label: "Xử lý", to: `/vet/incidents?report=${report.ReportID}` },
+    })),
+    ...alerts.map(({ horse, alert, otherCount }) => {
+      const isVaccine = alert.type === ALERT_TYPES.VACCINE_OVERDUE || alert.type === ALERT_TYPES.VACCINE_DUE_SOON;
+      const overdue = alert.type === ALERT_TYPES.VACCINE_OVERDUE;
+      return {
+        key: `alert-${horse.HorseID}`,
+        group: overdue ? 1 : isVaccine ? 3 : 2,
+        date: alert.date,
+        horse,
+        kind: isVaccine ? KINDS.VACCINE : KINDS.RECHECK,
+        content: contentOf(alert),
+        otherCount,
+        status: overdue ? `Quá hạn ${daysSince(alert.date)} ngày` : isVaccine ? "Sắp đến hạn" : "Cần tái khám",
+        tone: overdue ? "danger" : isVaccine ? undefined : "warn",
+        action: isVaccine
+          ? { label: "Xem lịch tiêm", to: `/vet/vaccinations?horse=${horse.HorseID}` }
+          : { label: "Ghi lần khám", to: `/vet/exams/new?horse=${horse.HorseID}` },
+      };
+    }),
+  ];
+  // Sắp xếp: sự cố Mới → quá hạn tiêm (lâu nhất trước) → tái khám → còn lại; trong nhóm theo ngày cũ nhất trước (không có ngày xếp cuối nhóm)
+  taskItems.sort((a, b) => a.group - b.group || (a.date ?? "9999-12-31").localeCompare(b.date ?? "9999-12-31") || a.horse.Ten.localeCompare(b.horse.Ten, "vi"));
 
-  // Vắc-xin cần nhắc của 1 ngựa (vaccinations đã sắp theo NgayHen): mũi quá hạn lâu nhất, hoặc mũi sắp tới gần nhất (getVaccineState)
+  const rangeOf = (f) => periodRange(f.period, today, f.from, f.to);
+  const rangeErrorOf = (f) => (f.period === "custom" && f.from && f.to && f.from > f.to ? "Từ ngày phải trước hoặc bằng Đến ngày." : "");
+  const isActive = (f) => Boolean(f.keyword || f.extra || f.period !== "all");
+
+  const taskKeyword = taskFilters.keyword.trim().toLowerCase();
+  const taskRange = rangeErrorOf(taskFilters) ? null : rangeOf(taskFilters);
+  const filteredTasks = taskItems.filter(
+    (item) =>
+      (!taskFilters.extra || item.kind === taskFilters.extra) &&
+      item.horse.Ten.toLowerCase().includes(taskKeyword) &&
+      inRange(item.date, taskRange)
+  );
+
+  // ---- Bảng theo dõi ----
   const vaccineOf = (horseId) => {
     const own = vaccinations.filter((v) => v.HorseID === horseId);
     return {
@@ -93,8 +158,7 @@ export default function HealthOverview() {
       dueSoon: own.find((v) => getVaccineState(v, today) === "Sắp tới"),
     };
   };
-
-  // Lưu ý quan trọng nhất của ngựa "Cần chú ý": khóa tập → chấn thương → vắc-xin quá hạn → vắc-xin sắp đến hạn
+  // Lưu ý quan trọng nhất của ngựa: khóa tập → chấn thương → vắc-xin quá hạn → vắc-xin sắp đến hạn
   const noteOf = (horseId) => {
     const lock = lockByHorse[horseId];
     if (lock) return `Khóa huấn luyện từ ${formatDayMonth(lock.NgayDat)}`;
@@ -105,34 +169,36 @@ export default function HealthOverview() {
     if (dueSoon) return `Vắc-xin ${dueSoon.Loai} ngày ${formatDayMonth(dueSoon.NgayHen)}`;
     return "";
   };
-
   const byName = (a, b) => a.Ten.localeCompare(b.Ten, "vi");
   const attentionHorses = horses
     .filter((h) => statusOf(h.HorseID) in ATTENTION_ORDER)
     .sort((a, b) => ATTENTION_ORDER[statusOf(a.HorseID)] - ATTENTION_ORDER[statusOf(b.HorseID)] || byName(a, b));
   const goodHorses = horses.filter((h) => !(statusOf(h.HorseID) in ATTENTION_ORDER)).sort(byName);
-  const tabCounts = { actions: actionCount, board: horses.length };
-  const boardFilterCounts = {
-    all: horses.length,
-    attention: attentionHorses.length,
-    good: goodHorses.length,
-  };
-  const showAttention = boardFilter === "all" || boardFilter === "attention";
-  const showGood = boardFilter === "all" || boardFilter === "good";
-  const boardEmpty =
-    boardFilter === "attention"
-      ? "Không có ngựa cần chú ý."
-      : boardFilter === "good"
-        ? "Không có ngựa ở tình trạng tốt."
-        : "Chưa có ngựa nào.";
-  const boardHasRows =
-    (showAttention && attentionHorses.length > 0) || (showGood && goodHorses.length > 0);
+  const toBoardRow = (horse, attention) => ({
+    horse,
+    status: statusOf(horse.HorseID),
+    attention,
+    latestRecord: latestRecordByHorse[horse.HorseID],
+    note: noteOf(horse.HorseID),
+  });
+  const boardRows = [...attentionHorses.map((h) => toBoardRow(h, true)), ...goodHorses.map((h) => toBoardRow(h, false))];
+  const boardKeyword = boardFilters.keyword.trim().toLowerCase();
+  const boardRange = rangeErrorOf(boardFilters) ? null : rangeOf(boardFilters);
+  const filteredBoard = boardRows.filter(
+    (row) =>
+      (!boardFilters.extra || (boardFilters.extra === "attention") === row.attention) &&
+      row.horse.Ten.toLowerCase().includes(boardKeyword) &&
+      // Thời gian lọc theo "Khám gần nhất"; ngựa chưa khám bị loại khi đang lọc khoảng thời gian
+      inRange(row.latestRecord?.Ngay, boardRange)
+  );
+
+  const tabCounts = { actions: taskItems.length, board: horses.length };
 
   return (
     <div className={PAGE}>
       <OverviewHeader today={today} />
 
-      <div role="tablist" aria-label="Tổng quan sức khỏe" className="mt-8 flex flex-wrap gap-x-8 border-b border-[#d9cfba]">
+      <div role="tablist" aria-label="Tổng quan sức khỏe" className="mt-8 flex flex-wrap gap-x-8 border-b border-[#E3E3E3]">
         {PAGE_TABS.map((tab) => {
           const active = pageTab === tab.value;
           return (
@@ -144,10 +210,8 @@ export default function HealthOverview() {
               aria-controls={`overview-${tab.value}-panel`}
               id={`overview-${tab.value}-tab`}
               onClick={() => setPageTab(tab.value)}
-              className={`-mb-px cursor-pointer border-b-2 px-1 pb-2.5 text-base transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
-                active
-                  ? "border-[#c2570c] font-semibold text-[#2b2118]"
-                  : "border-transparent text-[#4a3f33] hover:text-[#2b2118]"
+              className={`-mb-px cursor-pointer border-b-2 px-1 pb-2.5 text-base text-[#1f1f1f] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
+                active ? "border-[#c2570c] font-semibold" : "border-transparent font-medium hover:border-[#E3E3E3]"
               }`}
             >
               {tab.label} <span className="tabular-nums">({tabCounts[tab.value]})</span>
@@ -159,101 +223,37 @@ export default function HealthOverview() {
       {pageTab === "actions" ? (
         <section role="tabpanel" id="overview-actions-panel" aria-labelledby="overview-actions-tab" className="mt-5">
           <h2 className="sr-only">Cần xử lý</h2>
-          {actionCount === 0 ? (
-            <p className="py-6 text-sm text-[#4a3f33]">Hôm nay không có việc cần xử lý.</p>
-          ) : (
-            <div className={FRAME}>
-              <ul id="overview-action-list">
-                {newIncidents.map((report) => (
-                  <OverviewIncidentItem key={`incident-${report.ReportID}`} report={report} horse={horses.find((h) => h.HorseID === report.HorseID)} />
-                ))}
-                {visibleActions.map((item) => (
-                  <OverviewActionItem key={item.horse.HorseID} {...item} />
-                ))}
-              </ul>
-              {hiddenCount > 0 && (
-                <div className="border-t border-[#d9cfba] px-5 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowAllActions((prev) => !prev)}
-                    aria-expanded={showAllActions}
-                    aria-controls="overview-action-list"
-                    className="cursor-pointer text-sm font-semibold text-[#c2570c] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
-                  >
-                    {showAllActions ? "Thu gọn" : `Xem thêm ${hiddenCount} việc`}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <OverviewFilterBar
+            filters={taskFilters}
+            onChange={(patch) => setTaskFilters((prev) => ({ ...prev, ...patch }))}
+            onClear={() => setTaskFilters(EMPTY_FILTERS)}
+            active={isActive(taskFilters)}
+            extra={{ label: "Loại việc", options: TASK_KIND_OPTIONS }}
+            rangeError={rangeErrorOf(taskFilters)}
+          />
+          <OverviewTaskTable
+            key={JSON.stringify(taskFilters)}
+            items={filteredTasks}
+            emptyText={taskItems.length === 0 ? "Hôm nay không có việc cần xử lý." : "Không có việc cần xử lý trong khoảng thời gian này."}
+          />
         </section>
       ) : (
         <section role="tabpanel" id="overview-board-panel" aria-labelledby="overview-board-tab" className="mt-5">
           <h2 className="sr-only">Bảng theo dõi</h2>
-
-          <div role="tablist" aria-label="Lọc bảng theo dõi" className="flex flex-wrap gap-x-6 border-b border-[#d9cfba]">
-            {BOARD_FILTERS.map((tab) => {
-              const active = boardFilter === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setBoardFilter(tab.value)}
-                  className={`-mb-px cursor-pointer border-b-2 pb-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
-                    active
-                      ? "border-[#c2570c] font-semibold text-[#2b2118]"
-                      : "border-transparent text-[#4a3f33] hover:text-[#2b2118]"
-                  }`}
-                >
-                  {tab.label} <span className="tabular-nums">({boardFilterCounts[tab.value]})</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {!boardHasRows ? (
-            <p className="py-6 text-sm text-[#4a3f33]">{boardEmpty}</p>
-          ) : (
-            <div className={`${FRAME} overflow-x-auto`}>
-              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
-                <thead>
-                  <tr>
-                    <th className={HEAD}>Ngựa</th>
-                    <th className={HEAD}>Tình trạng</th>
-                    <th className={HEAD}>Khám gần nhất</th>
-                    <th className={`${HEAD} w-[220px] min-w-[220px]`}>Lưu ý / Vắc-xin</th>
-                  </tr>
-                </thead>
-                <tbody className="[&>tr:last-child>td]:border-b-0">
-                  {showAttention &&
-                    attentionHorses.map((horse) => (
-                      <OverviewAttentionRow
-                        key={horse.HorseID}
-                        horse={horse}
-                        status={statusOf(horse.HorseID)}
-                        latestRecord={latestRecordByHorse[horse.HorseID]}
-                        note={noteOf(horse.HorseID)}
-                      />
-                    ))}
-                  {showGood &&
-                    goodHorses.map((horse) => {
-                      const { overdue, dueSoon } = vaccineOf(horse.HorseID);
-                      return (
-                        <OverviewGoodRow
-                          key={horse.HorseID}
-                          horse={horse}
-                          status={statusOf(horse.HorseID)}
-                          latestRecord={latestRecordByHorse[horse.HorseID]}
-                          vaccine={overdue ?? dueSoon}
-                        />
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <OverviewFilterBar
+            filters={boardFilters}
+            onChange={(patch) => setBoardFilters((prev) => ({ ...prev, ...patch }))}
+            onClear={() => setBoardFilters(EMPTY_FILTERS)}
+            active={isActive(boardFilters)}
+            extra={{ label: "Tình trạng", options: BOARD_STATUS_OPTIONS }}
+            periodLabel="Khám gần nhất"
+            rangeError={rangeErrorOf(boardFilters)}
+          />
+          <OverviewBoardTable
+            key={JSON.stringify(boardFilters)}
+            rows={filteredBoard}
+            emptyText={horses.length === 0 ? "Chưa có ngựa nào." : "Không có ngựa nào khớp bộ lọc."}
+          />
         </section>
       )}
     </div>

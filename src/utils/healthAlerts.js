@@ -37,12 +37,12 @@ function alertsForHorse({ health, latestExamDate, vaccinations, sessions, today,
 
   const treating = health?.TrangThai === "Đang điều trị" || health?.TrangThai === "Chấn thương" || health?.TrangThai === "Cách ly";
   if (treating && (daysSinceExam === null || daysSinceExam > thresholds.recheckDaysTreating)) {
-    alerts.push({ type: ALERT_TYPES.RECHECK_TREATING, message: `Cần tái khám: ${examText(daysSinceExam)}.` });
+    alerts.push({ type: ALERT_TYPES.RECHECK_TREATING, message: `Cần tái khám: ${examText(daysSinceExam)}.`, date: latestExamDate ?? null });
   }
 
   const overdue = vaccinations.filter((v) => isVaccineOverdue(v, today)).sort((a, b) => a.NgayHen.localeCompare(b.NgayHen))[0];
   if (overdue) {
-    alerts.push({ type: ALERT_TYPES.VACCINE_OVERDUE, message: `Vắc-xin ${overdue.Loai} quá hạn ${daysSince(overdue.NgayHen)} ngày.` });
+    alerts.push({ type: ALERT_TYPES.VACCINE_OVERDUE, message: `Vắc-xin ${overdue.Loai} quá hạn ${daysSince(overdue.NgayHen)} ngày.`, date: overdue.NgayHen });
   }
 
   // Buổi tập gần đây có nhịp tim cao nhất vượt ngưỡng
@@ -54,6 +54,7 @@ function alertsForHorse({ health, latestExamDate, vaccinations, sessions, today,
     alerts.push({
       type: ALERT_TYPES.HIGH_HEART_RATE,
       message: `Nhịp tim ${peak.NhipTim} bpm vượt ngưỡng ${thresholds.maxHeartRate} bpm ở buổi tập ${formatDayMonth(peak.Ngay)}.`,
+      date: peak.Ngay,
     });
   }
 
@@ -61,6 +62,7 @@ function alertsForHorse({ health, latestExamDate, vaccinations, sessions, today,
     alerts.push({
       type: ALERT_TYPES.RECHECK_WATCHING,
       message: daysSinceExam === null ? "Cần theo dõi, chưa có lần khám nào." : `Cần theo dõi, chưa khám ${daysSinceExam} ngày.`,
+      date: latestExamDate ?? null,
     });
   }
 
@@ -68,7 +70,7 @@ function alertsForHorse({ health, latestExamDate, vaccinations, sessions, today,
     .filter((v) => getVaccineState(v, today, thresholds) === "Sắp tới")
     .sort((a, b) => a.NgayHen.localeCompare(b.NgayHen))[0];
   if (dueSoon) {
-    alerts.push({ type: ALERT_TYPES.VACCINE_DUE_SOON, message: `Vắc-xin ${dueSoon.Loai} đến hạn ngày ${formatDayMonth(dueSoon.NgayHen)}.` });
+    alerts.push({ type: ALERT_TYPES.VACCINE_DUE_SOON, message: `Vắc-xin ${dueSoon.Loai} đến hạn ngày ${formatDayMonth(dueSoon.NgayHen)}.`, date: dueSoon.NgayHen });
   }
 
   return alerts.sort((a, b) => a.type - b.type);
@@ -76,7 +78,7 @@ function alertsForHorse({ health, latestExamDate, vaccinations, sessions, today,
 
 // Danh sách việc cần xử lý: mỗi ngựa gộp thành 1 việc ưu tiên cao nhất (+ số việc khác), sắp theo ưu tiên rồi tên ngựa.
 // data: { horses, healthStatuses, latestExamDates: { [HorseID]: "YYYY-MM-DD" }, vaccinations, sessions, today }
-// Trả [{ horse, alert: { type, message }, otherCount }]
+// Trả [{ horse, alert: { type, message, date }, otherCount }] — date: ngày liên quan (hạn tiêm / ngày khám gần nhất / ngày buổi tập), có thể null
 export function getHealthAlerts({ horses, healthStatuses, latestExamDates, vaccinations, sessions, today }, thresholds = HEALTH_THRESHOLDS) {
   return horses
     .map((horse) => {

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import heroTrainerHorse from "../assets/images/heroTrainerHorse.jpg";
 import useAuth from "../hooks/useAuth";
+import { CLUB_INFO } from "../config/clubInfo";
 
 const highlights = [
   "Lập giáo án và lịch tập cho từng chiến mã",
@@ -118,6 +119,50 @@ export default function Welcome() {
           ))}
         </section>
       </main>
+
+      {/* Chân trang: nền #F5F5F5, cùng container (max-w-6xl) với nội dung phía trên; liên hệ đọc từ config/clubInfo.js, dòng rỗng thì bỏ */}
+      <footer className="border-t border-[#E3E3E3] bg-[#F5F5F5] py-8">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid gap-8 md:grid-cols-3">
+            <div>
+              <p className="font-serif text-2xl font-semibold tracking-tight text-[#1f1f1f]">
+                Equi<span className="text-[#c2570c]">Track</span>
+              </p>
+              <p className="mt-1 text-sm text-[#6b6b6b]">Hệ thống quản lý huấn luyện ngựa đua.</p>
+            </div>
+            <dl className="grid gap-x-8 gap-y-5 text-sm sm:grid-cols-3 md:col-span-2">
+              {CLUB_INFO.phone && (
+                <div>
+                  <dt className="text-xs text-[#6b6b6b]">Điện thoại</dt>
+                  <dd className="mt-1">
+                    <a href={`tel:${CLUB_INFO.phone}`} className="text-[#c2570c] hover:underline">
+                      {CLUB_INFO.phoneDisplay || CLUB_INFO.phone}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {CLUB_INFO.email && (
+                <div className="min-w-0">
+                  <dt className="text-xs text-[#6b6b6b]">Email</dt>
+                  <dd className="mt-1 break-words">
+                    <a href={`mailto:${CLUB_INFO.email}`} className="text-[#c2570c] hover:underline">
+                      {CLUB_INFO.email}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {CLUB_INFO.address && (
+                <div>
+                  <dt className="text-xs text-[#6b6b6b]">Địa chỉ</dt>
+                  <dd className="mt-1 line-clamp-2 text-[#1f1f1f]" title={CLUB_INFO.address}>
+                    {CLUB_INFO.address}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

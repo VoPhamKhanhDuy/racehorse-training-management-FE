@@ -1,6 +1,6 @@
 // Ô nhập nhiều dòng có nhãn + lỗi + bộ đếm ký tự, cùng kiểu FormField variant="outline".
 // maxLength: hiện bộ đếm "x/maxLength" và chặn gõ quá giới hạn.
-export default function TextAreaField({ label, id, error, value = "", maxLength, rows = 3, hint, ...textareaProps }) {
+export default function TextAreaField({ label, id, error, value = "", maxLength, rows = 3, hint, radiusClass = "rounded-md", ...textareaProps }) {
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block font-serif text-sm font-semibold text-stone">
@@ -12,7 +12,7 @@ export default function TextAreaField({ label, id, error, value = "", maxLength,
         value={value}
         maxLength={maxLength}
         aria-invalid={Boolean(error)}
-        className={`w-full resize-y rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors placeholder:text-stone/50 focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 ${
+        className={`w-full resize-y ${radiusClass} border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors placeholder:text-stone/50 focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 ${
           error ? "border-alert focus:ring-alert/20" : "border-stone/25 focus:border-brass"
         }`}
         {...textareaProps}

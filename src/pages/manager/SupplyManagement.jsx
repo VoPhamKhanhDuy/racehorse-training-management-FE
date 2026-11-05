@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Layers, Package, PackageOpen, Search, SearchX, Tags } from "lucide-react";
+import { ChevronDown, Layers, Package, PackageOpen, Search, SearchX, Tags } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import StockAdjustModal from "./StockAdjustModal";
@@ -140,8 +140,8 @@ export default function SupplyManagement() {
             ))}
           </div>
 
-          <div className="space-y-3">
-            {/* Ô tìm kiếm cùng kiểu /manager/staff */}
+          {/* Ô tìm kiếm và dropdown lọc loại vật tư cùng 1 hàng */}
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full sm:w-80">
               <label htmlFor="supplyKeyword" className="sr-only">
                 Tìm theo tên vật tư
@@ -153,29 +153,27 @@ export default function SupplyManagement() {
                 placeholder="Tìm theo tên vật tư..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-full border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+                className="w-full rounded-md border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Lọc theo loại vật tư">
-              {typeFilters.map((f) => {
-                const active = activeType === f.value;
-                return (
-                  <button
-                    key={f.label}
-                    type="button"
-                    onClick={() => setTypeFilter(f.value)}
-                    aria-pressed={active}
-                    className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
-                      active
-                        ? "border-brass bg-brass/15 font-medium text-brass-deep"
-                        : "border-stone/25 bg-white text-ink hover:border-stone/40"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                );
-              })}
+            <div className="relative w-full sm:w-52">
+              <label htmlFor="supplyTypeFilter" className="sr-only">
+                Lọc theo loại vật tư
+              </label>
+              <select
+                id="supplyTypeFilter"
+                value={activeType}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full cursor-pointer appearance-none rounded-md border border-stone/20 bg-white py-2 pr-9 pl-3.5 text-sm text-ink outline-none transition-colors focus:border-brass"
+              >
+                {typeFilters.map((f) => (
+                  <option key={f.label} value={f.value}>
+                    {f.value ? f.label : "Tất cả loại"}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone" />
             </div>
           </div>
 

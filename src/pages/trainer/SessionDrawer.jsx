@@ -6,6 +6,7 @@ import Drawer from "../../components/Drawer";
 import TrainingBadge from "../../components/TrainingBadge";
 import CancelSessionDialog from "./CancelSessionDialog";
 import useApiResource from "../../hooks/useApiResource";
+import useSessionReviews from "../../hooks/useSessionReviews";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import {
   assignTrainingSession,
@@ -15,7 +16,10 @@ import {
   getTrainingSession,
   startTrainingSession,
 } from "../../services/trainingApi";
+import { getPlanApproval } from "../../services/planApprovalMock";
+import { sessionState } from "../../utils/sessionReview";
 import { formatDate, todayISO, weekdayName } from "../../utils/date";
+import { GROOM_LOCK_HINT, canAssignGroom } from "../../utils/planStatus";
 import { formatDateTime, formatKm, formatMinutes, formatNumber, formatTimeRange } from "../../utils/trainingFormat";
 
 const SECTION = "border-b border-stone/10 py-4";
@@ -47,6 +51,11 @@ export default function SessionDrawer({ sessionId, onClose, onChanged }) {
   // Người có thể phân công: lỗi thì để danh sách trống (vẫn xem được buổi tập)
   const staffResource = useApiResource(getAssignableStaff, sessionId ? "staff" : null);
   const session = sessionResource.data ?? null;
+  const sessionRecords = useSessionReviews();
+  const awaitingReport = session ? sessionState(session, sessionRecords[session.sessionId]) === "AwaitingReport" : false;
+  // Trạng thái duyệt của kế hoạch chứa buổi tập (MOCK) — chưa Đã đồng ý thì không giao Groom
+  const approvalResource = useApiResource(() => getPlanApproval(session.planId), session?.planId ?? null);
+  const groomLocked = !canAssignGroom(approvalResource.data?.status);
   const { loading, error: loadError } = sessionResource;
   const staff = staffResource.data ?? (staffResource.error ? [] : null);
   const [assigneeDraft, setAssigneeDraft] = useState(null); // null = theo người đang phụ trách
@@ -137,6 +146,7 @@ export default function SessionDrawer({ sessionId, onClose, onChanged }) {
         {session.horseName} · {weekdayName(session.trainingDate)}, {formatDate(session.trainingDate)} ·{" "}
         {formatTimeRange(session.startTime, session.endTime)}
       </p>
+      {awaitingReport && <p className="mt-1 text-sm font-semibold text-[#946330]">Chờ Groom báo cáo</p>}
     </div>
   ) : (
     <h2 className="font-serif text-lg font-semibold text-ink">Buổi tập</h2>
@@ -245,7 +255,7 @@ export default function SessionDrawer({ sessionId, onClose, onChanged }) {
                     id="sessionAssignee"
                     value={assignee}
                     onChange={(e) => setAssigneeDraft(e.target.value)}
-                    disabled={!staff || Boolean(busy)}
+                    disabled={!staff || Boolean(busy) || groomLocked}
                     className="min-w-0 flex-1 cursor-pointer rounded-md border border-stone/25 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brass"
                   >
                     <option value="">Chưa phân công</option>
@@ -256,13 +266,14 @@ export default function SessionDrawer({ sessionId, onClose, onChanged }) {
                       </option>
                     ))}
                   </select>
-                  <button type="button" onClick={handleAssign} disabled={!assigneeChanged || Boolean(busy)} className={SECONDARY_BUTTON}>
+                  <button type="button" onClick={handleAssign} disabled={!assigneeChanged || Boolean(busy) || groomLocked} className={SECONDARY_BUTTON}>
                     {busy === "assign" ? "Đang lưu..." : "Lưu"}
                   </button>
                 </div>
               ) : (
                 <p className="text-sm text-ink">{session.assignedToName ?? "Chưa phân công"}</p>
               )}
+              {canAssign && groomLocked && approvalResource.data && <p className="mt-1.5 text-xs text-stone">{GROOM_LOCK_HINT}</p>}
             </section>
 
             {status === "Completed" && (

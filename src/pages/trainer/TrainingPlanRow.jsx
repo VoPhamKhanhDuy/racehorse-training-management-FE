@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import ApprovalStatusText from "../../components/ApprovalStatusText";
 import IntensityText from "../../components/IntensityText";
 import StatusText from "../../components/StatusText";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
@@ -30,7 +31,7 @@ const formatPeriod = (startDate, endDate) =>
     : `${formatDate(startDate)} – ${formatDate(endDate)}`;
 
 // Một dòng giáo án của bảng phẳng. Bấm dòng → onOpen (mở chi tiết).
-export default function TrainingPlanRow({ plan, onOpen }) {
+export default function TrainingPlanRow({ plan, approvalStatus, onOpen }) {
   const { label } = useTrainingOptions();
   const progress = plan.progress ?? {};
   const subtitle = [plan.trainingType && label("planTypes", plan.trainingType), plan.objective].filter(Boolean).join(" · ");
@@ -89,7 +90,11 @@ export default function TrainingPlanRow({ plan, onOpen }) {
       </div>
       <div role="cell" className={PLAN_CELL}>
         <div className="flex items-center justify-between gap-2">
-          <StatusText code={plan.status}>{label("planStatuses", plan.status)}</StatusText>
+          {plan.status === "Draft" && approvalStatus ? (
+            <ApprovalStatusText status={approvalStatus} />
+          ) : (
+            <StatusText code={plan.status}>{label("planStatuses", plan.status)}</StatusText>
+          )}
           <ChevronRight className="h-4 w-4 shrink-0 text-[#8a7f6e] transition-colors group-hover:text-[#2b2118]" aria-hidden="true" />
         </div>
       </div>

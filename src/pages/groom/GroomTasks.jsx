@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import LoadingState from "../../components/LoadingState";
 import Toast from "../../components/Toast";
+import useApiResource from "../../hooks/useApiResource";
 import useAuth from "../../hooks/useAuth";
+import useSessionReviews from "../../hooks/useSessionReviews";
 import CareTaskRow from "./CareTaskRow";
+import GroomCareTable from "./GroomCareTable";
+import GroomSessionReportDialog from "./GroomSessionReportDialog";
+import GroomSessionTable from "./GroomSessionTable";
 import NextTaskBanner from "./NextTaskBanner";
-import { completeCareTask, getCareTasks, getHorses, getStableNumbers } from "../../services/careService";
+import { completeCareTask, getCareTasks, getFeedingPlans, getHorses, getStableAssignments } from "../../services/careService";
+import { getCareLogs, subscribeCareLogs } from "../../services/careLogMock";
+import { generateDailyCareTasks } from "../../utils/careDailyTasks";
+import { getMyTrainingAssignments } from "../../services/trainingApi";
 import { addAuditLog } from "../../services/auditService";
 import { CARE_SHIFTS, CARE_TASK_SCHEDULE, CARE_WORK_WINDOW, getTaskTime, toMinutes } from "../../config/careTaskSchedule";
-import { addDays, formatDate, formatDayMonth, todayISO } from "../../utils/date";
+import { addDays, formatDate, formatDayMonth, shortWeekdayName, todayISO } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
 
 const GROUP_FRAME = "overflow-hidden rounded-[4px] border border-[#b9ab90] bg-white";
@@ -42,22 +50,34 @@ export default function GroomTasks() {
   const [tasks, setTasks] = useState([]);
   const [horses, setHorses] = useState([]);
   const [stables, setStables] = useState({});
+  const [stableAssignments, setStableAssignments] = useState([]); // chuồng Groom phụ trách (GET /groom/stables)
+  const [feedingPlans, setFeedingPlans] = useState([]); // khẩu phần theo bữa (GET /groom/feeding)
+  const [careLogs, setCareLogs] = useState({}); // việc chăm sóc hằng ngày đã xong (MOCK — services/careLogMock.js)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [nowMin, setNowMin] = useState(currentMinutes);
   const [view, setView] = useState("all");
+  // Buổi tập được giao (API thật /api/training-assignments/me): hôm nay + buổi tiếp theo trong 14 ngày
+  const trainingResource = useApiResource(() => getMyTrainingAssignments({ from: today, to: addDays(today, 14) }), "training");
+  const trainingSessions = (trainingResource.data ?? []).filter((s) => s.status !== "Cancelled");
+  const todaySessions = trainingSessions.filter((s) => s.trainingDate === today).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const nextSession = trainingSessions.filter((s) => s.trainingDate > today).sort((a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`${b.trainingDate} ${b.startTime}`))[0] ?? null;
+  const sessionRecords = useSessionReviews(); // báo cáo của Groom (MOCK — services/sessionReviewMock.js)
+  const [reportSession, setReportSession] = useState(null);
   const [doneBacklogIds, setDoneBacklogIds] = useState([]); // việc tồn vừa hoàn thành: vẫn hiện ở mục "Đã hoàn thành" trong phiên này
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getCareTasks(groomId), getHorses(), getStableNumbers()])
-      .then(([taskList, horseList, stableMap]) => {
+    Promise.all([getCareTasks(groomId), getHorses(), getStableAssignments(), getFeedingPlans()])
+      .then(([taskList, horseList, assignments, feedingList]) => {
         if (ignore) return;
         setTasks(taskList);
         setHorses(horseList);
-        setStables(stableMap);
+        setStables(Object.fromEntries(assignments.map((s) => [s.HorseID, s.SoChuong])));
+        setStableAssignments(assignments);
+        setFeedingPlans(feedingList);
         setLoading(false);
       })
       .catch((err) => {
@@ -70,6 +90,20 @@ export default function GroomTasks() {
     };
   }, [groomId]);
 
+  useEffect(() => {
+    let ignore = false;
+    const loadLogs = () =>
+      getCareLogs().then((logs) => {
+        if (!ignore) setCareLogs(logs);
+      });
+    loadLogs();
+    const unsubscribe = subscribeCareLogs(loadLogs);
+    return () => {
+      ignore = true;
+      unsubscribe();
+    };
+  }, []);
+
   // Cập nhật giờ hiện tại mỗi phút để dấu "Trễ" tự đổi
   useEffect(() => {
     const timer = setInterval(() => setNowMin(currentMinutes()), 60000);
@@ -79,6 +113,16 @@ export default function GroomTasks() {
   const closeToast = useCallback(() => setToast(null), []);
 
   const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
+  // Việc chăm sóc hằng ngày tự sinh từ chuồng + khẩu phần (không phụ thuộc kế hoạch huấn luyện)
+  const dailyCare = generateDailyCareTasks({
+    date: today,
+    horses: [...new Map(stableAssignments.map((s) => [s.HorseID, s])).values()].map((s) => ({
+      HorseID: s.HorseID,
+      Ten: horseById[s.HorseID]?.Ten ?? `Ngựa #${s.HorseID}`,
+      SoChuong: s.SoChuong,
+    })),
+    feedingPlans,
+  });
   const horseName = (horseId) => horseById[horseId]?.Ten ?? `Ngựa #${horseId}`;
 
   // Việc hiển thị: việc hôm nay + việc chưa xong của ngày trước (tồn)
@@ -204,14 +248,25 @@ export default function GroomTasks() {
       <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Công việc hôm nay</h1>
       <p className="mt-1 text-sm text-[#4a3f33]">Hôm nay, {formatDate(today)}</p>
 
-      {loading ? (
+      {loading || trainingResource.loading ? (
         <LoadingState />
       ) : loadError ? (
         <p className="mt-6 border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
-      ) : visibleTasks.length === 0 ? (
-        <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">Hôm nay bạn không có công việc nào.</p>
+      ) : visibleTasks.length === 0 && todaySessions.length === 0 && dailyCare.length === 0 ? (
+        <div className="mt-6 border-t border-stone/20 py-10 text-center">
+          <p className="text-sm text-stone">Hôm nay bạn không có công việc nào.</p>
+          {nextSession && (
+            <p className="mt-1 text-sm text-[#4a3f33]">
+              Buổi tiếp theo: {shortWeekdayName(nextSession.trainingDate)} {formatDayMonth(nextSession.trainingDate)} · {nextSession.startTime} · {nextSession.horseName}
+            </p>
+          )}
+        </div>
       ) : (
         <div className="mt-6 space-y-6">
+          {todaySessions.length > 0 && <GroomSessionTable sessions={todaySessions} records={sessionRecords} onOpen={setReportSession} />}
+          {dailyCare.length > 0 && <GroomCareTable tasks={dailyCare} logs={careLogs} nowMin={nowMin} />}
+          {visibleTasks.length > 0 && (
+            <>
           <div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4">
               <p className="text-[15px] font-semibold text-[#2b2118]">Còn {pendingCount} việc chưa xong</p>
@@ -292,9 +347,23 @@ export default function GroomTasks() {
               <ul>{doneTasks.map((t, i) => renderRow(t, doneTasks[i - 1] ?? null, t.Ngay < today))}</ul>
             </section>
           )}
+            </>
+          )}
         </div>
       )}
 
+      {reportSession && (
+        <GroomSessionReportDialog
+          key={reportSession.sessionId}
+          session={reportSession}
+          record={sessionRecords[reportSession.sessionId]}
+          onClose={() => setReportSession(null)}
+          onSaved={(text) => {
+            setReportSession(null);
+            setToast({ text });
+          }}
+        />
+      )}
       <Toast toast={toast} onClose={closeToast} />
     </div>
   );

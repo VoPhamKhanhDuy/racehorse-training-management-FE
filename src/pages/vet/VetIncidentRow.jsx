@@ -1,18 +1,20 @@
-import { Check, CircleDot, Clock } from "lucide-react";
 import HorseAvatar from "../../components/HorseAvatar";
-import { getIncidentStatusColor, getIncidentTypeColor } from "../manager/IncidentTableRow";
 import { INCIDENT_STATUS } from "../../data/incidentOptions";
 import { formatDate } from "../../utils/date";
 
-const CELL = "border-b border-[#d9cfba] px-4 py-3";
+// Ô bảng: kẻ ô 1px #E3E3E3 (ngang + dọc, ô cuối không kẻ dọc), padding 12px 16px, căn giữa dọc
+const CELL = "border-r border-b border-[#E3E3E3] px-4 py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 
-// Mới → chấm; Đang xử lý → đồng hồ; Đã xử lý → tick
-const STATUS_ICON = { [INCIDENT_STATUS.NEW]: CircleDot, [INCIDENT_STATUS.IN_PROGRESS]: Clock, [INCIDENT_STATUS.DONE]: Check };
+// Trạng thái là chữ màu đậm 600 (không chấm, không icon): Mới đỏ, Đang xử lý cam, Đã xử lý xanh lá
+const STATUS_COLOR = {
+  [INCIDENT_STATUS.NEW]: "text-[#c0262d]",
+  [INCIDENT_STATUS.IN_PROGRESS]: "text-[#c2570c]",
+  [INCIDENT_STATUS.DONE]: "text-[#4d6b2a]",
+};
 
-// 1 hàng sự cố sức khỏe ngựa; cả hàng bấm được (Enter/Space) để mở ngăn chi tiết
-export default function VetIncidentRow({ report, horse, stable, onSelect }) {
-  const StatusIcon = STATUS_ICON[report.TrangThai] ?? CircleDot;
-
+// 1 hàng sự cố sức khỏe ngựa: STT | Ngày báo | Ngựa | Loại sự cố | Mô tả | Người báo | Trạng thái. Cả hàng bấm được (Enter/Space) mở modal chi tiết.
+// Không icon, không màu theo loại sự cố (loại sự cố là chữ thường).
+export default function VetIncidentRow({ index, report, horse, stable, onSelect }) {
   return (
     <tr
       tabIndex={0}
@@ -23,32 +25,42 @@ export default function VetIncidentRow({ report, horse, stable, onSelect }) {
           onSelect(report);
         }
       }}
-      className="cursor-pointer text-[#2b2118] transition-colors hover:bg-[#f0efec] focus-visible:bg-[#f0efec] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#c2570c]"
+      className="h-14 cursor-pointer bg-white transition-colors hover:bg-[#FAFAFA] focus-visible:bg-[#FAFAFA] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#c2570c]"
     >
-      <td className={`${CELL} whitespace-nowrap`}>
-        <span className="flex items-center gap-3">
-          <HorseAvatar horse={horse} size={36} square />
+      <td className={`${CELL} text-center text-[#6b6b6b] tabular-nums`}>{index}</td>
+      <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatDate(report.Ngay)}</td>
+      <td className={CELL}>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <HorseAvatar horse={horse} size={32} square />
           <span className="min-w-0">
-            <span className="block font-serif text-base leading-tight font-semibold">{report.HorseName}</span>
-            {stable && <span className="block text-[13px] text-[#6b6055]">Chuồng {stable}</span>}
+            <span className="block truncate font-semibold" title={report.HorseName}>
+              {report.HorseName}
+            </span>
+            {stable && <span className="block truncate text-xs text-[#6b6b6b]">Chuồng {stable}</span>}
           </span>
         </span>
       </td>
-      <td className={`${CELL} text-sm whitespace-nowrap font-semibold ${getIncidentTypeColor(report.LoaiSuCo)}`}>{report.LoaiSuCo}</td>
-      <td className={`${CELL} text-sm whitespace-nowrap`}>
-        <span className={`flex items-center gap-1.5 font-semibold ${getIncidentStatusColor(report.TrangThai)}`}>
-          <StatusIcon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-          {report.TrangThai}
+      <td className={CELL}>
+        <span className="block truncate" title={report.LoaiSuCo}>
+          {report.LoaiSuCo}
         </span>
       </td>
-      <td className={`${CELL} w-full max-w-0 text-sm`}>
-        <span className="block truncate" title={report.MoTa}>
-          {report.MoTa || <span className="text-[#6b6055]">—</span>}
+      <td className={CELL}>
+        {report.MoTa ? (
+          <span className="block truncate" title={report.MoTa}>
+            {report.MoTa}
+          </span>
+        ) : (
+          <span className="text-[#B5B5B5]">—</span>
+        )}
+      </td>
+      <td className={CELL}>
+        <span className="block truncate" title={report.ReporterName}>
+          {report.ReporterName}
         </span>
       </td>
-      <td className={`${CELL} hidden text-sm whitespace-nowrap md:table-cell`}>{report.ReporterName}</td>
-      <td className={`${CELL} w-[130px] min-w-[130px] max-w-[130px] text-right text-sm whitespace-nowrap text-[#4a3f33] tabular-nums`}>
-        {formatDate(report.Ngay)}
+      <td className={CELL}>
+        <span className={`font-semibold whitespace-nowrap ${STATUS_COLOR[report.TrangThai] ?? "text-[#1f1f1f]"}`}>{report.TrangThai}</span>
       </td>
     </tr>
   );

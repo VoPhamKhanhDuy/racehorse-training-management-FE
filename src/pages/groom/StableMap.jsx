@@ -1,39 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronDown, Search } from "lucide-react";
 import LoadingState from "../../components/LoadingState";
-import useAuth from "../../hooks/useAuth";
-import StableDetail from "./StableDetail";
-import StableFloorPlan from "./StableFloorPlan";
-import { getCareTasks, getFeedingPlans, getHorses, getStableAssignments } from "../../services/careService";
-import { CARE_WORK_WINDOW, getTaskTime, toMinutes } from "../../config/careTaskSchedule";
-import { todayISO } from "../../utils/date";
-import { toUserID } from "../../utils/userId";
+import StableDetailDialog from "./StableDetailDialog";
+import StableGroupTable from "./StableGroupTable";
+import { getFeedingPlans, getHorses, getStableAssignments } from "../../services/careService";
+import { getHealthStatuses } from "../../services/horseService";
+import { getActiveTrainingLocks } from "../../services/vetService";
 
-const NARROW_QUERY = "(max-width: 899px)";
+// Tên loại dãy (phần sau dấu "-") → tiếng Việt; loại khác giữ nguyên
+const GROUP_TYPE_VI = { racing: "Thi đấu", recovery: "Hồi phục", "young horses": "Ngựa non" };
 
-// "Chuồng trại" của nhân viên chăm sóc (chỉ xem): mặt bằng chuồng (STABLEASSIGNMENT) bên trái, chi tiết chuồng đang chọn
-// (lịch sinh hoạt + khẩu phần FEEDINGPLAN) bên phải. Ngựa "bạn phụ trách" suy ra từ CARETASK của chính nhân viên.
+// "Stable A - Racing" → { letter: "A", label: "Dãy A — Thi đấu" }; tên không đúng dạng giữ nguyên làm nhãn
+function parseGroup(name) {
+  const match = (name ?? "").match(/^Stable\s+([A-Za-z0-9]+)\s*-\s*(.+)$/i);
+  if (!match) return { letter: "", label: name || "Chuồng khác" };
+  const type = match[2].trim();
+  return { letter: match[1].toUpperCase(), label: `Dãy ${match[1].toUpperCase()} — ${GROUP_TYPE_VI[type.toLowerCase()] ?? type}` };
+}
+
+// "Chuồng trại" của nhân viên chăm sóc (chỉ xem): bảng theo dãy, mỗi dãy một bảng (Chuồng | Ngựa | Khẩu phần mỗi ngày | Tình trạng | Thao tác).
+// "Xem" mở modal chi tiết chuồng (ghi chú chuồng, khẩu phần theo bữa, việc chăm sóc hôm nay). Dữ liệu: GET /groom/stables, /groom/feeding.
+// BE chưa có mã chuồng riêng (SoChuong = tên dãy, trùng cho cả dãy) nên FE tự đánh số A1, A2, B1… theo dãy và thứ tự chuồng.
+// Tình trạng chỉ ở mức "Đủ điều kiện / Đang khóa tập / Cần theo dõi" — không hiển thị chẩn đoán.
 export default function StableMap() {
-  const { user } = useAuth();
-  const groomId = toUserID(user.id);
-  const detailRef = useRef(null);
-
   const [assignments, setAssignments] = useState([]);
   const [horses, setHorses] = useState([]);
   const [feeding, setFeeding] = useState([]);
-  const [myTasks, setMyTasks] = useState([]);
+  const [lockedIds, setLockedIds] = useState(new Set());
+  const [healthByHorse, setHealthByHorse] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [pickedId, setPickedId] = useState(null); // AssignmentID do người dùng chọn
+  const [keyword, setKeyword] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const [openId, setOpenId] = useState(null); // AssignmentID đang xem chi tiết
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getStableAssignments(), getHorses(), getFeedingPlans(), getCareTasks(groomId)])
-      .then(([stableList, horseList, feedList, taskList]) => {
+    Promise.all([getStableAssignments(), getHorses(), getFeedingPlans(), getActiveTrainingLocks().catch(() => []), getHealthStatuses().catch(() => [])])
+      .then(([stableList, horseList, feedList, lockList, healthList]) => {
         if (ignore) return;
         setAssignments(stableList);
         setHorses(horseList);
         setFeeding(feedList);
-        setMyTasks(taskList);
+        setLockedIds(new Set(lockList.map((l) => Number(l.HorseID))));
+        setHealthByHorse(Object.fromEntries(healthList.map((h) => [Number(h.HorseID), h.TrangThai])));
         setLoading(false);
       })
       .catch((err) => {
@@ -44,44 +54,45 @@ export default function StableMap() {
     return () => {
       ignore = true;
     };
-  }, [groomId]);
+  }, []);
 
-  // Ngựa bạn phụ trách = có CARETASK của bạn; trạng thái việc hôm nay theo từng ngựa (việc tiếp theo = chưa xong, giờ sớm nhất)
-  const myHorseIds = new Set(myTasks.map((t) => t.HorseID));
-  const today = todayISO();
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const inWorkWindow = nowMin >= toMinutes(CARE_WORK_WINDOW.tu) && nowMin <= toMinutes(CARE_WORK_WINDOW.den);
-  const statusByHorse = {};
-  myHorseIds.forEach((horseId) => {
-    const todays = myTasks.filter((t) => t.HorseID === horseId && t.Ngay === today);
-    const pendingTasks = todays.filter((t) => !t.TrangThai);
-    const nextTime = pendingTasks.map((t) => getTaskTime(t.LoaiViec)).filter(Boolean).sort()[0] ?? "";
-    statusByHorse[horseId] = {
-      pending: pendingTasks.length,
-      nextTime,
-      late: Boolean(nextTime) && inWorkWindow && toMinutes(nextTime) < nowMin,
+  const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
+
+  // Nhóm theo dãy (SoChuong), dãy sắp theo tên; trong dãy theo AssignmentID → mã chuồng A1, A2…
+  const groupMap = new Map();
+  [...assignments]
+    .sort((a, b) => a.SoChuong.localeCompare(b.SoChuong, "vi", { numeric: true }) || a.AssignmentID - b.AssignmentID)
+    .forEach((stable) => {
+      if (!groupMap.has(stable.SoChuong)) groupMap.set(stable.SoChuong, []);
+      groupMap.get(stable.SoChuong).push(stable);
+    });
+  const groups = [...groupMap.entries()].map(([name, stables]) => {
+    const { letter, label } = parseGroup(name);
+    return {
+      key: name,
+      label,
+      rows: stables.map((stable, index) => ({
+        stable,
+        code: letter ? `${letter}${index + 1}` : String(index + 1),
+        horse: horseById[stable.HorseID],
+        feeding: feeding.filter((f) => f.HorseID === stable.HorseID),
+        condition: { locked: lockedIds.has(stable.HorseID), health: healthByHorse[stable.HorseID] ?? "" },
+      })),
     };
   });
 
-  const horseById = Object.fromEntries(horses.map((h) => [h.HorseID, h]));
-  const bySoChuong = (a, b) => a.SoChuong.localeCompare(b.SoChuong, "vi", { numeric: true });
-  const sorted = [...assignments].sort(bySoChuong);
-  // Mặc định: chuồng đầu tiên của nhân viên; không có thì chuồng đầu tiên
-  const defaultStable = sorted.find((s) => myHorseIds.has(s.HorseID)) ?? sorted[0];
-  const selected = sorted.find((s) => s.AssignmentID === pickedId) ?? defaultStable;
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  const visibleGroups = groups
+    .filter((g) => !groupFilter || g.key === groupFilter)
+    .map((g) => ({ ...g, shown: g.rows.filter((r) => !normalizedKeyword || (r.horse?.Ten ?? "").toLowerCase().includes(normalizedKeyword)) }))
+    .filter((g) => g.shown.length > 0);
 
-  const handleSelect = (assignmentId) => {
-    setPickedId(assignmentId);
-    // Màn hẹp: chi tiết nằm dưới sơ đồ → cuộn tới để thấy ngay
-    if (window.matchMedia(NARROW_QUERY).matches) {
-      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
-    }
-  };
+  const openRow = groups.flatMap((g) => g.rows.map((r) => ({ ...r, groupLabel: g.label }))).find((r) => r.stable.AssignmentID === openId) ?? null;
 
   return (
     <div className="max-w-[1100px]">
-      <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Chuồng trại</h1>
+      <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Chuồng trại</h1>
+      <p className="mt-1 text-sm text-[#4a3f33]">Các chuồng và ngựa bạn chăm sóc.</p>
 
       {loading ? (
         <LoadingState />
@@ -90,29 +101,69 @@ export default function StableMap() {
       ) : assignments.length === 0 ? (
         <p className="mt-6 border-t border-stone/20 py-10 text-center text-sm text-stone">Chưa có chuồng nào được phân.</p>
       ) : (
-        <div className="mt-5 grid items-start gap-8 min-[900px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] min-[900px]:gap-10">
-          <section aria-label="Sơ đồ chuồng" className="min-w-0">
-            <h2 className="mb-2 text-[11px] font-medium tracking-wide text-stone uppercase">Sơ đồ chuồng</h2>
-            <StableFloorPlan
-              assignments={assignments}
-              horseById={horseById}
-              myHorseIds={myHorseIds}
-              statusByHorse={statusByHorse}
-              selectedId={selected?.AssignmentID}
-              onSelect={handleSelect}
-            />
-          </section>
-
-          <section ref={detailRef} aria-label="Chi tiết chuồng" className="min-w-0 min-[900px]:sticky min-[900px]:top-6">
-            {selected && (
-              <StableDetail
-                stable={selected}
-                horse={horseById[selected.HorseID]}
-                feeding={feeding.filter((f) => f.HorseID === selected.HorseID)}
+        <>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="relative w-full sm:w-80">
+              <label htmlFor="stableKeyword" className="sr-only">
+                Tìm theo tên ngựa
+              </label>
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone" aria-hidden="true" />
+              <input
+                id="stableKeyword"
+                type="search"
+                placeholder="Tìm theo tên ngựa"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="w-full rounded-[4px] border border-[#E3E3E3] bg-white py-2 pr-4 pl-10 text-sm text-[#1f1f1f] outline-none transition-colors placeholder:text-stone/60 focus:border-[#c2570c]"
               />
-            )}
-          </section>
-        </div>
+            </div>
+            <div className="relative w-full sm:w-56">
+              <label htmlFor="stableGroup" className="sr-only">
+                Lọc theo dãy
+              </label>
+              <select
+                id="stableGroup"
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                className="w-full cursor-pointer appearance-none rounded-[4px] border border-[#E3E3E3] bg-white py-2 pr-9 pl-3.5 text-sm text-[#1f1f1f] outline-none transition-colors focus:border-[#c2570c]"
+              >
+                <option value="">Tất cả dãy</option>
+                {groups.map((g) => (
+                  <option key={g.key} value={g.key}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone" aria-hidden="true" />
+            </div>
+          </div>
+
+          {visibleGroups.length === 0 ? (
+            <p className="mt-6 rounded-[4px] border border-[#E3E3E3] bg-white py-12 text-center text-sm text-[#6b6b6b]">Không tìm thấy ngựa nào khớp.</p>
+          ) : (
+            <div className="mt-6 space-y-8">
+              {visibleGroups.map((group) => (
+                <section key={group.key} aria-label={group.label}>
+                  <h2 className="mb-3 font-serif text-lg font-semibold text-[#2b2118]">
+                    {group.label} <span className="font-sans text-sm font-normal text-[#6b6b6b]">· {group.rows.length} chuồng</span>
+                  </h2>
+                  <StableGroupTable rows={group.shown} onOpen={setOpenId} />
+                </section>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {openRow && (
+        <StableDetailDialog
+          stable={openRow.stable}
+          code={openRow.code}
+          groupLabel={openRow.groupLabel}
+          horse={openRow.horse}
+          feeding={openRow.feeding}
+          onClose={() => setOpenId(null)}
+        />
       )}
     </div>
   );

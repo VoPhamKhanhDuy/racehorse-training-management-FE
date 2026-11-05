@@ -1,109 +1,204 @@
-import { DataCell, DataRow, DataTable } from "../../components/DataTable";
-import IntensityText from "../../components/IntensityText";
-import StatusText from "../../components/StatusText";
+import { useState } from "react";
+import useSessionReviews from "../../hooks/useSessionReviews";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { formatDayMonth, shortWeekdayName, todayISO } from "../../utils/date";
-import { formatKm, formatMinutes, formatNumber, formatTimeRange } from "../../utils/trainingFormat";
+import { actualDistanceOf, scoreOf, sessionStage, stageColor, stageLabel } from "../../utils/sessionReview";
+import { formatKm, formatMinutes, formatNumber } from "../../utils/trainingFormat";
 
-// Bảng buổi tập (TrainingSession) — bấm 1 dòng để mở ngăn chi tiết. showHorse / showPlan: thêm cột ngựa / giáo án.
-// Bảng có khung (tiêu đề nâu, kẻ #d9cfba, chân "N buổi"). Buổi hôm nay chỉ nhấn bằng vạch cam 2px bên trái, không đổi nền dòng.
-export default function SessionTable({ sessions, onSelect, showHorse = false, showPlan = false, emptyText = "Không có buổi tập nào." }) {
+const PAGE_SIZE = 10;
+const EMPTY = <span className="text-[#B5B5B5]">—</span>;
+const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
+const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
+
+const byDateTime = (a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`${b.trainingDate} ${b.startTime}`);
+
+// Bảng dữ liệu buổi tập (TrainingSession): header – body – footer, kẻ ô đầy đủ, không cuộn ngang (table-layout: fixed).
+// MỘT tông trung tính (#1f1f1f / #6b6b6b / viền #E3E3E3) + MỘT màu nhấn cam đậm chỉ cho việc cần làm (chấm "Chờ đánh giá", link "Xem" của hàng đó).
+// Cột: STT | Ngày giờ (bấm để đổi thứ tự) | Ngựa (+ người phụ trách) | Buổi tập (+ mặt đường · cường độ) | Quãng đường | Điểm | Trạng thái | Chi tiết.
+// showHorse = false (trang chi tiết giáo án): bỏ cột Ngựa. Dưới 1100px ẩn cột STT, dưới 900px ẩn thêm cột Điểm.
+// Trạng thái theo 4 tình trạng (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá) từ báo cáo của Groom + đánh giá của Trainer; chữ trung tính.
+// Chân bảng: "Hiển thị a–b trong n buổi" + phân trang 10 dòng/trang. Bấm cả dòng hoặc link "Xem" → onSelect(sessionId).
+export default function SessionTable({ sessions, onSelect, showHorse = false, emptyText = "Không có buổi tập nào." }) {
   const { label } = useTrainingOptions();
+  const records = useSessionReviews();
   const today = todayISO();
+  const [sortDir, setSortDir] = useState("asc");
+  const [page, setPage] = useState(1);
 
   if (sessions.length === 0) {
     return (
-      <div className="rounded border border-[#b9ab90] bg-white py-12 text-center text-sm text-[#6b6055]">{emptyText}</div>
+      <div className="rounded-[4px] border border-[#E3E3E3] bg-white py-12 text-center text-sm text-[#6b6b6b]">{emptyText}</div>
     );
   }
 
-  const columns = [
-    { key: "date", label: "Ngày", width: "120px" },
-    showHorse && { key: "horse", label: "Ngựa", width: "140px" },
-    { key: "session", label: "Buổi tập", width: "minmax(200px,2fr)" },
-    { key: "intensity", label: "Cường độ", width: "110px" },
-    { key: "plan", label: "Kế hoạch", width: "90px" },
-    { key: "actual", label: "Thực tế", width: "90px" },
-    { key: "score", label: "Điểm", width: "60px" },
-    { key: "assignee", label: "Phụ trách", width: "150px" },
-    { key: "status", label: "Trạng thái", width: "110px" },
-  ].filter(Boolean);
-  const template = columns.map((column) => column.width).join(" ");
+  const sorted = [...sessions].sort((a, b) => (sortDir === "asc" ? byDateTime(a, b) : byDateTime(b, a)));
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const offset = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = sorted.slice(offset, offset + PAGE_SIZE);
+
+  // Độ rộng cột theo % (tổng 100%); không có cột Ngựa thì chia phần đó cho cột Buổi tập
+  const widths = { stt: 4, date: 12, horse: showHorse ? 16 : 0, session: showHorse ? 26 : 42, distance: 11, score: 8, status: 13, detail: 10 };
+  const col = (key, hideClass = "") => <col style={{ width: `${widths[key]}%` }} className={hideClass} />;
+  const HIDE_STT = "max-[1099px]:hidden";
+  const HIDE_SCORE = "max-[899px]:hidden";
 
   return (
-    <DataTable columns={columns} template={template} minWidth={showHorse ? 1000 : 860} footer={`${sessions.length} buổi`} framed>
-      {sessions.map((session) => {
-        const cancelled = session.status === "Cancelled";
-        const isToday = session.trainingDate === today;
-        return (
-          <DataRow
-            key={session.sessionId}
-            template={template}
-            onClick={() => onSelect(session.sessionId)}
-            className={`border-l-2 ${isToday ? "border-l-[#c2570c]" : "border-l-transparent"} ${cancelled ? "text-[#6b6055]" : ""}`}
-          >
-            <DataCell className="whitespace-nowrap">
+    <div className="overflow-hidden rounded-[4px] border border-[#E3E3E3] bg-white">
+      <table className="w-full table-fixed border-collapse text-left">
+        <colgroup>
+          {col("stt", HIDE_STT)}
+          {col("date")}
+          {showHorse && col("horse")}
+          {col("session")}
+          {col("distance")}
+          {col("score", HIDE_SCORE)}
+          {col("status")}
+          {col("detail")}
+        </colgroup>
+        <thead>
+          <tr className="h-11 border-b border-[#E3E3E3] bg-[#F5F5F5]">
+            <th className={`${TH} text-center ${HIDE_STT}`}>STT</th>
+            <th className={TH} aria-sort={sortDir === "asc" ? "ascending" : "descending"}>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(session.sessionId);
-                }}
-                className={`cursor-pointer text-left text-[#2b2118] outline-none focus-visible:underline ${isToday ? "font-semibold" : "font-medium"}`}
+                onClick={() => setSortDir((dir) => (dir === "asc" ? "desc" : "asc"))}
+                className="group inline-flex cursor-pointer items-center gap-1.5 font-semibold outline-none focus-visible:underline"
+                title="Đổi thứ tự sắp xếp"
               >
-                {shortWeekdayName(session.trainingDate)} {formatDayMonth(session.trainingDate)}
+                Ngày giờ
+                {/* Mũi tên đang sắp xếp luôn hiện; mũi tên còn lại chỉ hiện khi rê chuột vào tiêu đề */}
+                <span className="flex flex-col text-[8px] leading-[9px] text-[#6b6b6b]" aria-hidden="true">
+                  <span className={sortDir === "asc" ? "" : "opacity-0 group-hover:opacity-100"}>▲</span>
+                  <span className={sortDir === "desc" ? "" : "opacity-0 group-hover:opacity-100"}>▼</span>
+                </span>
               </button>
-              <span className="block text-xs text-[#6b6055] tabular-nums">
-                {isToday ? "Hôm nay · " : ""}
-                {formatTimeRange(session.startTime, session.endTime)}
-              </span>
-            </DataCell>
-            {showHorse && (
-              <DataCell className="font-medium whitespace-nowrap">
-                <span className="truncate">{session.horseName}</span>
-              </DataCell>
-            )}
-            <DataCell>
-              <p className={`truncate ${cancelled ? "line-through" : "text-[#2b2118]"}`}>{session.sessionTitle}</p>
-              <p className="truncate text-xs text-[#6b6055]">
-                {label("trainingTypes", session.trainingType)}
-                {session.surface ? ` · ${label("surfaces", session.surface)}` : ""}
-                {showPlan && session.planName ? ` · ${session.planName}` : ""}
-              </p>
-            </DataCell>
-            <DataCell>
-              {session.intensityLevel ? (
-                <IntensityText code={session.intensityLevel}>{label("intensityLevels", session.intensityLevel)}</IntensityText>
-              ) : (
-                <span className="text-[#b8ad98]">—</span>
-              )}
-            </DataCell>
-            <DataCell className="whitespace-nowrap tabular-nums">
-              {formatKm(session.distanceKm)}
-              <span className="block text-xs text-[#6b6055]">{formatMinutes(session.durationMinutes)}</span>
-            </DataCell>
-            <DataCell className="whitespace-nowrap tabular-nums">
-              {session.status === "Completed" ? (
-                <>
-                  {formatKm(session.actualDistanceKm)}
-                  <span className="block text-xs text-[#6b6055]">{formatMinutes(session.actualDurationMinutes)}</span>
-                </>
-              ) : (
-                <span className="text-[#6b6055]">—</span>
-              )}
-            </DataCell>
-            <DataCell className="font-semibold tabular-nums">
-              {session.performanceScore != null ? formatNumber(session.performanceScore) : <span className="font-normal text-[#6b6055]">—</span>}
-            </DataCell>
-            <DataCell className="whitespace-nowrap">
-              <span className="truncate">{session.assignedToName ?? <span className="text-[#6b6055]">Chưa phân công</span>}</span>
-            </DataCell>
-            <DataCell>
-              <StatusText code={session.status} kind="session">{label("sessionStatuses", session.status)}</StatusText>
-            </DataCell>
-          </DataRow>
-        );
-      })}
-    </DataTable>
+            </th>
+            {showHorse && <th className={TH}>Ngựa</th>}
+            <th className={TH}>Buổi tập</th>
+            <th className={`${TH} text-right`}>Quãng đường</th>
+            <th className={`${TH} text-center ${HIDE_SCORE}`}>Điểm</th>
+            <th className={`${TH} text-center`}>Trạng thái</th>
+            <th className={`${TH} text-center`}>Chi tiết</th>
+          </tr>
+        </thead>
+        <tbody className="[&>tr:last-child>td]:border-b-0">
+          {pageItems.map((session, index) => {
+            const record = records[session.sessionId];
+            const stage = sessionStage(session, record);
+            const isToday = session.trainingDate === today;
+            const actualKm = actualDistanceOf(session, record);
+            const score = scoreOf(session, record);
+            const subtitle = [
+              session.surface && label("surfaces", session.surface),
+              session.intensityLevel && label("intensityLevels", session.intensityLevel),
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <tr
+                key={session.sessionId}
+                onClick={() => onSelect(session.sessionId)}
+                className="h-14 cursor-pointer bg-white transition-colors hover:bg-[#FAFAFA]"
+              >
+                <td className={`${TD} text-center text-[#6b6b6b] tabular-nums ${HIDE_STT}`}>{offset + index + 1}</td>
+                <td className={`${TD} whitespace-nowrap`}>
+                  <span className="block truncate font-medium text-[#1f1f1f]">
+                    {shortWeekdayName(session.trainingDate)} {formatDayMonth(session.trainingDate)}
+                  </span>
+                  <span className="block truncate text-xs text-[#6b6b6b] tabular-nums" title={`${session.startTime}${session.endTime ? `–${session.endTime}` : ""}`}>
+                    {isToday && <span className="font-semibold text-[#1f1f1f]">Hôm nay · </span>}
+                    {session.startTime}
+                  </span>
+                </td>
+                {showHorse && (
+                  <td className={TD}>
+                    <span className="block truncate font-medium text-[#1f1f1f]" title={session.horseName}>
+                      {session.horseName}
+                    </span>
+                    <span className="block truncate text-xs text-[#6b6b6b]" title={session.assignedToName ?? undefined}>
+                      {session.assignedToName ?? "Chưa phân công"}
+                    </span>
+                  </td>
+                )}
+                <td className={TD}>
+                  <span className="block truncate text-[#1f1f1f]" title={session.sessionTitle}>
+                    {session.sessionTitle}
+                  </span>
+                  {subtitle && (
+                    <span className="block truncate text-xs text-[#6b6b6b]" title={subtitle}>
+                      {subtitle}
+                    </span>
+                  )}
+                </td>
+                <td className={`${TD} text-right whitespace-nowrap tabular-nums`}>
+                  <span className="block truncate">{formatKm(session.distanceKm)}</span>
+                  <span className="block truncate text-xs text-[#6b6b6b]">
+                    {actualKm != null ? `Thực tế ${formatKm(actualKm)}` : formatMinutes(session.durationMinutes)}
+                  </span>
+                </td>
+                <td className={`${TD} text-center font-semibold tabular-nums ${HIDE_SCORE}`}>
+                  {score != null ? formatNumber(score) : <span className="font-normal">{EMPTY}</span>}
+                </td>
+                <td className={`${TD} text-center`}>
+                  <span className={`text-sm font-semibold ${stageColor(stage)}`}>{stageLabel(stage)}</span>
+                </td>
+                <td className={`${TD} text-center`}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(session.sessionId);
+                    }}
+                    className={`cursor-pointer text-sm text-[#c2570c] hover:underline ${stage === "AwaitingReview" ? "font-semibold" : "font-medium"}`}
+                  >
+                    Xem
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#E3E3E3] bg-white px-4 py-2 text-[13px] text-[#6b6b6b]">
+        <span>
+          Hiển thị {offset + 1}–{offset + pageItems.length} trong {sorted.length} buổi
+        </span>
+        <nav aria-label="Phân trang" className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="h-8 cursor-pointer rounded-[4px] border border-[#E3E3E3] bg-white px-3 font-medium text-[#1f1f1f] transition-colors hover:bg-[#FAFAFA] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Trước
+          </button>
+          {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setPage(n)}
+              aria-current={n === currentPage ? "page" : undefined}
+              className={`h-8 min-w-8 cursor-pointer rounded-[4px] border px-2 font-medium tabular-nums transition-colors ${
+                n === currentPage
+                  ? "border-[#1f1f1f] bg-[#1f1f1f] text-white"
+                  : "border-[#E3E3E3] bg-white text-[#1f1f1f] hover:bg-[#FAFAFA]"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setPage(currentPage + 1)}
+            disabled={currentPage === pageCount}
+            className="h-8 cursor-pointer rounded-[4px] border border-[#E3E3E3] bg-white px-3 font-medium text-[#1f1f1f] transition-colors hover:bg-[#FAFAFA] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Sau
+          </button>
+        </nav>
+      </div>
+    </div>
   );
 }

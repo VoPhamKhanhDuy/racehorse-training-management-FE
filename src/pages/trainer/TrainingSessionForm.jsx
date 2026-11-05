@@ -17,7 +17,9 @@ import {
   getTrainingSession,
   updateTrainingSession,
 } from "../../services/trainingApi";
+import { getPlanApproval } from "../../services/planApprovalMock";
 import { formatDate, todayISO, weekdayName } from "../../utils/date";
+import { GROOM_LOCK_HINT, canAssignGroom } from "../../utils/planStatus";
 import { formatKm, formatMinutes, intensityRank, lowerIntensity } from "../../utils/trainingFormat";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,6 +50,7 @@ export default function TrainingSessionForm() {
   const { options, label } = useTrainingOptions();
 
   const [plan, setPlan] = useState(null);
+  const [approvalStatus, setApprovalStatus] = useState(null); // trạng thái duyệt của chủ ngựa (MOCK)
   const [session, setSession] = useState(null);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,12 +72,14 @@ export default function TrainingSessionForm() {
         getTrainingPlan(isEdit ? sessionData.planId : planIdParam),
         getAssignableStaff(),
       ]);
-      return { sessionData, planData, staffList };
+      const approval = await getPlanApproval(planData.planId);
+      return { sessionData, planData, staffList, approval };
     };
     load()
-      .then(({ sessionData, planData, staffList }) => {
+      .then(({ sessionData, planData, staffList, approval }) => {
         if (ignore) return;
         setPlan(planData);
+        setApprovalStatus(approval.status);
         setStaff(staffList);
         if (sessionData) {
           setSession(sessionData);
@@ -327,6 +332,7 @@ export default function TrainingSessionForm() {
                   </option>
                 ))}
             </SelectField>
+            {!canAssignGroom(approvalStatus) && <p className="mt-1 text-xs text-stone">{GROOM_LOCK_HINT}</p>}
           </div>
           {!isSwimming && (
             <p className="-mt-2 text-xs text-stone">
@@ -362,6 +368,7 @@ export default function TrainingSessionForm() {
               id="assignee"
               value={form.assignee}
               onChange={(e) => setField("assignee", e.target.value)}
+              disabled={!canAssignGroom(approvalStatus)}
             >
               <option value="">Chưa phân công</option>
               {staff.map((person) => (

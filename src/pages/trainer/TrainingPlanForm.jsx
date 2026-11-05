@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import FormField from "../../components/FormField";
 import LoadingState from "../../components/LoadingState";
 import SelectField from "../../components/SelectField";
@@ -11,24 +11,23 @@ import PlanPhaseEditor from "./PlanPhaseEditor";
 import PlanPhaseTable from "./PlanPhaseTable";
 import { createPhase, hasPhaseErrors, phaseToForm, phaseToPayload, validatePhases } from "./planPhaseForm";
 import { PLAN_RULES } from "../../data/trainingCodes";
+import { clearPlanApproval, getPlanApproval, resubmitEditedPlan } from "../../services/planApprovalMock";
+import { PLAN_APPROVAL } from "../../utils/planStatus";
+import useAuth from "../../hooks/useAuth";
 import useHorseFitness from "../../hooks/useHorseFitness";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import {
   createTrainingPlan,
   getHorses,
-  getPlanSuggestion,
   getTrainingPlan,
   updateTrainingPlan,
 } from "../../services/trainingApi";
-import { formatDate, todayISO } from "../../utils/date";
-import { nextMondayISO } from "../../utils/trainingFormat";
 
 const emptyForm = { horseId: "", planName: "", objective: "", trainingType: "", notes: "" };
 const SECTION_TITLE = "font-serif text-lg font-semibold text-ink";
 
 // Lập giáo án (/trainer/plans/new, ?horse= điền sẵn ngựa) và sửa giáo án (/trainer/plans/:id/edit).
 // - Bên phải: thể trạng hiện tại của ngựa → mức cường độ tối đa; giai đoạn vượt mức bị chặn ngay trên form (BE trả 422).
-// - "Gợi ý theo thể trạng": điền sẵn các giai đoạn từ API gợi ý, HLV chỉnh lại trước khi lưu.
 // - Giáo án Nháp sửa được cả giai đoạn; đang áp dụng chỉ sửa thông tin chung; đã kết thúc / hủy thì không sửa được.
 export default function TrainingPlanForm() {
   const { id } = useParams();
@@ -36,6 +35,7 @@ export default function TrainingPlanForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { options, label } = useTrainingOptions();
+  const { user } = useAuth();
 
   const [horses, setHorses] = useState([]);
   const [plan, setPlan] = useState(null); // giáo án đang sửa
@@ -48,12 +48,8 @@ export default function TrainingPlanForm() {
   const [errors, setErrors] = useState({ phases: [] });
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const [suggestStart, setSuggestStart] = useState(nextMondayISO);
-  const [suggestWeeks, setSuggestWeeks] = useState(String(PLAN_RULES.suggestionWeeks.default));
-  const [suggestion, setSuggestion] = useState(null);
-  const [suggestError, setSuggestError] = useState(null);
-  const [suggesting, setSuggesting] = useState(false);
+  const [approval, setApproval] = useState(null); // trạng thái duyệt của giáo án đang sửa (MOCK)
+  const [confirmSave, setConfirmSave] = useState(false);
 
   const fitnessState = useHorseFitness(form.horseId);
   const fitness = fitnessState.fitness;
@@ -94,6 +90,10 @@ export default function TrainingPlanForm() {
     };
   }, [id, isEdit, searchParams, reloadKey]);
 
+  useEffect(() => {
+    if (isEdit) getPlanApproval(id).then(setApproval);
+  }, [id, isEdit]);
+
   const selectedHorse = horses.find((h) => String(h.horseId) === form.horseId);
   const backTo = isEdit ? `/trainer/plans/${id}` : "/trainer/plans";
 
@@ -104,8 +104,6 @@ export default function TrainingPlanForm() {
 
   const handleHorseChange = (e) => {
     setField("horseId", e.target.value);
-    setSuggestion(null);
-    setSuggestError(null);
   };
 
   const handlePhaseChange = (index, field, value) => {
@@ -124,43 +122,6 @@ export default function TrainingPlanForm() {
   const handleRemovePhase = (index) => {
     setPhases((prev) => prev.filter((_, i) => i !== index));
     setErrors((prev) => ({ ...prev, phasesForm: undefined, phases: prev.phases.filter((_, i) => i !== index) }));
-  };
-
-  // Gợi ý giáo án theo thể trạng → thay các giai đoạn đang nhập, điền tên + loại giáo án nếu còn trống
-  const handleSuggest = async () => {
-    if (!form.horseId) {
-      setErrors((prev) => ({ ...prev, horseId: "Chọn ngựa trước khi lấy gợi ý" }));
-      return;
-    }
-    const weeks = Number(suggestWeeks);
-    const { min, max } = PLAN_RULES.suggestionWeeks;
-    if (!Number.isInteger(weeks) || weeks < min || weeks > max) {
-      setSuggestError({ message: `Số tuần phải từ ${min} đến ${max}.` });
-      return;
-    }
-    if (!suggestStart || suggestStart < todayISO()) {
-      setSuggestError({ message: "Ngày bắt đầu không được ở quá khứ." });
-      return;
-    }
-    setSuggesting(true);
-    setSuggestError(null);
-    try {
-      const result = await getPlanSuggestion(form.horseId, { startDate: suggestStart, weeks });
-      setSuggestion(result);
-      if (result.canCreatePlan && result.phases.length > 0) {
-        setPhases(result.phases.map(phaseToForm));
-        setForm((prev) => ({
-          ...prev,
-          planName: prev.planName.trim() ? prev.planName : result.suggestedPlanName ?? "",
-          trainingType: prev.trainingType || result.suggestedTrainingType || "",
-        }));
-        setErrors((prev) => ({ ...prev, planName: undefined, phases: [], phasesForm: undefined }));
-      }
-    } catch (err) {
-      setSuggestError(err);
-    } finally {
-      setSuggesting(false);
-    }
   };
 
   const validate = () => {
@@ -190,6 +151,16 @@ export default function TrainingPlanForm() {
       setErrors(newErrors);
       return;
     }
+    // Sửa kế hoạch đã được chủ ngựa đồng ý → cảnh báo sẽ phải duyệt lại
+    if (isEdit && approval?.status === PLAN_APPROVAL.APPROVED) {
+      setConfirmSave(true);
+      return;
+    }
+    save();
+  };
+
+  const save = async () => {
+    setConfirmSave(false);
     setSubmitting(true);
     setSubmitError(null);
     const body = {
@@ -202,11 +173,16 @@ export default function TrainingPlanForm() {
     };
     try {
       const saved = isEdit ? await updateTrainingPlan(id, body) : await createTrainingPlan({ horseId: Number(form.horseId), ...body });
+      // Đã gửi / đã đồng ý mà sửa → cập nhật bản chụp cho chủ ngựa và quay lại Chờ chủ ngựa duyệt
+      if (isEdit) await resubmitEditedPlan(saved, user.fullName);
+      if (isEdit && approval?.status === PLAN_APPROVAL.REJECTED) await clearPlanApproval(saved.planId);
+      const backToPending = isEdit && approval?.status === PLAN_APPROVAL.APPROVED;
       navigate(`/trainer/plans/${saved.planId}`, {
         state: {
+          created: !isEdit, // trang chi tiết tự chọn thông báo theo trạng thái duyệt
           message: isEdit
-            ? `Đã cập nhật giáo án "${saved.planName}".`
-            : `Đã lập giáo án "${saved.planName}" ở trạng thái Nháp. Xem trước lịch tuần rồi bấm Áp dụng để bắt đầu.`,
+            ? `Đã cập nhật giáo án "${saved.planName}".${backToPending ? " Kế hoạch đã chuyển lại Chờ chủ ngựa duyệt." : ""}`
+            : `Đã lập giáo án "${saved.planName}" . Gửi chủ ngựa duyệt, sau khi chủ ngựa đồng ý mới Áp dụng được.`,
         },
       });
     } catch (err) {
@@ -318,79 +294,6 @@ export default function TrainingPlanForm() {
             />
           </section>
 
-          {phasesEditable && (
-            <section className="rounded-lg border border-brass/30 bg-brass/5 px-4 py-4 sm:px-5">
-              <h2 className="flex items-center gap-2 font-serif text-base font-semibold text-ink">
-                <Sparkles className="h-4 w-4 text-brass-deep" aria-hidden="true" />
-                Gợi ý theo thể trạng
-              </h2>
-              <p className="mt-1 text-sm text-stone">
-                Hệ thống chia giai đoạn theo mức cường độ khuyến nghị của ngựa. Các giai đoạn đang nhập bên dưới sẽ được thay bằng gợi
-                ý.
-              </p>
-              <div className="mt-4 flex flex-wrap items-end gap-4">
-                <div className="w-44">
-                  <FormField
-                    variant="outline"
-                    label="Bắt đầu từ"
-                    id="suggestStart"
-                    type="date"
-                    min={todayISO()}
-                    value={suggestStart}
-                    onChange={(e) => setSuggestStart(e.target.value)}
-                  />
-                </div>
-                <div className="w-32">
-                  <FormField
-                    variant="outline"
-                    label="Số tuần"
-                    id="suggestWeeks"
-                    type="number"
-                    inputMode="numeric"
-                    min={PLAN_RULES.suggestionWeeks.min}
-                    max={PLAN_RULES.suggestionWeeks.max}
-                    value={suggestWeeks}
-                    onChange={(e) => setSuggestWeeks(e.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSuggest}
-                  disabled={suggesting}
-                  className="h-[46px] cursor-pointer rounded-md border border-brass-deep/40 bg-white px-4 text-sm font-semibold text-brass-deep transition-colors hover:border-brass-deep hover:bg-brass/10 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {suggesting ? "Đang gợi ý..." : "Lấy gợi ý"}
-                </button>
-              </div>
-              {suggestError && (
-                <div className="mt-3">
-                  <ApiErrorNotice error={suggestError} />
-                </div>
-              )}
-              {suggestion && (
-                <div className="mt-3 text-sm">
-                  {suggestion.canCreatePlan ? (
-                    <p className="text-green-800">
-                      Đã điền {suggestion.phases.length} giai đoạn
-                      {suggestion.endDate && ` từ ${formatDate(suggestion.startDate)} đến ${formatDate(suggestion.endDate)}`}
-                      {suggestion.suggestedTrainingType && ` (${label("planTypes", suggestion.suggestedTrainingType)})`} — có thể chỉnh lại
-                      trước khi lưu.
-                    </p>
-                  ) : (
-                    <p className="text-alert">Ngựa hiện không được phép tập nên chưa thể lập giáo án.</p>
-                  )}
-                  {suggestion.rationale?.length > 0 && (
-                    <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-stone">
-                      {suggestion.rationale.map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-
           <section className="space-y-4 border-t border-stone/20 pt-6">
             <div>
               <h2 className={SECTION_TITLE}>Các giai đoạn</h2>
@@ -437,6 +340,17 @@ export default function TrainingPlanForm() {
           />
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={confirmSave}
+        title="Lưu thay đổi"
+        message="Kế hoạch này đã được chủ ngựa đồng ý. Lưu thay đổi sẽ chuyển kế hoạch về trạng thái Chờ chủ ngựa duyệt, chủ ngựa cần duyệt lại và không giao thêm lịch cho Groom cho tới khi được đồng ý."
+        confirmLabel="Lưu và gửi duyệt lại"
+        cancelLabel="Quay lại"
+        danger={false}
+        onConfirm={save}
+        onCancel={() => setConfirmSave(false)}
+      />
     </div>
   );
 }
