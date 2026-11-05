@@ -13,8 +13,8 @@ const STATUS_COLORS = {
 
 // kind="session": bảng màu riêng cho trạng thái BUỔI TẬP (Đã lên lịch vàng, Đang tập cam, Hoàn thành olive, Đã hủy nâu nhạt)
 const SESSION_STATUS_COLORS = {
-  Scheduled: "text-[#b7791f]",
-  InProgress: "text-[#c2570c]",
+  Scheduled: "text-[#1f1f1f]",
+  InProgress: "text-[#1f1f1f]",
   Completed: "text-[#4d6b2a]",
   Cancelled: "text-[#8a7f6e]",
 };

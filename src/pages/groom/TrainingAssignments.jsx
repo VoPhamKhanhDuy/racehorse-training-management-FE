@@ -1,10 +1,14 @@
+import { useCallback, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
 import useApiResource from "../../hooks/useApiResource";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
+import GroomSessionReportDialog from "./GroomSessionReportDialog";
 import TrainingSessionCard from "./TrainingSessionCard";
+import Toast from "../../components/Toast";
+import useSessionReviews from "../../hooks/useSessionReviews";
 import { getMyTrainingAssignments } from "../../services/trainingApi";
 import { addDays, formatDayMonth, startOfWeek, todayISO, weekdayName } from "../../utils/date";
 
@@ -23,6 +27,10 @@ export default function TrainingAssignments() {
   const weekStart = weekParam && DATE_PATTERN.test(weekParam) ? startOfWeek(weekParam) : currentWeekStart;
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  const records = useSessionReviews(); // báo cáo của Groom (MOCK — services/sessionReviewMock.js)
+  const [reportSession, setReportSession] = useState(null);
+  const [toast, setToast] = useState(null);
+  const closeToast = useCallback(() => setToast(null), []);
   const resource = useApiResource(() => getMyTrainingAssignments({ from: weekStart, to: addDays(weekStart, 6) }), weekStart);
   const sessions = resource.data ?? [];
   const { loading, error } = resource;
@@ -67,6 +75,7 @@ export default function TrainingAssignments() {
               : `${sessions.length} buổi tập trong tuần${weekStart === currentWeekStart ? ` · hôm nay ${todayCount} buổi` : ""}.`}
           </p>
           {/* ≥768px: lưới 7 cột kiểu lịch; hẹp hơn: danh sách dọc, mỗi ngày một khối */}
+          {sessions.length > 0 && (
           <ol className="overflow-hidden rounded-[4px] border border-[#b9ab90] bg-white md:grid md:grid-cols-7">
             {sessionsByDay.map(({ date, items }, index) => {
               const isToday = date === today;
@@ -91,15 +100,37 @@ export default function TrainingAssignments() {
                         —
                       </p>
                     ) : (
-                      items.map((session) => <TrainingSessionCard key={session.sessionId} session={session} label={label} />)
+                      items.map((session) => (
+                        <TrainingSessionCard
+                          key={session.sessionId}
+                          session={session}
+                          record={records[session.sessionId]}
+                          label={label}
+                          onOpen={setReportSession}
+                        />
+                      ))
                     )}
                   </div>
                 </li>
               );
             })}
           </ol>
+          )}
         </>
       )}
+
+      {reportSession && (
+        <GroomSessionReportDialog
+          session={reportSession}
+          record={records[reportSession.sessionId]}
+          onClose={() => setReportSession(null)}
+          onSaved={(text) => {
+            setReportSession(null);
+            setToast({ text });
+          }}
+        />
+      )}
+      <Toast toast={toast} onClose={closeToast} />
     </div>
   );
 }

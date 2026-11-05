@@ -15,7 +15,8 @@ const SWATCH_STYLES = {
   Cancelled: "bg-[#8a7f6e]",
 };
 
-export const CHIP_STATUSES = ["Scheduled", "InProgress", "Completed", "Cancelled"];
+// Chú giải trạng thái trên lịch — không có "Cancelled" vì buổi đã hủy không hiện
+export const CHIP_STATUSES = ["Scheduled", "InProgress", "Completed"];
 
 export function chipClass(status) {
   return CHIP_STYLES[status] ?? CHIP_STYLES.Scheduled;

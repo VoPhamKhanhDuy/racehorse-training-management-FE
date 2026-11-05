@@ -7,6 +7,9 @@ import LoadingState from "../../components/LoadingState";
 import SelectField from "../../components/SelectField";
 import TrainingBadge from "../../components/TrainingBadge";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { getPlanApproval, syncPlanSessions } from "../../services/planApprovalMock";
+import { getPlanGroom } from "../../services/planGroomMock";
+import { GROOM_LOCK_HINT, canAssignGroom } from "../../utils/planStatus";
 import { generateWeeklySchedule, getAssignableStaff, getTrainingPlan } from "../../services/trainingApi";
 import { addDays, formatDate, formatDayMonth, startOfWeek, todayISO, weekdayName } from "../../utils/date";
 import { formatKm, formatMinutes } from "../../utils/trainingFormat";
@@ -25,6 +28,7 @@ export default function WeeklyScheduleGenerator() {
   const { label } = useTrainingOptions();
   const [plan, setPlan] = useState(null);
   const [staff, setStaff] = useState([]);
+  const [approvalStatus, setApprovalStatus] = useState(null); // trạng thái duyệt của chủ ngựa (MOCK)
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -35,6 +39,7 @@ export default function WeeklyScheduleGenerator() {
   const [pickedDate, setPickedDate] = useState(() => startOfWeek(todayISO()));
   const [startTime, setStartTime] = useState("06:00");
   const [assignee, setAssignee] = useState("");
+  const groomLocked = !canAssignGroom(approvalStatus);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [timeError, setTimeError] = useState("");
   const [running, setRunning] = useState(""); // "preview" | "create"
@@ -43,10 +48,14 @@ export default function WeeklyScheduleGenerator() {
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getTrainingPlan(id), getAssignableStaff()])
-      .then(([planDetail, staffList]) => {
+    Promise.all([getTrainingPlan(id), getAssignableStaff(), getPlanApproval(id)])
+      .then(([planDetail, staffList, approval]) => {
         if (ignore) return;
         setPlan(planDetail);
+        setApprovalStatus(approval.status);
+        // Groom đã chọn lúc Áp dụng kế hoạch → người được giao mặc định (vẫn đổi được)
+        const groom = getPlanGroom(planDetail.planId);
+        if (groom && staffList.some((person) => person.userId === groom.userId)) setAssignee(String(groom.userId));
         setStaff(staffList);
         // Tuần mặc định: tuần hiện tại, hoặc tuần đầu của giáo án nếu giáo án chưa bắt đầu
         const today = todayISO();
@@ -84,11 +93,13 @@ export default function WeeklyScheduleGenerator() {
       const data = await generateWeeklySchedule(plan.planId, {
         weekStartDate: weekStart,
         defaultStartTime: startTime,
-        assignedToUserId: assignee ? Number(assignee) : null,
+        assignedToUserId: groomLocked ? null : assignee ? Number(assignee) : null,
         replaceExisting,
         previewOnly,
       });
       setResult(data);
+      // Tạo lịch thật xong → chép sang mock cho Chủ ngựa thấy (cầu nối tạm)
+      if (!previewOnly) getTrainingPlan(plan.planId).then(syncPlanSessions).catch(() => {});
     } catch (err) {
       setResult(null);
       setError(err);
@@ -133,7 +144,7 @@ export default function WeeklyScheduleGenerator() {
         <>
           {isDraft && (
             <p className="mt-4 rounded-sm border-l-2 border-brass bg-brass/5 px-4 py-3 text-sm text-ink">
-              Giáo án đang ở trạng thái Nháp: chỉ xem trước được, chưa lưu buổi tập. Áp dụng giáo án ở trang chi tiết để tạo lịch thật.
+              Giáo án đang ở trạng thái Nháp: chỉ xem trước được, chưa lưu buổi tập. Sau khi chủ ngựa đồng ý, Áp dụng giáo án ở trang chi tiết để tạo lịch thật.
             </p>
           )}
 
@@ -176,8 +187,9 @@ export default function WeeklyScheduleGenerator() {
                   variant="outline"
                   label="Phân công luôn cho"
                   id="assignee"
-                  value={assignee}
+                  value={groomLocked ? "" : assignee}
                   onChange={(e) => setAssignee(e.target.value)}
+                  disabled={groomLocked}
                 >
                   <option value="">Chưa phân công</option>
                   {staff.map((person) => (
@@ -187,6 +199,7 @@ export default function WeeklyScheduleGenerator() {
                     </option>
                   ))}
                 </SelectField>
+                {groomLocked && <p className="mt-1 text-xs text-stone">{GROOM_LOCK_HINT}</p>}
               </div>
             </div>
 

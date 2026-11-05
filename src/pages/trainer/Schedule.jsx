@@ -59,7 +59,8 @@ export default function Schedule() {
   const [horses = [], staffList = [], activePlans = []] = baseResource.data ?? [];
   const staff = [...staffList].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
   const sortedHorses = [...horses].sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  const sessions = sessionsResource.data ?? [];
+  // Buổi đã hủy không hiện trên lịch
+  const sessions = (sessionsResource.data ?? []).filter((s) => s.status !== "Cancelled");
   const error = baseResource.error ?? sessionsResource.error;
   const loading = baseResource.loading || sessionsResource.loading;
 

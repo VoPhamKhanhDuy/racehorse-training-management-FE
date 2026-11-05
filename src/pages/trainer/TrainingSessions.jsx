@@ -3,11 +3,13 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
 import SessionDrawer from "./SessionDrawer";
+import SessionReviewDialog from "./SessionReviewDialog";
 import SessionTable from "./SessionTable";
 import { SESSION_QUERY_MAX_DAYS } from "../../data/trainingCodes";
 import useApiResource from "../../hooks/useApiResource";
 import useAuth from "../../hooks/useAuth";
-import useTrainingOptions from "../../hooks/useTrainingOptions";
+import useSessionReviews from "../../hooks/useSessionReviews";
+import { STAGES, actualDistanceOf, isCompletedSession, scoreOf, sessionStage } from "../../utils/sessionReview";
 import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
 import { addDays, daysBetween, startOfWeek, todayISO } from "../../utils/date";
 import { formatKm, formatNumber } from "../../utils/trainingFormat";
@@ -32,7 +34,6 @@ export default function TrainingSessions() {
   const { state } = useLocation();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { options } = useTrainingOptions();
   const today = todayISO();
   const defaultRange = quickRanges(today)[0];
 
@@ -54,6 +55,8 @@ export default function TrainingSessions() {
 
   const [message, setMessage] = useState(state?.message ?? "");
   const [openSessionId, setOpenSessionId] = useState(null);
+  const [reviewSessionId, setReviewSessionId] = useState(null); // buổi đang mở khung "Đánh giá buổi tập"
+  const records = useSessionReviews(); // báo cáo của Groom + đánh giá của Trainer (MOCK)
 
   // Danh sách cho bộ lọc — lỗi thì bộ lọc trống, lỗi chính hiện ở kết quả tra cứu
   const filterResource = useApiResource(() => Promise.all([getHorses(), getTrainingPlans(), getAssignableStaff()]), "filters");
@@ -61,10 +64,13 @@ export default function TrainingSessions() {
   const staff = [...staffList].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
 
   const { horseId, planId, assignedToUserId, status } = filters;
-  const query = { from, to, horseId, planId, assignedToUserId, status };
+  const query = { from, to, horseId, planId, assignedToUserId }; // "status" lọc phía FE theo 4 tình trạng (STAGES)
   // Khoảng ngày sai → không gọi API (key = null), chỉ báo lỗi
   const sessionsResource = useApiResource(() => searchTrainingSessions(query), rangeError ? null : JSON.stringify(query));
-  const sessions = sessionsResource.data ?? [];
+  // Buổi đã hủy không hiện trong danh sách (chỉ hiện khi chủ động lọc trạng thái "Đã hủy")
+  const sessions = (sessionsResource.data ?? []).filter(
+    (s) => s.status !== "Cancelled" && (!status || sessionStage(s, records[s.sessionId]) === status)
+  );
   const { loading, error } = sessionsResource;
 
   const updateParams = (changes) => {
@@ -76,10 +82,20 @@ export default function TrainingSessions() {
     setSearchParams(next, { replace: true });
   };
 
-  const completed = sessions.filter((s) => s.status === "Completed");
-  const scored = completed.filter((s) => s.performanceScore != null);
-  const averageScore = scored.length ? scored.reduce((sum, s) => sum + Number(s.performanceScore), 0) / scored.length : null;
-  const actualKm = completed.reduce((sum, s) => sum + Number(s.actualDistanceKm ?? 0), 0);
+  // Hoàn thành / điểm / km thực tế tính theo báo cáo của Groom và đánh giá của Trainer, không có thì theo dữ liệu BE
+  const completed = sessions.filter((s) => isCompletedSession(s, records[s.sessionId]));
+  const scoredValues = sessions.map((s) => scoreOf(s, records[s.sessionId])).filter((v) => v != null);
+  const averageScore = scoredValues.length ? scoredValues.reduce((sum, v) => sum + Number(v), 0) / scoredValues.length : null;
+  const actualKm = completed.reduce((sum, s) => sum + Number(actualDistanceOf(s, records[s.sessionId]) ?? 0), 0);
+
+  // Bấm "Xem" → khung chi tiết theo tình trạng buổi (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá).
+  // Buổi đang tập (đã bắt đầu qua BE) vẫn mở ngăn thao tác cũ để ghi kết quả.
+  const handleSelect = (sessionId) => {
+    const target = sessions.find((s) => s.sessionId === sessionId);
+    if (target?.status === "InProgress") setOpenSessionId(sessionId);
+    else setReviewSessionId(sessionId);
+  };
+  const reviewSession = sessions.find((s) => s.sessionId === reviewSessionId) ?? null;
   const activeRange = quickRanges(today).find((r) => r.from === from && r.to === to)?.key;
   const hasFilters = Object.values(filters).some(Boolean);
 
@@ -199,7 +215,7 @@ export default function TrainingSessions() {
           </label>
           <select id="filterStatus" value={status} onChange={(e) => updateParams({ status: e.target.value })} className={FILTER_CONTROL}>
             <option value="">Tất cả trạng thái</option>
-            {options.sessionStatuses.map((option) => (
+            {STAGES.map((option) => (
               <option key={option.code} value={option.code}>
                 {option.label}
               </option>
@@ -226,7 +242,7 @@ export default function TrainingSessions() {
       ) : (
         <div>
           {/* Dòng tóm tắt (thay dải 4 số liệu): dùng đúng các giá trị đang tính */}
-          <p className="mt-3 mb-2 text-sm text-[#4a3f33]">
+          <p className="mt-3 mb-3 text-sm text-[#6b6055]">
             <b className="font-semibold text-[#2b2118]">{sessions.length}</b> buổi ·{" "}
             <b className="font-semibold text-[#2b2118]">{completed.length}</b> hoàn thành · Điểm phong độ TB{" "}
             <b className="font-semibold text-[#2b2118]">{averageScore != null ? formatNumber(averageScore) : "—"}</b> ·{" "}
@@ -234,12 +250,24 @@ export default function TrainingSessions() {
           </p>
           <SessionTable
             sessions={sessions}
-            onSelect={setOpenSessionId}
+            onSelect={handleSelect}
             showHorse
-            showPlan
             emptyText="Không có buổi tập nào trong khoảng ngày và bộ lọc đã chọn."
           />
         </div>
+      )}
+
+      {reviewSession && (
+        <SessionReviewDialog
+          key={reviewSession.sessionId}
+          session={reviewSession}
+          record={records[reviewSession.sessionId]}
+          onClose={() => setReviewSessionId(null)}
+          onSaved={(text) => {
+            setReviewSessionId(null);
+            setMessage(text);
+          }}
+        />
       )}
 
       <SessionDrawer

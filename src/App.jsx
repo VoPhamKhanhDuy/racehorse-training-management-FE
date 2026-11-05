@@ -33,6 +33,9 @@ import TrainingSessions from "./pages/trainer/TrainingSessions";
 import TrainingSessionForm from "./pages/trainer/TrainingSessionForm";
 import SessionResultForm from "./pages/trainer/SessionResultForm";
 import Races from "./pages/trainer/Races";
+import RaceRegistrations from "./pages/trainer/RaceRegistrations";
+import OwnerRaces from "./pages/owner/OwnerRaces";
+import RaceRegistrationApprovals from "./pages/manager/RaceRegistrationApprovals";
 import HorseProfiles from "./pages/trainer/HorseProfiles";
 import HorseProfile from "./pages/trainer/HorseProfile";
 import MedicalExams from "./pages/vet/MedicalExams";
@@ -88,6 +91,7 @@ function App() {
         <Route path="/trainer/sessions/new" element={<Navigate to="/trainer/sessions" replace />} />
         <Route path="/trainer/sessions/:id/edit" element={<TrainingSessionForm />} />
         <Route path="/trainer/sessions/:id/result" element={<SessionResultForm />} />
+        <Route path="/trainer/race-registrations" element={<RaceRegistrations />} />
         <Route path="/trainer/races" element={<Races />} />
         {/* Hồ sơ ngựa: chỉ xem */}
         <Route path="/trainer/horses" element={<HorseProfiles />} />
@@ -150,6 +154,7 @@ function App() {
         <Route path="/owner/horses/:id" element={<OwnerHorseProfile />} />
         <Route path="/owner/health" element={<OwnerHealth />} />
         <Route path="/owner/schedule" element={<OwnerSchedule />} />
+        <Route path="/owner/races" element={<OwnerRaces />} />
         <Route path="/owner/finance" element={<OwnerFinance />} />
         <Route path="/owner/finance/pay/:monthKey" element={<OwnerPayment />} />
         <Route path="/owner/*" element={<PlaceholderPage />} />
@@ -168,6 +173,7 @@ function App() {
         <Route path="/manager/horses/new" element={<HorseForm />} />
         <Route path="/manager/horses/:id/edit" element={<HorseForm />} />
         <Route path="/manager/approvals" element={<AccountApprovals />} />
+        <Route path="/manager/race-registrations" element={<RaceRegistrationApprovals />} />
         <Route path="/manager/finance" element={<ManagerFinance />} />
         <Route path="/manager/staff" element={<StaffManagement />} />
         <Route path="/manager/staff/new" element={<CreateStaffAccount />} />

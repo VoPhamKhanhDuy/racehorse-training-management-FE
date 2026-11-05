@@ -6,6 +6,7 @@ import useAuth from "../../hooks/useAuth";
 import roleHomePaths from "../../routes/roleHomePaths";
 import { isValidEmail } from "../../utils/validators";
 import AccountStatusText from "../../components/AccountStatusText";
+import { CLUB_INFO } from "../../config/clubInfo";
 
 // Lỗi chung dưới nút Đăng nhập. Lỗi do trạng thái tài khoản (hiện chỉ còn bị khóa): câu chữ thường,
 // riêng cụm trạng thái tô màu dùng chung của AccountStatusText. Lỗi khác (sai email/mật khẩu): giữ chữ đỏ.
@@ -84,6 +85,28 @@ export default function Login() {
           <Link to="/register" className="font-semibold text-[#C65D18] hover:underline">
             Đăng ký ngay
           </Link>
+          {(CLUB_INFO.phone || CLUB_INFO.email) && (
+            <p className="mt-3 text-[13px] text-[#6b6b6b]">
+              Cần hỗ trợ?
+              {CLUB_INFO.phone && (
+                <>
+                  {" "}Gọi{" "}
+                  <a href={`tel:${CLUB_INFO.phone}`} className="text-[#c2570c] hover:underline">
+                    {CLUB_INFO.phoneDisplay || CLUB_INFO.phone}
+                  </a>
+                </>
+              )}
+              {CLUB_INFO.phone && CLUB_INFO.email && " hoặc"}
+              {CLUB_INFO.email && (
+                <>
+                  {" "}email{" "}
+                  <a href={`mailto:${CLUB_INFO.email}`} className="text-[#c2570c] hover:underline">
+                    {CLUB_INFO.email}
+                  </a>
+                </>
+              )}
+            </p>
+          )}
         </>
       }
     >

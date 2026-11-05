@@ -1,3 +1,4 @@
+import ApprovalStatusText from "../../components/ApprovalStatusText";
 import StatusText from "../../components/StatusText";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { daysBetween, formatDate } from "../../utils/date";
@@ -20,7 +21,8 @@ function Row({ children }) {
   return <div className="grid border-b border-[#d9cfba] last:border-b-0 md:grid-cols-2">{children}</div>;
 }
 
-export default function PlanInfoTable({ plan }) {
+// approvalStatus: trạng thái duyệt của chủ ngựa — giáo án còn Nháp thì dòng Trạng thái hiện trạng thái duyệt (một nhãn duy nhất)
+export default function PlanInfoTable({ plan, approvalStatus }) {
   const { label } = useTrainingOptions();
   const days = plan.startDate && plan.endDate ? daysBetween(plan.startDate, plan.endDate) + 1 : null;
   const createdAt = formatDateTime(plan.createdAt);
@@ -40,7 +42,11 @@ export default function PlanInfoTable({ plan }) {
           {days ? ` · ${days} ngày` : ""}
         </Pair>
         <Pair label="Trạng thái">
-          <StatusText code={plan.status}>{label("planStatuses", plan.status)}</StatusText>
+          {plan.status === "Draft" && approvalStatus ? (
+            <ApprovalStatusText status={approvalStatus} />
+          ) : (
+            <StatusText code={plan.status}>{label("planStatuses", plan.status)}</StatusText>
+          )}
         </Pair>
       </Row>
       {plan.objective && (

@@ -7,6 +7,7 @@ import { statusDisplayLabel } from "../../utils/statusLabels";
 import TabFilter from "../../components/TabFilter";
 import useApiResource from "../../hooks/useApiResource";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { getPlanApprovalMap } from "../../services/planApprovalMock";
 import { getHorses, getTrainingPlans } from "../../services/trainingApi";
 import PlanPagination from "./PlanPagination";
 import TrainingPlanRow, { PLAN_BORDER, PLAN_HEAD_CELL, PLAN_ROW_GRID, PLAN_TABLE_MIN_WIDTH } from "./TrainingPlanRow";
@@ -34,6 +35,9 @@ export default function TrainingPlans() {
     () => getTrainingPlans({ horseId: horseFilter || undefined, status: statusFilter || undefined }),
     `${horseFilter}|${statusFilter}`
   );
+  // Trạng thái duyệt của chủ ngựa theo planId (MOCK) — giáo án Nháp hiện trạng thái duyệt thay vì "Nháp"
+  const approvalsResource = useApiResource(getPlanApprovalMap, "approvals");
+  const approvalMap = approvalsResource.data ?? {};
   const horses = horsesResource.data ?? [];
   const plans = plansResource.data ?? [];
   const { loading, error } = plansResource;
@@ -195,7 +199,7 @@ export default function TrainingPlans() {
               </div>
               <div>
                 {pagedPlans.map((plan) => (
-                  <TrainingPlanRow key={plan.planId} plan={plan} onOpen={() => navigate(`/trainer/plans/${plan.planId}`)} />
+                  <TrainingPlanRow key={plan.planId} plan={plan} approvalStatus={approvalMap[plan.planId]} onOpen={() => navigate(`/trainer/plans/${plan.planId}`)} />
                 ))}
               </div>
               {pagination}
