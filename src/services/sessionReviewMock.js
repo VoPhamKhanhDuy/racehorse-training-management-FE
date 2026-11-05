@@ -1,7 +1,8 @@
 // MOCK "báo cáo & đánh giá buổi tập" — lưu localStorage (key "sessionReviews"), CHƯA có API BE.
 // Tách riêng khỏi trainingApi.js (API thật) để khi BE xong chỉ cần thay file này bằng lời gọi API, không sửa các trang.
 // Mỗi hàm là 1 endpoint dự kiến (xem TODO). LƯU Ý: localStorage theo từng trình duyệt — demo bằng 1 trình duyệt, đổi tài khoản giữa các role.
-import { REPORT_DISTANCE_MAX, REPORT_NOTE_MAX, REVIEW_COMMENT_MAX } from "../utils/sessionReview";
+import { REPORT_DISTANCE_MAX, REPORT_NOTE_MAX, REVIEW_COMMENT_MAX, hasSessionStarted } from "../utils/sessionReview";
+import { seedDemoSessionRecords } from "../data/demoTrainingSessions";
 
 const STORE_KEY = "sessionReviews";
 const CHANGED_EVENT = "sessionReviews:changed";
@@ -53,8 +54,13 @@ function baseRecord(session, existing) {
 
 // TODO: thay bằng API BE — GET /api/trainer/training-sessions (thêm report + review vào từng buổi) và GET /api/training-assignments/me (thêm report)
 // Trả map sessionId → { report, review, ... }
+// Mỗi lần đọc: (1) xóa mọi báo cáo / đánh giá gắn với buổi CHƯA đến giờ bắt đầu (dữ liệu lỗi từ trước); (2) gieo dữ liệu demo 1 lần (xem data/demoTrainingSessions.js)
 export async function getSessionReviewMap() {
-  return readAll();
+  const original = readAll();
+  const pruned = Object.fromEntries(Object.entries(original).filter(([, r]) => !r.trainingDate || hasSessionStarted(r)));
+  const result = seedDemoSessionRecords(pruned);
+  if (JSON.stringify(result) !== JSON.stringify(original)) writeAll(result); // chỉ ghi khi có thay đổi (tránh lặp vô hạn qua sự kiện)
+  return result;
 }
 
 // ---- GROOM ----
@@ -62,6 +68,7 @@ export async function getSessionReviewMap() {
 // TODO: thay bằng API BE — POST /api/groom/training-sessions/{id}/report
 // data: { result: Completed|Abandoned|NotTrained, actualDistanceKm?, horseReaction: Good|Normal|Tired|Abnormal, note? (≤ 300 ký tự) }
 export async function submitSessionReport(session, data, groomName) {
+  if (!hasSessionStarted(session)) throw new Error("Chưa đến giờ tập, chưa thể báo cáo buổi này.");
   if (!data.result) throw new Error("Vui lòng chọn kết quả buổi tập.");
   if (!data.horseReaction) throw new Error("Vui lòng chọn phản ứng của ngựa.");
   const note = (data.note ?? "").trim();
@@ -92,6 +99,7 @@ export async function submitSessionReport(session, data, groomName) {
 export async function submitSessionReview(session, data, trainerName) {
   const all = readAll();
   const existing = all[session.sessionId];
+  if (!hasSessionStarted(session)) throw new Error("Buổi tập chưa diễn ra, chưa thể đánh giá.");
   if (!existing?.report) throw new Error("Buổi tập chưa có báo cáo của nhân viên chăm sóc.");
   const score = Number(data.score);
   if (!Number.isInteger(score) || score < 1 || score > 10) throw new Error("Điểm phong độ từ 1 đến 10.");
@@ -120,7 +128,7 @@ export async function getOwnerSessionReviews(horses, limit = 5) {
   const ids = new Set(horses.map((h) => Number(h.HorseID)));
   const names = new Set(horses.map((h) => h.Ten));
   return Object.values(readAll())
-    .filter((r) => r.review?.visibleToOwner && (r.horseId != null ? ids.has(Number(r.horseId)) : names.has(r.horseName)))
+    .filter((r) => r.review?.visibleToOwner && hasSessionStarted(r) && (r.horseId != null ? ids.has(Number(r.horseId)) : names.has(r.horseName)))
     .sort((a, b) => b.trainingDate.localeCompare(a.trainingDate) || b.review.reviewedAt.localeCompare(a.review.reviewedAt))
     .slice(0, limit)
     .map((r) => ({

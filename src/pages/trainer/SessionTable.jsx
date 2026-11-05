@@ -2,11 +2,10 @@ import { useState } from "react";
 import useSessionReviews from "../../hooks/useSessionReviews";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { formatDayMonth, shortWeekdayName, todayISO } from "../../utils/date";
-import { actualDistanceOf, scoreOf, sessionStage, stageColor, stageLabel } from "../../utils/sessionReview";
-import { formatKm, formatMinutes, formatNumber } from "../../utils/trainingFormat";
+import { actualDistanceOf, sessionStage, stageColor, stageLabel } from "../../utils/sessionReview";
+import { formatKm, formatMinutes } from "../../utils/trainingFormat";
 
 const PAGE_SIZE = 10;
-const EMPTY = <span className="text-[#B5B5B5]">—</span>;
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
 const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 
@@ -14,8 +13,8 @@ const byDateTime = (a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`$
 
 // Bảng dữ liệu buổi tập (TrainingSession): header – body – footer, kẻ ô đầy đủ, không cuộn ngang (table-layout: fixed).
 // MỘT tông trung tính (#1f1f1f / #6b6b6b / viền #E3E3E3) + MỘT màu nhấn cam đậm chỉ cho việc cần làm (chấm "Chờ đánh giá", link "Xem" của hàng đó).
-// Cột: STT | Ngày giờ (bấm để đổi thứ tự) | Ngựa (+ người phụ trách) | Buổi tập (+ mặt đường · cường độ) | Quãng đường | Điểm | Trạng thái | Chi tiết.
-// showHorse = false (trang chi tiết giáo án): bỏ cột Ngựa. Dưới 1100px ẩn cột STT, dưới 900px ẩn thêm cột Điểm.
+// Cột: STT | Ngày giờ (bấm để đổi thứ tự) | Ngựa (+ người phụ trách) | Buổi tập (+ mặt đường · cường độ) | Quãng đường | Trạng thái | Chi tiết.
+// showHorse = false (trang chi tiết giáo án): bỏ cột Ngựa. Dưới 1100px ẩn cột STT, .
 // Trạng thái theo 4 tình trạng (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá) từ báo cáo của Groom + đánh giá của Trainer; chữ trung tính.
 // Chân bảng: "Hiển thị a–b trong n buổi" + phân trang 10 dòng/trang. Bấm cả dòng hoặc link "Xem" → onSelect(sessionId).
 export default function SessionTable({ sessions, onSelect, showHorse = false, emptyText = "Không có buổi tập nào." }) {
@@ -38,10 +37,9 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
   const pageItems = sorted.slice(offset, offset + PAGE_SIZE);
 
   // Độ rộng cột theo % (tổng 100%); không có cột Ngựa thì chia phần đó cho cột Buổi tập
-  const widths = { stt: 4, date: 12, horse: showHorse ? 16 : 0, session: showHorse ? 26 : 42, distance: 11, score: 8, status: 13, detail: 10 };
+  const widths = { stt: 4, date: 12, horse: showHorse ? 16 : 0, session: showHorse ? 30 : 46, distance: 15, status: 13, detail: 10 };
   const col = (key, hideClass = "") => <col style={{ width: `${widths[key]}%` }} className={hideClass} />;
   const HIDE_STT = "max-[1099px]:hidden";
-  const HIDE_SCORE = "max-[899px]:hidden";
 
   return (
     <div className="overflow-hidden rounded-[4px] border border-[#E3E3E3] bg-white">
@@ -52,7 +50,6 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
           {showHorse && col("horse")}
           {col("session")}
           {col("distance")}
-          {col("score", HIDE_SCORE)}
           {col("status")}
           {col("detail")}
         </colgroup>
@@ -77,7 +74,6 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
             {showHorse && <th className={TH}>Ngựa</th>}
             <th className={TH}>Buổi tập</th>
             <th className={`${TH} text-right`}>Quãng đường</th>
-            <th className={`${TH} text-center ${HIDE_SCORE}`}>Điểm</th>
             <th className={`${TH} text-center`}>Trạng thái</th>
             <th className={`${TH} text-center`}>Chi tiết</th>
           </tr>
@@ -88,7 +84,6 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
             const stage = sessionStage(session, record);
             const isToday = session.trainingDate === today;
             const actualKm = actualDistanceOf(session, record);
-            const score = scoreOf(session, record);
             const subtitle = [
               session.surface && label("surfaces", session.surface),
               session.intensityLevel && label("intensityLevels", session.intensityLevel),
@@ -136,9 +131,6 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
                   <span className="block truncate text-xs text-[#6b6b6b]">
                     {actualKm != null ? `Thực tế ${formatKm(actualKm)}` : formatMinutes(session.durationMinutes)}
                   </span>
-                </td>
-                <td className={`${TD} text-center font-semibold tabular-nums ${HIDE_SCORE}`}>
-                  {score != null ? formatNumber(score) : <span className="font-normal">{EMPTY}</span>}
                 </td>
                 <td className={`${TD} text-center`}>
                   <span className={`text-sm font-semibold ${stageColor(stage)}`}>{stageLabel(stage)}</span>

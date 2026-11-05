@@ -1,4 +1,5 @@
 import useTrainingOptions from "../../hooks/useTrainingOptions";
+import { hasSessionStarted } from "../../utils/sessionReview";
 import { formatKm } from "../../utils/trainingFormat";
 
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
@@ -6,6 +7,7 @@ const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-
 
 // Bảng buổi tập được giao hôm nay (bảng trung tính: nền trắng, viền #E3E3E3, header #F5F5F5, kẻ ô, không zebra, hover #FAFAFA).
 // Cột: Giờ | Ngựa | Buổi tập (+ mặt đường · cường độ) | Quãng đường kế hoạch | Trạng thái (dấu tích: Chưa xác nhận / Đã hoàn thành xanh lá) | Thao tác ("Báo cáo" / "Xem").
+// Buổi CHƯA ĐẾN GIỜ bắt đầu: ô tích và nút "Báo cáo" bị vô hiệu, ghi chữ xám "Chưa đến giờ tập" (mock cũng chặn lưu).
 // records: báo cáo của Groom (hooks/useSessionReviews). Màu nhấn cam: chấm "Chưa tập" + nút "Báo cáo".
 export default function GroomSessionTable({ sessions, records, onOpen }) {
   const { label } = useTrainingOptions({ remote: false });
@@ -36,6 +38,7 @@ export default function GroomSessionTable({ sessions, records, onOpen }) {
           <tbody className="[&>tr:last-child>td]:border-b-0">
             {sessions.map((session) => {
               const reported = Boolean(records[session.sessionId]?.report);
+              const started = hasSessionStarted(session);
               const subtitle = [session.surface && label("surfaces", session.surface), session.intensityLevel && label("intensityLevels", session.intensityLevel)]
                 .filter(Boolean)
                 .join(" · ");
@@ -56,12 +59,12 @@ export default function GroomSessionTable({ sessions, records, onOpen }) {
                   <td className={`${TD} text-right whitespace-nowrap tabular-nums`}>{formatKm(session.distanceKm)}</td>
                   <td className={TD}>
                     {/* Dấu tích: bấm → mở khung báo cáo (chỉ tích xong khi đã lưu báo cáo); đã báo cáo thì tích sẵn */}
-                    <label className={`flex items-center gap-2.5 ${reported ? "cursor-default" : "cursor-pointer"}`}>
+                    <label className={`flex items-center gap-2.5 ${reported || !started ? "cursor-default" : "cursor-pointer"}`}>
                       <input
                         type="checkbox"
                         checked={reported}
-                        disabled={reported}
-                        onChange={() => !reported && onOpen(session)}
+                        disabled={reported || !started}
+                        onChange={() => !reported && started && onOpen(session)}
                         aria-label={`Báo cáo buổi tập ${session.horseName}`}
                         className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#c2570c] disabled:cursor-default"
                       />
@@ -75,6 +78,8 @@ export default function GroomSessionTable({ sessions, records, onOpen }) {
                       <button type="button" onClick={() => onOpen(session)} className="cursor-pointer text-sm font-medium text-[#c2570c] hover:underline">
                         Xem
                       </button>
+                    ) : !started ? (
+                      <span className="text-[13px] whitespace-nowrap text-[#6b6b6b]">Chưa đến giờ tập</span>
                     ) : (
                       <button
                         type="button"

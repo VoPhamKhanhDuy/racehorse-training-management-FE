@@ -1,5 +1,6 @@
 import { ChevronDown, Search } from "lucide-react";
 import { PERIODS } from "../../utils/dateRange";
+import DateInput from "../../components/DateInput";
 
 const FIELD =
   "h-10 w-full rounded-[4px] border border-[#E3E3E3] bg-white text-sm text-[#1f1f1f] outline-none transition-colors focus:border-[#c2570c]";
@@ -69,11 +70,11 @@ export default function OverviewFilterBar({ filters, onChange, onClear, active, 
           <>
             <label className="flex items-center gap-2 text-sm whitespace-nowrap text-[#6b6b6b]">
               Từ ngày
-              <input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => onChange({ from: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
+              <DateInput value={filters.from} max={filters.to || undefined} onChange={(e) => onChange({ from: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
             </label>
             <label className="flex items-center gap-2 text-sm whitespace-nowrap text-[#6b6b6b]">
               Đến ngày
-              <input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => onChange({ to: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
+              <DateInput value={filters.to} min={filters.from || undefined} onChange={(e) => onChange({ to: e.target.value })} className={`${FIELD} w-40 px-2.5`} />
             </label>
           </>
         )}

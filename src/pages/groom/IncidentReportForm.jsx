@@ -8,6 +8,7 @@ import { addAuditLog } from "../../services/auditService";
 import { INCIDENT_DESCRIPTION_MAX, INCIDENT_TYPES } from "../../data/incidentOptions";
 import { todayISO } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
+import DateInput from "../../components/DateInput";
 
 const BACK_TO_LIST = "/groom/incidents";
 
@@ -217,10 +218,9 @@ export default function IncidentReportForm() {
             <label htmlFor="Ngay" className={LABEL}>
               Ngày
             </label>
-            <input
+            <DateInput
               id="Ngay"
               name="Ngay"
-              type="date"
               max={todayISO()}
               value={form.Ngay}
               onChange={(e) => setField("Ngay", e.target.value)}

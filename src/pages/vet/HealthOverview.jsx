@@ -113,7 +113,7 @@ export default function HealthOverview() {
       content: `${report.LoaiSuCo}, báo bởi ${report.ReporterName}`,
       status: "Mới",
       tone: "danger",
-      action: { label: "Xử lý", to: `/vet/incidents?report=${report.ReportID}` },
+      action: { label: "Xem sự cố", to: `/vet/incidents?report=${report.ReportID}` },
     })),
     ...alerts.map(({ horse, alert, otherCount }) => {
       const isVaccine = alert.type === ALERT_TYPES.VACCINE_OVERDUE || alert.type === ALERT_TYPES.VACCINE_DUE_SOON;

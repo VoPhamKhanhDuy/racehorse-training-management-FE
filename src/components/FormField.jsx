@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DateInput from "./DateInput";
 
 const filledStyles = {
   label: "mb-1.5 block text-sm font-medium text-gray-600",
@@ -66,6 +67,16 @@ export default function FormField({ label, id, type = "text", error, leadingIcon
             {leadingIcon}
           </span>
         )}
+        {type === "date" ? (
+          <DateInput
+            id={id}
+            label={label}
+            externalError={error}
+            aria-invalid={Boolean(error)}
+            className={`${styles.input} ${styles.inputState(error)}`}
+            {...inputProps}
+          />
+        ) : (
         <input
           id={id}
           type={isPassword && showPassword ? "text" : type}
@@ -73,6 +84,7 @@ export default function FormField({ label, id, type = "text", error, leadingIcon
           className={`${styles.input} ${isPassword ? "pr-12" : ""} ${suffix ? "pr-20" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
           {...inputProps}
         />
+        )}
         {suffix && (
           <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-sm text-stone">
             {suffix}

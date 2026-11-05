@@ -5,10 +5,10 @@ import { daysBetween, daysSince, formatDate, todayISO } from "../../utils/date";
 // Ô bảng: kẻ ô 1px #E3E3E3 (ngang + dọc, ô cuối không kẻ dọc), padding 12px 16px, căn giữa dọc
 const CELL = "border-r border-b border-[#E3E3E3] px-4 py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 
-// Thời hạn bằng chữ (không icon): quá hạn → "Quá hạn N ngày" cam đậm + chấm cam; sắp tới → "Còn N ngày" đậm; chờ tiêm xa → "Còn N ngày" xám; đã tiêm → "Đã tiêm" xám
+// Thời hạn bằng chữ (không icon): quá hạn → "Quá hạn N ngày" chữ đỏ đậm (không chấm); sắp tới → "Còn N ngày" đậm; chờ tiêm xa → "Còn N ngày" xám; đã tiêm → "Đã tiêm" xám
 function dueInfo(item, state) {
   if (state === "Đã tiêm") return { text: "Đã tiêm", className: "text-[#6b6b6b]", dot: false };
-  if (state === "Quá hạn") return { text: `Quá hạn ${daysSince(item.NgayHen)} ngày`, className: "font-semibold text-[#c2570c]", dot: true };
+  if (state === "Quá hạn") return { text: `Quá hạn ${daysSince(item.NgayHen)} ngày`, className: "font-semibold text-[#c0262d]" };
   const left = daysBetween(todayISO(), item.NgayHen);
   const text = left <= 0 ? "Hôm nay" : `Còn ${left} ngày`;
   return state === "Sắp tới" ? { text, className: "font-semibold", dot: false } : { text, className: "text-[#6b6b6b]", dot: false };
@@ -39,7 +39,6 @@ export default function VaccinationRow({ index, item, state, horse, onMarkDone }
       <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatDate(item.NgayHen)}</td>
       <td className={CELL}>
         <span className={`inline-flex items-center gap-1.5 whitespace-nowrap ${due.className}`}>
-          {due.dot && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c2570c]" aria-hidden="true" />}
           {due.text}
         </span>
       </td>

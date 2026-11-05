@@ -1,6 +1,6 @@
-import HorseAvatar from "../../components/HorseAvatar";
-import { INCIDENT_STATUS } from "../../data/incidentOptions";
-import { formatDate } from "../../utils/date";
+import HorseAvatar from "./HorseAvatar";
+import { INCIDENT_STATUS } from "../data/incidentOptions";
+import { formatDate } from "../utils/date";
 
 // Ô bảng: kẻ ô 1px #E3E3E3 (ngang + dọc, ô cuối không kẻ dọc), padding 12px 16px, căn giữa dọc
 const CELL = "border-r border-b border-[#E3E3E3] px-4 py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
@@ -12,9 +12,9 @@ const STATUS_COLOR = {
   [INCIDENT_STATUS.DONE]: "text-[#4d6b2a]",
 };
 
-// 1 hàng sự cố sức khỏe ngựa: STT | Ngày báo | Ngựa | Loại sự cố | Mô tả | Người báo | Trạng thái. Cả hàng bấm được (Enter/Space) mở modal chi tiết.
+// 1 hàng sự cố (dùng chung Thú y / Quản lý): STT | Ngày báo | Ngựa | Loại sự cố | Mô tả | Người báo | Trạng thái. Cả hàng bấm được (Enter/Space) mở modal chi tiết.
 // Không icon, không màu theo loại sự cố (loại sự cố là chữ thường).
-export default function VetIncidentRow({ index, report, horse, stable, onSelect }) {
+export default function IncidentRow({ index, report, horse, stable, onSelect }) {
   return (
     <tr
       tabIndex={0}

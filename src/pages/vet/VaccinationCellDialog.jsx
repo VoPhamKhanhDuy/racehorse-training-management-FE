@@ -102,7 +102,7 @@ export default function VaccinationCellDialog({ horse, type, items, blocked = fa
                 return (
                   <tr key={item.ScheduleID} className="border-b border-[#E3E3E3] last:border-b-0">
                     <td className="py-2.5 text-[#1f1f1f] tabular-nums">{formatDate(item.NgayHen)}</td>
-                    <td className={`py-2.5 ${state === "Quá hạn" ? "font-semibold text-[#c2570c]" : "text-[#1f1f1f]"}`}>{stateText(item, state, today)}</td>
+                    <td className={`py-2.5 ${state === "Quá hạn" ? "font-semibold text-[#c0262d]" : "text-[#1f1f1f]"}`}>{stateText(item, state, today)}</td>
                   </tr>
                 );
               })}

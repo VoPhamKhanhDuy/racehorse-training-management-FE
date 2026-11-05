@@ -9,10 +9,12 @@ import { SESSION_QUERY_MAX_DAYS } from "../../data/trainingCodes";
 import useApiResource from "../../hooks/useApiResource";
 import useAuth from "../../hooks/useAuth";
 import useSessionReviews from "../../hooks/useSessionReviews";
+import { getDemoSessions } from "../../data/demoTrainingSessions";
 import { STAGES, actualDistanceOf, isCompletedSession, scoreOf, sessionStage } from "../../utils/sessionReview";
 import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
 import { addDays, daysBetween, startOfWeek, todayISO } from "../../utils/date";
 import { formatKm, formatNumber } from "../../utils/trainingFormat";
+import DateInput from "../../components/DateInput";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 // Thanh lọc 1 hàng: ô cao 36px, bo 4px, viền #cfc4ad; nhãn nhỏ 12px (cao 16px) ngay trên ô
@@ -68,9 +70,13 @@ export default function TrainingSessions() {
   // Khoảng ngày sai → không gọi API (key = null), chỉ báo lỗi
   const sessionsResource = useApiResource(() => searchTrainingSessions(query), rangeError ? null : JSON.stringify(query));
   // Buổi đã hủy không hiện trong danh sách (chỉ hiện khi chủ động lọc trạng thái "Đã hủy")
-  const sessions = (sessionsResource.data ?? []).filter(
-    (s) => s.status !== "Cancelled" && (!status || sessionStage(s, records[s.sessionId]) === status)
-  );
+  // Buổi mẫu đã qua (data/demoTrainingSessions.js — MOCK chờ dữ liệu thật) trộn vào khi khớp khoảng ngày và bộ lọc; sắp theo ngày giờ như API
+  const demoSessions = sessionsResource.data
+    ? getDemoSessions().filter((s) => s.trainingDate >= from && s.trainingDate <= to && !horseId && !planId && !assignedToUserId)
+    : [];
+  const sessions = [...(sessionsResource.data ?? []), ...demoSessions]
+    .filter((s) => s.status !== "Cancelled" && (!status || sessionStage(s, records[s.sessionId]) === status))
+    .sort((a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`${b.trainingDate} ${b.startTime}`));
   const { loading, error } = sessionsResource;
 
   const updateParams = (changes) => {
@@ -82,9 +88,11 @@ export default function TrainingSessions() {
     setSearchParams(next, { replace: true });
   };
 
+  // Dòng tóm tắt chỉ tính buổi đã có báo cáo / đánh giá hợp lệ (đã đến giờ + có bản ghi); buổi chưa diễn ra hoặc chưa báo cáo không tính
   // Hoàn thành / điểm / km thực tế tính theo báo cáo của Groom và đánh giá của Trainer, không có thì theo dữ liệu BE
-  const completed = sessions.filter((s) => isCompletedSession(s, records[s.sessionId]));
-  const scoredValues = sessions.map((s) => scoreOf(s, records[s.sessionId])).filter((v) => v != null);
+  const reportedSessions = sessions.filter((s) => ["AwaitingReview", "Reviewed"].includes(sessionStage(s, records[s.sessionId])));
+  const completed = reportedSessions.filter((s) => isCompletedSession(s, records[s.sessionId]));
+  const scoredValues = reportedSessions.map((s) => scoreOf(s, records[s.sessionId])).filter((v) => v != null);
   const averageScore = scoredValues.length ? scoredValues.reduce((sum, v) => sum + Number(v), 0) / scoredValues.length : null;
   const actualKm = completed.reduce((sum, s) => sum + Number(actualDistanceOf(s, records[s.sessionId]) ?? 0), 0);
 
@@ -118,9 +126,9 @@ export default function TrainingSessions() {
           <label htmlFor="sessionFrom" className={FILTER_LABEL}>
             Từ ngày
           </label>
-          <input
+          <DateInput
+            required
             id="sessionFrom"
-            type="date"
             value={from}
             onChange={(e) => e.target.value && updateParams({ from: e.target.value, to })}
             className={FILTER_CONTROL}
@@ -130,9 +138,9 @@ export default function TrainingSessions() {
           <label htmlFor="sessionTo" className={FILTER_LABEL}>
             Đến ngày
           </label>
-          <input
+          <DateInput
+            required
             id="sessionTo"
-            type="date"
             value={to}
             min={from}
             onChange={(e) => e.target.value && updateParams({ from, to: e.target.value })}
@@ -242,12 +250,25 @@ export default function TrainingSessions() {
       ) : (
         <div>
           {/* Dòng tóm tắt (thay dải 4 số liệu): dùng đúng các giá trị đang tính */}
-          <p className="mt-3 mb-3 text-sm text-[#6b6055]">
-            <b className="font-semibold text-[#2b2118]">{sessions.length}</b> buổi ·{" "}
-            <b className="font-semibold text-[#2b2118]">{completed.length}</b> hoàn thành · Điểm phong độ TB{" "}
-            <b className="font-semibold text-[#2b2118]">{averageScore != null ? formatNumber(averageScore) : "—"}</b> ·{" "}
-            <b className="font-semibold text-[#2b2118]">{formatKm(actualKm)}</b>
-          </p>
+          {reportedSessions.length > 0 && (
+            <p className="mt-3 mb-3 text-sm text-[#6b6055]">
+              <b className="font-semibold text-[#2b2118]">{reportedSessions.length}</b> buổi ·{" "}
+              <b className="font-semibold text-[#2b2118]">{completed.length}</b> hoàn thành
+              {averageScore != null && (
+                <>
+                  {" "}
+                  · Điểm phong độ TB <b className="font-semibold text-[#2b2118]">{formatNumber(averageScore)}</b>
+                </>
+              )}
+              {actualKm > 0 && (
+                <>
+                  {" "}
+                  · <b className="font-semibold text-[#2b2118]">{formatKm(actualKm)}</b> thực tế
+                </>
+              )}
+            </p>
+          )}
+          {reportedSessions.length === 0 && <div className="mt-3" />}
           <SessionTable
             sessions={sessions}
             onSelect={handleSelect}

@@ -4,7 +4,25 @@
 // phần có thật (tên, ngày, địa điểm) và dòng "Chưa có mô tả chi tiết".
 // Khớp theo mã giải (RaceID) HOẶC từ khóa trong tên giải (không phân biệt hoa thường) vì mã giải của BE và mock cũ khác nhau.
 // Lệ phí không đặt ở đây: lệ phí mẫu lấy từ raceRegistrationMock.sampleEntryFee để các màn khác dùng cùng một số.
+// Cơ cấu giải thưởng MẪU dùng để điền sẵn tiền thưởng khi giải chưa có dữ liệu mẫu riêng (hạng 1 / 2 / 3)
+export const DEFAULT_SAMPLE_PAYOUTS = [50000000, 30000000, 20000000];
+
 const RACE_INFO = [
+  {
+    keywords: ["autumn sprint"],
+    description:
+      "Cuộc đua nước rút mùa thu trên đường thẳng ngắn, ưu tiên ngựa có tốc độ bứt phá tốt. Thích hợp để đánh giá phong độ sau giai đoạn tập nền.",
+    category: "Đua nước rút",
+    distance: "1.000 m",
+    eligibility: "Ngựa từ 3 tuổi trở lên, giống Thoroughbred",
+    prizePool: 100000000,
+    payouts: [50000000, 30000000, 20000000],
+    schedule: [
+      { time: "06:30", label: "Điểm danh ngựa và nài" },
+      { time: "07:30", label: "Kiểm tra trước đua" },
+      { time: "09:00", label: "Xuất phát" },
+    ],
+  },
   {
     keywords: ["young horse trial"],
     description:

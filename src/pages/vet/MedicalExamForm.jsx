@@ -5,6 +5,7 @@ import LoadingState from "../../components/LoadingState";
 import useAuth from "../../hooks/useAuth";
 import ChoiceBoxes from "./ChoiceBoxes";
 import ExamHorsePanel from "./ExamHorsePanel";
+import DateInput from "../../components/DateInput";
 import {
   createMedicalRecord,
   getActiveTrainingLocks,
@@ -25,7 +26,7 @@ import {
   NO_INJURY,
 } from "../../data/medicalRecordOptions";
 import { addAuditLog } from "../../services/auditService";
-import { todayISO } from "../../utils/date";
+import { todayISO, yearsFromToday } from "../../utils/date";
 import { getHealthStyle } from "../../utils/healthStatusStyles";
 import { toUserID } from "../../utils/userId";
 
@@ -270,10 +271,10 @@ export default function MedicalExamForm() {
             <label htmlFor="Ngay" className={LABEL}>
               Ngày khám
             </label>
-            <input
+            <DateInput
               id="Ngay"
               name="Ngay"
-              type="date"
+              min={selectedHorse?.NgaySinh || yearsFromToday(-5)}
               max={todayISO()}
               value={form.Ngay}
               onChange={(e) => setField("Ngay", e.target.value)}

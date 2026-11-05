@@ -17,7 +17,7 @@ import {
 } from "../../utils/sessionReview";
 import { formatDateTime, formatKm, formatMinutes, formatTimeRange } from "../../utils/trainingFormat";
 
-const SECTION_TITLE = "font-serif text-base font-semibold text-[#2b2118]";
+const SECTION_TITLE = "text-base font-semibold text-[#1f1f1f]";
 const SCORES = Array.from({ length: 10 }, (_, i) => i + 1);
 const OUTLINE_BUTTON =
   "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-ink transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
@@ -158,9 +158,15 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
 
       {report && (
         <section className="mt-6 border-t border-stone/15 pt-6">
-          <h3 className={SECTION_TITLE}>Báo cáo của Groom</h3>
+          <h3 className={SECTION_TITLE}>
+            Báo cáo của nhân viên chăm sóc
+            <span className="font-normal text-[#6b6b6b]">
+              {" "}
+              — {report.reportedByName}, {formatDateTime(report.reportedAt)}
+            </span>
+          </h3>
+          <p className="mt-1 text-[13px] text-[#6b6b6b]">Chỉ đọc.</p>
           <dl className="mt-3 space-y-2">
-            <InfoRow label="Người báo cáo">{report.reportedByName}</InfoRow>
             <InfoRow label="Kết quả">{resultLabel(report.result)}</InfoRow>
             <InfoRow label="Quãng đường thực tế">{report.result === "NotTrained" ? "—" : formatKm(report.actualDistanceKm)}</InfoRow>
             <InfoRow label="Phản ứng của ngựa">
@@ -171,7 +177,6 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
                 <span className="whitespace-pre-line">{report.note}</span>
               </InfoRow>
             )}
-            <InfoRow label="Báo cáo lúc">{formatDateTime(report.reportedAt)}</InfoRow>
           </dl>
         </section>
       )}

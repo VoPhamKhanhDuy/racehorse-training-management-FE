@@ -146,3 +146,8 @@ export function shortWeekdayName(isoDate) {
   const [year, month, day] = isoDate.split("-").map(Number);
   return SHORT_WEEKDAYS[new Date(year, month - 1, day).getDay()];
 }
+
+// Ngày cách hôm nay n năm (n âm = quá khứ), dạng "YYYY-MM-DD"; 29/02 lùi về 28/02 nếu năm đích không nhuận
+export function yearsFromToday(n) {
+  return monthsFromToday(n * 12);
+}

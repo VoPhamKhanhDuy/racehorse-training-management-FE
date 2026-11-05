@@ -9,7 +9,7 @@ const TH = "border-r border-[#E3E3E3] px-3 text-[13px] font-semibold text-[#1f1f
 const CELL = "border-r border-b border-[#E3E3E3] p-0 last:border-r-0";
 
 // Nội dung ô (chữ, không icon, không nền): luôn 1–2 dòng, căn giữa
-// - Quá hạn: "Quá hạn N ngày" cam đậm + chấm cam, dòng dưới xám "hẹn dd/MM/yyyy"
+// - Quá hạn: "Quá hạn N ngày" chữ đỏ đậm, dòng dưới xám "hẹn dd/MM/yyyy"
 // - Sắp đến hạn: "Còn N ngày" #1f1f1f đậm + "hẹn dd/MM/yyyy" xám
 // - Chờ tiêm xa: "Hẹn dd/MM/yyyy" xám;  Đã tiêm: ngày tiêm gần nhất #1f1f1f;  chưa có lịch: "Chưa có lịch" xám nhạt
 function CellText({ cell, today }) {
@@ -18,10 +18,7 @@ function CellText({ cell, today }) {
   if (state === "Quá hạn") {
     return (
       <>
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-[#c2570c]">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c2570c]" aria-hidden="true" />
-          Quá hạn {daysSince(item.NgayHen)} ngày
-        </span>
+        <span className="block text-sm font-semibold text-[#c0262d]">Quá hạn {daysSince(item.NgayHen)} ngày</span>
         <span className="block text-xs text-[#6b6b6b]">hẹn {formatDate(item.NgayHen)}</span>
       </>
     );
@@ -109,7 +106,7 @@ export default function VaccinationMatrix({ rows, columns, today, onOpenCell }) 
         </table>
         <TablePager page={currentPage} pageCount={pageCount} total={rows.length} pageSize={PAGE_SIZE} unit="ngựa" onPage={setPage} />
       </div>
-      <p className="mt-2 text-xs text-[#6b6b6b]">Ngày hiển thị là lần tiêm gần nhất. Chấm cam: quá hạn, cần tiêm.</p>
+      <p className="mt-2 text-xs text-[#6b6b6b]">Ngày hiển thị là lần tiêm gần nhất. Chữ đỏ: quá hạn, cần tiêm.</p>
     </>
   );
 }

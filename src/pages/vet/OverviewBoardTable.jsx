@@ -40,7 +40,7 @@ export default function OverviewBoardTable({ rows, emptyText }) {
             <th className={TH}>Tình trạng</th>
             <th className={TH}>Khám gần nhất</th>
             <th className={TH}>Lưu ý / Vắc-xin</th>
-            <th className={TH}>Thao tác</th>
+            <th className={TH}>Chi tiết</th>
           </tr>
         </thead>
         <tbody className="[&>tr:last-child>td]:border-b-0">
