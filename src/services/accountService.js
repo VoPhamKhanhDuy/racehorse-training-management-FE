@@ -9,11 +9,11 @@
 import users from "../data/users";
 import { SEED_VERSION, USER_CREATED_ID_START } from "../data/seedVersion";
 import { todayISO } from "../utils/date";
+import { DEFAULT_STAFF_PASSWORD } from "./managerStaffService";
+
+export { DEFAULT_STAFF_PASSWORD };
 
 const NETWORK_DELAY_MS = 400;
-
-// Mật khẩu mặc định cho tài khoản nhân sự mới — nhân sự bắt buộc đổi ở lần đăng nhập đầu (mustChangePassword)
-export const DEFAULT_STAFF_PASSWORD = "123456";
 
 function delay(ms = NETWORK_DELAY_MS) {
   return new Promise((resolve) => setTimeout(resolve, ms));

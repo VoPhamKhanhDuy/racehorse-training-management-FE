@@ -8,10 +8,9 @@ import roles, { STAFF_ROLE_IDS } from "../../data/roles";
 import {
   createStaffAccount,
   DEFAULT_STAFF_PASSWORD,
-  getUserById,
-  isEmailTaken,
+  getStaffAccountById,
   updateStaffAccount,
-} from "../../services/accountService";
+} from "../../services/managerStaffService";
 import { isValidEmail } from "../../utils/validators";
 
 const staffRoles = roles.filter((role) => STAFF_ROLE_IDS.includes(role.id));
@@ -36,20 +35,24 @@ export default function CreateStaffAccount() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock accountService)
   useEffect(() => {
     if (!isEdit) return;
     let ignore = false;
-    getUserById(id).then((user) => {
-      if (ignore) return;
-      // Chỉ sửa được tài khoản nhân sự nội bộ, không sửa Chủ ngựa/Quản lý CLB ở đây
-      if (user && STAFF_ROLE_IDS.includes(user.roleId)) {
-        setForm({ fullName: user.fullName, email: user.email, roleId: user.roleId });
-      } else {
+    getStaffAccountById(id)
+      .then((user) => {
+        if (ignore) return;
+        if (user && STAFF_ROLE_IDS.includes(user.roleId)) {
+          setForm({ fullName: user.fullName, email: user.email, roleId: user.roleId });
+        } else {
+          setNotFound(true);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (ignore) return;
         setNotFound(true);
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -66,7 +69,6 @@ export default function CreateStaffAccount() {
     if (!form.fullName.trim()) newErrors.fullName = "Vui lòng nhập họ và tên";
     if (!form.email.trim()) newErrors.email = "Vui lòng nhập email";
     else if (!isValidEmail(form.email)) newErrors.email = "Email không hợp lệ";
-    else if (isEmailTaken(form.email, id)) newErrors.email = "Email này đã có tài khoản";
     if (!form.roleId) newErrors.roleId = "Vui lòng chọn vai trò";
     return newErrors;
   };
@@ -88,8 +90,13 @@ export default function CreateStaffAccount() {
             : `Đã tạo tài khoản cho "${saved.fullName}" (${saved.email}).`,
         },
       });
-    } catch {
-      setErrors({ form: "Không lưu được tài khoản, vui lòng thử lại." });
+    } catch (err) {
+      const message = err.message || "Không lưu được tài khoản, vui lòng thử lại.";
+      if (err.status === 409 || /email/i.test(message)) {
+        setErrors({ email: message, form: undefined });
+      } else {
+        setErrors({ form: message });
+      }
       setSubmitting(false);
     }
   };

@@ -4,8 +4,8 @@ import { ChevronDown, Lock, Search, SearchX, UserCheck, Users } from "lucide-rea
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import StaffRow from "./StaffRow";
-import roles, { STAFF_ROLE_IDS } from "../../data/roles";
-import { getUsers, setUserActive } from "../../services/accountService";
+import roles from "../../data/roles";
+import { getStaffAccounts, setStaffActive } from "../../services/managerStaffService";
 
 const roleNameById = Object.fromEntries(roles.map((role) => [role.id, role.name]));
 
@@ -22,21 +22,27 @@ export default function StaffManagement() {
   const { state } = useLocation();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [keyword, setKeyword] = useState("");
   const [staffToToggle, setStaffToToggle] = useState(null); // nhân sự đang chờ xác nhận khóa/mở khóa
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState(state?.message ?? "");
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock accountService)
   useEffect(() => {
     let ignore = false;
-    getUsers().then((userList) => {
-      if (ignore) return;
-      // Chỉ nhân sự nội bộ — không hiện Quản lý CLB và Chủ ngựa
-      setStaffList(userList.filter((u) => STAFF_ROLE_IDS.includes(u.roleId)));
-      setLoading(false);
-    });
+    getStaffAccounts()
+      .then((list) => {
+        if (ignore) return;
+        setStaffList(list);
+        setLoadError("");
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setLoadError(err.message || "Không tải được danh sách nhân sự.");
+        setLoading(false);
+      });
     return () => {
       ignore = true;
     };
@@ -63,15 +69,21 @@ export default function StaffManagement() {
   const handleConfirmToggle = async () => {
     const staff = staffToToggle;
     setProcessing(true);
-    const updated = await setUserActive(staff.id, !staff.isActive);
-    setStaffList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-    setProcessing(false);
-    setStaffToToggle(null);
-    setMessage(
-      updated.isActive
-        ? `Đã mở khóa tài khoản của "${updated.fullName}".`
-        : `Đã khóa tài khoản của "${updated.fullName}".`
-    );
+    try {
+      const updated = await setStaffActive(staff.id, !staff.isActive);
+      setStaffList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setMessage(
+        updated.isActive
+          ? `Đã mở khóa tài khoản của "${updated.fullName}".`
+          : `Đã khóa tài khoản của "${updated.fullName}".`
+      );
+      setStaffToToggle(null);
+    } catch (err) {
+      setMessage(err.message || "Không cập nhật được trạng thái tài khoản.");
+      setStaffToToggle(null);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const locking = staffToToggle?.isActive;
@@ -106,6 +118,8 @@ export default function StaffManagement() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <div className="space-y-5">
           {/* Dải số liệu trong 1 card trắng (viền hairline, bo nhẹ, bóng nhẹ) để tách khỏi nền trang; vạch dọc ngăn từng ô */}

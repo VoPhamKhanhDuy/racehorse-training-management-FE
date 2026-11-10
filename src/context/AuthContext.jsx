@@ -1,10 +1,12 @@
 import { createContext, useEffect, useState } from "react";
-import { changePassword as changePasswordApi, findUserByEmail, findUserById } from "../services/accountService";
+import { changePassword as changePasswordMock, findUserByEmail, findUserById } from "../services/accountService";
+import { changePasswordApi } from "../services/managerStaffService";
 import { apiRequest, setAccessToken } from "../services/apiClient";
 import {
   clearApiSession,
   getApiSession,
   getApiSessionStorageKey,
+  getApiToken,
   saveApiSession,
   setUnauthorizedHandler,
 } from "../services/apiSession";
@@ -26,15 +28,16 @@ function toSessionUser({ password: _password, ...userWithoutPassword }) {
 // (lọc theo user.id) vẫn nhận ra người này; apiUserId là UserID thật trong DB.
 function toApiSessionUser(apiUser) {
   const mockUser = findUserByEmail(apiUser.email);
+  const userId = apiUser.userId ?? apiUser.UserId;
   return {
-    id: mockUser?.id ?? `API${apiUser.userId}`,
-    apiUserId: apiUser.userId,
-    fullName: apiUser.fullName,
-    email: apiUser.email,
-    roleId: apiUser.roleId,
+    id: mockUser?.id ?? `API${userId}`,
+    apiUserId: userId,
+    fullName: apiUser.fullName ?? apiUser.FullName,
+    email: apiUser.email ?? apiUser.Email,
+    roleId: apiUser.roleId ?? apiUser.RoleId,
     status: "approved",
     isActive: true,
-    mustChangePassword: false,
+    mustChangePassword: Boolean(apiUser.mustChangePassword ?? apiUser.MustChangePassword),
   };
 }
 
@@ -159,6 +162,12 @@ export function AuthProvider({ children }) {
           statusScreen: { status: "Chờ duyệt", fullName: findUserByEmail(email)?.fullName ?? "", email: email.trim() },
         };
       }
+      if (err.code === "ACCOUNT_LOCKED") {
+        return {
+          error: err.message || "Tài khoản đã bị khóa, liên hệ Quản lý CLB.",
+          accountStatus: { status: "Bị khóa", phrase: "bị khóa" },
+        };
+      }
       beUnreachable = err.code === "NETWORK_ERROR" || err.status >= 500;
     }
 
@@ -181,11 +190,19 @@ export function AuthProvider({ children }) {
     window.location.assign("/login");
   };
 
-  // TODO: thay bằng gọi API thật khi BE xong
-  // Đổi mật khẩu cho user đang đăng nhập (màn hình đổi mật khẩu lần đầu) — cập nhật luôn session để gỡ cờ mustChangePassword
+  // Đổi mật khẩu lần đầu — ưu tiên BE khi có JWT; mock chỉ khi phiên demo local
   const changePassword = async (newPassword) => {
-    const updated = await changePasswordApi(user.id, newPassword);
+    if (getApiToken()) {
+      const data = await changePasswordApi(newPassword);
+      const sessionUser = toApiSessionUser(data.user);
+      saveApiSession({ token: data.token, user: sessionUser });
+      setUser(sessionUser);
+      return sessionUser;
+    }
+
+    const updated = await changePasswordMock(user.id, newPassword);
     setUser(updated);
+    saveSession(updated);
     return updated;
   };
 
