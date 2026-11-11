@@ -1,7 +1,9 @@
+import { HORSE_MAX_AGE, HORSE_MIN_AGE } from "../config/horseAge";
+
 // Giới hạn hợp lệ cho HORSE — form Thêm/Sửa ngựa và horseService dùng chung
 export const HORSE_LIMITS = {
   Ten: { min: 2, max: 30 }, // số ký tự
-  Age: { min: 1, max: 40 }, // tuổi tính từ NgaySinh (số năm tròn)
+  Age: { min: HORSE_MIN_AGE, max: HORSE_MAX_AGE }, // tuổi tính từ NgaySinh (số năm tròn)
   CanNang: { min: 200, max: 700 }, // kg, tối đa 1 chữ số thập phân
   DongDoi: { min: 2, max: 60 }, // số ký tự
 };
@@ -19,4 +21,4 @@ export const HORSE_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const HORSE_PHOTO_MAX_MB = 5;
 
 export const DUPLICATE_HORSE_NAME = "Đã có ngựa trùng tên này.";
-export const INVALID_BIRTH_DATE = "Ngày sinh không hợp lệ (ngựa phải từ 1 đến 40 tuổi).";
+export const INVALID_BIRTH_DATE = `Ngày sinh không hợp lệ (ngựa phải từ ${HORSE_MIN_AGE} đến ${HORSE_MAX_AGE} tuổi).`;

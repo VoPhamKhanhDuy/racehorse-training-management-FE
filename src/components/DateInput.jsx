@@ -7,6 +7,7 @@ import { formatDate, toISODate, todayISO } from "../utils/date";
 // - value / min / max là "YYYY-MM-DD"; hiển thị dd/MM/yyyy, gõ tay được (tự thêm dấu "/"), bấm vào ô mở lịch tiếng Việt, tuần bắt đầu Thứ Hai.
 // - Lịch có dropdown tháng + năm (năm chỉ trong khoảng min–max), nút "Hôm nay" và "Xóa" (ẩn khi required). Ngày ngoài min/max bị làm mờ, không chọn được.
 // - onChange phát ra { target: { name, value } } giống input thường nên chỗ gọi vẫn dùng e.target.value; ngày gõ sai / ngoài khoảng phát "" kèm thông báo ngắn dưới ô.
+// - rangeMessage(iso, min, max): tuỳ biến thông báo ngoài khoảng; emitOutOfRange: vẫn phát ngày gõ tay ngoài khoảng để form tự validate khi submit.
 // - className là style của ô (do FormField / trang truyền vào); externalError: nếu form đã có lỗi riêng thì không hiện thông báo khoảng ngày của ô.
 const MONTHS = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`);
 const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -42,7 +43,7 @@ function rangeMessage(iso, min, max, label) {
   return "";
 }
 
-export default function DateInput({ value = "", onChange, min, max, required, disabled, className = "", label, externalError, name, id, placeholder = "dd/MM/yyyy", ...rest }) {
+export default function DateInput({ value = "", onChange, min, max, required, disabled, className = "", label, externalError, name, id, placeholder = "dd/MM/yyyy", rangeMessage: customRangeMessage, emitOutOfRange = false, ...rest }) {
   const [text, setText] = useState(toDisplay(value));
   const [open, setOpen] = useState(false);
   const [rangeError, setRangeError] = useState("");
@@ -77,9 +78,9 @@ export default function DateInput({ value = "", onChange, min, max, required, di
       if (raw.length >= 10) setRangeError(`${label || "Ngày"} không hợp lệ`);
       return;
     }
-    const message = rangeMessage(iso, min, max, label);
+    const message = (customRangeMessage ?? rangeMessage)(iso, min, max, label);
     setRangeError(message);
-    emit(message ? "" : iso);
+    emit(message && !emitOutOfRange ? "" : iso);
     if (!message) setView(parseISO(iso));
   };
 
