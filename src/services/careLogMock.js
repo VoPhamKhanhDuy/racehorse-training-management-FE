@@ -2,13 +2,15 @@
 // Khác với việc chăm sóc do BE giao (careService.completeCareTask → POST /groom/tasks/{id}/complete): việc hằng ngày ở đây TỰ SINH từ chuồng +
 // khẩu phần (utils/careDailyTasks.js) nên chưa có bản ghi nào trên BE để "hoàn thành".
 // LƯU Ý: localStorage theo từng trình duyệt.
+import { sharedStorage } from "./sharedStorage";
+
 const STORE_KEY = "careLogs";
 const CHANGED_EVENT = "careLogs:changed";
 export const CARE_NOTE_MAX = 200;
 
 function readAll() {
   try {
-    const raw = window.localStorage.getItem(STORE_KEY);
+    const raw = sharedStorage.getItem(STORE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -40,7 +42,7 @@ export async function completeCareTask(taskKey, note, groomName) {
   if (all[taskKey]) return all[taskKey]; // đã xong rồi → giữ nguyên
   const log = { completedAt: new Date().toISOString(), note: text, by: groomName };
   try {
-    window.localStorage.setItem(STORE_KEY, JSON.stringify({ ...all, [taskKey]: log }));
+    sharedStorage.setItem(STORE_KEY, JSON.stringify({ ...all, [taskKey]: log }));
   } catch {
     throw new Error("Không lưu được, vui lòng thử lại.");
   }

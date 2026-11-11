@@ -129,8 +129,19 @@ export default function ManagerFinance() {
       setLoadError(err.message || "Không tải được chi phí và tiền thưởng.");
       setLoading(false);
     });
+    const onSharedChange = (e) => {
+      const changedKey = e?.detail?.key;
+      if (!changedKey || changedKey === "financePayments" || changedKey === "equitrack.data.expenses") {
+        setPaymentVersion((v) => v + 1);
+        getExpenses().then((list) => {
+          if (!ignore) setExpenses(list);
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener("sharedStorage:changed", onSharedChange);
     return () => {
       ignore = true;
+      window.removeEventListener("sharedStorage:changed", onSharedChange);
     };
   }, []);
 

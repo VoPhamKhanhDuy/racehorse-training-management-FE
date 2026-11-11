@@ -3,13 +3,14 @@
 // Mỗi hàm là 1 endpoint dự kiến (xem TODO). LƯU Ý: localStorage theo từng trình duyệt — demo bằng 1 trình duyệt, đổi tài khoản giữa các role.
 import { REPORT_DISTANCE_MAX, REPORT_NOTE_MAX, REVIEW_COMMENT_MAX, hasSessionStarted } from "../utils/sessionReview";
 import { seedDemoSessionRecords } from "../data/demoTrainingSessions";
+import { sharedStorage } from "./sharedStorage";
 
 const STORE_KEY = "sessionReviews";
 const CHANGED_EVENT = "sessionReviews:changed";
 
 function readAll() {
   try {
-    const raw = window.localStorage.getItem(STORE_KEY);
+    const raw = sharedStorage.getItem(STORE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -18,9 +19,9 @@ function readAll() {
 
 function writeAll(value) {
   try {
-    window.localStorage.setItem(STORE_KEY, JSON.stringify(value));
+    sharedStorage.setItem(STORE_KEY, JSON.stringify(value));
   } catch {
-    // localStorage bị chặn → bỏ qua (mock chỉ phục vụ demo)
+    // bỏ qua
   }
   window.dispatchEvent(new Event(CHANGED_EVENT));
 }

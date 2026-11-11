@@ -4,6 +4,7 @@
 // POST /api/supplies/restock-requests/{id}/handle (Quản lý đánh dấu đã xử lý). Chưa trừ / cộng kho.
 // LƯU Ý: localStorage theo từng trình duyệt — Groom và Quản lý phải dùng cùng trình duyệt khi demo.
 import { todayISO } from "../utils/date";
+import { sharedStorage } from "./sharedStorage";
 
 const STORE_KEY = "supplyRequests";
 const CHANGED_EVENT = "supplyRequests:changed";
@@ -12,7 +13,7 @@ export const REQUEST_STATUS = { PENDING: "Chờ xử lý", DONE: "Đã xử lý"
 
 function readAll() {
   try {
-    const list = JSON.parse(window.localStorage.getItem(STORE_KEY) ?? "[]");
+    const list = JSON.parse(sharedStorage.getItem(STORE_KEY) ?? "[]");
     return Array.isArray(list) ? list : [];
   } catch {
     return [];
@@ -21,9 +22,9 @@ function readAll() {
 
 function writeAll(list) {
   try {
-    window.localStorage.setItem(STORE_KEY, JSON.stringify(list));
+    sharedStorage.setItem(STORE_KEY, JSON.stringify(list));
   } catch {
-    // bỏ qua nếu localStorage bị chặn
+    // bỏ qua
   }
   window.dispatchEvent(new Event(CHANGED_EVENT));
 }

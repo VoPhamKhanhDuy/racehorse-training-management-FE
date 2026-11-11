@@ -2,11 +2,13 @@
 // Trainer lẫn Manager); XÓA FILE NÀY + chỗ gọi trong raceService.js khi BE xong.
 // Kết quả bị 403 được giữ ở localStorage "raceResults": [{ raceId, horseId, thuHang, tienThuong, syncedToBE }].
 // Chỉ bản ghi syncedToBE:false được phủ lên dữ liệu BE (vì mới hơn); đã đồng bộ thì BE là nguồn chính.
+import { sharedStorage } from "./sharedStorage";
+
 const KEY = "raceResults";
 
 function readAll() {
   try {
-    const list = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const list = JSON.parse(sharedStorage.getItem(KEY) ?? "[]");
     return Array.isArray(list) ? list : [];
   } catch {
     return [];
@@ -15,9 +17,9 @@ function readAll() {
 
 function writeAll(list) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(list));
+    sharedStorage.setItem(KEY, JSON.stringify(list));
   } catch {
-    // localStorage đầy / bị chặn: bỏ qua, kết quả chỉ không được giữ cục bộ
+    // bỏ qua
   }
 }
 

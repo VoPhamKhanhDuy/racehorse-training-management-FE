@@ -9,6 +9,7 @@
 //             reward  → "pending" (chờ chi trả) | "received" (đã chi trả / đã nhận).
 // "Quá hạn" KHÔNG lưu: suy ra ở giao diện từ "unpaid" + hạn thanh toán (utils/paymentDue.js).
 import { toISODate } from "../utils/date";
+import { sharedStorage } from "./sharedStorage";
 
 const STORAGE_KEY = "financePayments";
 const DATA_VERSION = 2; // v1 chưa có ownerId trong khóa → dữ liệu cũ bị bỏ qua và seed lại
@@ -18,7 +19,8 @@ const DEMO_TRANSFERRED_OWNER_ID = 6;
 
 function readAll() {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
+    const raw = sharedStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
     return parsed && parsed.version === DATA_VERSION ? parsed : null;
   } catch {
     return null;
@@ -27,9 +29,9 @@ function readAll() {
 
 function writeAll(data) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    sharedStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
-    // Trình duyệt chặn / đầy bộ nhớ: vẫn chạy được, chỉ mất dữ liệu khi tải lại
+    // bỏ qua
   }
 }
 

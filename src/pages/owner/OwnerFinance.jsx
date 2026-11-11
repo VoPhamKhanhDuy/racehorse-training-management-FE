@@ -57,6 +57,7 @@ export default function OwnerFinance() {
   // Quay về từ trang thanh toán (/owner/finance/pay/:monthKey) mang theo { tab, month, toast }
   const [toast, setToast] = useState(location.state?.toast ?? null);
   const [docKind, setDocKind] = useState(null); // "invoice" | "receipt" | "payout" đang xem; null = đóng
+  const [, setSyncVersion] = useState(0);
 
   // Đã đọc xong tab / tháng / toast từ trang thanh toán thì xóa khỏi history để Back/F5 không hiện lại
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function OwnerFinance() {
 
   useEffect(() => {
     let ignore = false;
-    (async () => {
+    const loadData = async () => {
       try {
         const horseList = await getOwnerHorses(ownerId);
         const ids = horseList.map((h) => h.HorseID);
@@ -89,9 +90,20 @@ export default function OwnerFinance() {
           setLoading(false);
         }
       }
-    })();
+    };
+    loadData();
+
+    const onSharedChange = (e) => {
+      const changedKey = e?.detail?.key;
+      if (!changedKey || changedKey === "financePayments" || changedKey === "equitrack.data.expenses") {
+        setSyncVersion((v) => v + 1);
+        loadData();
+      }
+    };
+    window.addEventListener("sharedStorage:changed", onSharedChange);
     return () => {
       ignore = true;
+      window.removeEventListener("sharedStorage:changed", onSharedChange);
     };
   }, [ownerId]);
 

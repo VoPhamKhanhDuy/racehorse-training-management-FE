@@ -2,12 +2,14 @@
 // BE đã có POST /api/vet/training-locks/{id}/release nhưng chỉ nhận { trangThai } (tình trạng sức khỏe mới) và không lưu ghi chú / người gỡ.
 // TODO(BE): cho release nhận thêm { note } (≤ 300 ký tự) và trả về releasedBy (tên bác sĩ gỡ) + releaseNote trong TrainingLockDto; khi có thì bỏ file này.
 // LƯU Ý: localStorage theo từng trình duyệt.
+import { sharedStorage } from "./sharedStorage";
+
 const STORE_KEY = "lockReleaseNotes";
 export const RELEASE_NOTE_MAX = 300;
 
 function readAll() {
   try {
-    const raw = window.localStorage.getItem(STORE_KEY);
+    const raw = sharedStorage.getItem(STORE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -21,8 +23,8 @@ export function getLockReleaseNotes() {
 
 export function saveLockReleaseNote(lockId, note, byName) {
   try {
-    window.localStorage.setItem(STORE_KEY, JSON.stringify({ ...readAll(), [lockId]: { note: note.trim(), byName, at: new Date().toISOString() } }));
+    sharedStorage.setItem(STORE_KEY, JSON.stringify({ ...readAll(), [lockId]: { note: note.trim(), byName, at: new Date().toISOString() } }));
   } catch {
-    // localStorage bị chặn → bỏ qua (chỉ mất phần ghi chú hiển thị)
+    // bỏ qua
   }
 }

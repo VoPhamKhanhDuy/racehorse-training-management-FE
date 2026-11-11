@@ -1,5 +1,6 @@
 import * as signalR from "@microsoft/signalr";
 import { getApiToken } from "./apiSession";
+import { syncFromServer } from "./sharedStorage";
 
 const HUB_PATH = "/hubs/horse-activity";
 const EVENT_NAME = "horseChanged";
@@ -24,6 +25,14 @@ export function connectHorseActivityHub({ onHorseChanged, onReconnecting, onReco
     const kind = payload?.kind ?? payload?.Kind ?? "";
     if (!horseId) return;
     onHorseChanged?.({ horseId, kind });
+  });
+
+  connection.on("sharedStateChanged", () => {
+    syncFromServer();
+  });
+
+  connection.on("sharedStateCleared", () => {
+    syncFromServer();
   });
 
   if (onReconnecting) connection.onreconnecting(onReconnecting);

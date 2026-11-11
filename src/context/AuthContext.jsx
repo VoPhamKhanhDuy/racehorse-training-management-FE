@@ -5,7 +5,6 @@ import { apiRequest, setAccessToken } from "../services/apiClient";
 import {
   clearApiSession,
   getApiSession,
-  getApiSessionStorageKey,
   getApiToken,
   saveApiSession,
   setUnauthorizedHandler,
@@ -43,7 +42,7 @@ function toApiSessionUser(apiUser) {
 
 function readStorage(key) {
   try {
-    return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -51,8 +50,8 @@ function readStorage(key) {
 
 function saveSession(user) {
   try {
-    localStorage.setItem(SESSION_KEY, user.id);
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.setItem(SESSION_KEY, user.id);
+    localStorage.removeItem(SESSION_KEY);
   } catch {
     // Trình duyệt chặn storage: vẫn đăng nhập được, chỉ mất phiên khi tải lại
   }
@@ -126,17 +125,6 @@ export function AuthProvider({ children }) {
       window.location.assign("/login");
     });
     return () => setUnauthorizedHandler(null);
-  }, []);
-
-  // Tab khác đăng nhập / đăng xuất → tải lại để áp phiên + role mới (storage event chỉ fire ở tab khác)
-  useEffect(() => {
-    const apiKey = getApiSessionStorageKey();
-    const onStorage = (event) => {
-      if (event.key !== apiKey && event.key !== SESSION_KEY) return;
-      window.location.reload();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // Thành công → { user }. Sai email/mật khẩu → { error } (không nói gì về trạng thái).

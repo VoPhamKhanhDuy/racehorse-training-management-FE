@@ -10,6 +10,7 @@ import users from "../data/users";
 import { SEED_VERSION, USER_CREATED_ID_START } from "../data/seedVersion";
 import { todayISO } from "../utils/date";
 import { DEFAULT_STAFF_PASSWORD } from "./managerStaffService";
+import { sharedStorage, subscribeSharedStorage } from "./sharedStorage";
 
 export { DEFAULT_STAFF_PASSWORD };
 
@@ -29,13 +30,15 @@ const seedById = new Map(users.map((u) => [u.id, u]));
 // Đọc USER-CREATED; khác SEED_VERSION (hoặc chưa có) → xóa sạch rồi ghi version mới
 function loadUserCreated() {
   try {
-    localStorage.removeItem(LEGACY_KEY);
-    if (localStorage.getItem(VERSION_KEY) !== String(SEED_VERSION)) {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.setItem(VERSION_KEY, String(SEED_VERSION));
+    sharedStorage.removeItem(LEGACY_KEY);
+    const savedVersion = sharedStorage.getItem(VERSION_KEY);
+    if (savedVersion !== null && savedVersion !== String(SEED_VERSION)) {
+      sharedStorage.removeItem(STORAGE_KEY);
+      sharedStorage.setItem(VERSION_KEY, String(SEED_VERSION));
       return [];
     }
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const raw = sharedStorage.getItem(STORAGE_KEY);
+    const saved = raw ? JSON.parse(raw) : null;
     // Chỉ nhận bản ghi hợp lệ: sửa của 1 tài khoản seed còn tồn tại, hoặc tài khoản mới có id ≥ 1000
     return Array.isArray(saved)
       ? saved.filter((u) => u?.id && (seedById.has(u.id) || idNumber(u.id) >= USER_CREATED_ID_START))
@@ -55,6 +58,13 @@ function mergeUsers() {
 
 const userStore = mergeUsers();
 
+subscribeSharedStorage((changedKey) => {
+  if (changedKey === null || changedKey === STORAGE_KEY) {
+    const refreshed = mergeUsers();
+    userStore.splice(0, userStore.length, ...refreshed);
+  }
+});
+
 // Gọi sau mỗi thao tác ghi: chỉ lưu tài khoản mới + tài khoản seed đã bị sửa (khác seed), không lưu seed nguyên bản
 function saveUsers() {
   const changed = userStore.filter((u) => {
@@ -62,10 +72,10 @@ function saveUsers() {
     return !seed || JSON.stringify(seed) !== JSON.stringify(u);
   });
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(changed));
-    localStorage.setItem(VERSION_KEY, String(SEED_VERSION));
+    sharedStorage.setItem(STORAGE_KEY, JSON.stringify(changed));
+    sharedStorage.setItem(VERSION_KEY, String(SEED_VERSION));
   } catch {
-    // Trình duyệt chặn localStorage: vẫn chạy được, chỉ mất dữ liệu khi tải lại
+    // bỏ qua
   }
 }
 
