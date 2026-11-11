@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
@@ -10,6 +10,7 @@ import TrainingSessionCard from "./TrainingSessionCard";
 import Toast from "../../components/Toast";
 import useSessionReviews from "../../hooks/useSessionReviews";
 import { getMyTrainingAssignments } from "../../services/trainingApi";
+import { subscribePlanApprovals } from "../../services/planApprovalApi";
 import { addDays, formatDayMonth, startOfWeek, todayISO, weekdayName } from "../../utils/date";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,6 +35,8 @@ export default function TrainingAssignments() {
   const resource = useApiResource(() => getMyTrainingAssignments({ from: weekStart, to: addDays(weekStart, 6) }), weekStart);
   const sessions = resource.data ?? [];
   const { loading, error } = resource;
+  const refreshAssignments = resource.refresh;
+  useEffect(() => subscribePlanApprovals(refreshAssignments), [refreshAssignments]);
 
   const goToWeek = (week) => setSearchParams(week === currentWeekStart ? {} : { week });
   const sessionsByDay = weekDays.map((date) => ({ date, items: sessions.filter((s) => s.trainingDate === date) }));

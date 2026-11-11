@@ -1,6 +1,6 @@
 import CenterDialog from "../../components/CenterDialog";
 import { getRaceInfo } from "../../data/raceInfoMock";
-import { raceRegistrationDeadline, sampleEntryFee } from "../../services/raceRegistrationMock";
+import { raceRegistrationDeadline } from "../../services/raceRegistrationApi";
 import { formatCurrency } from "../../utils/currency";
 import { daysBetween, formatDate, todayISO } from "../../utils/date";
 
@@ -30,7 +30,7 @@ export default function RaceInfoDialog({ race, horseCount, onRegister, onClose }
   const deadline = raceRegistrationDeadline(race);
   const open = !isPast && deadline >= today;
   const daysToDeadline = daysBetween(today, deadline);
-  const fee = sampleEntryFee(race.RaceID); // DỮ LIỆU MẪU chờ BE có entryFee
+  const fee = race.entryFee;
 
   const statusNode = isPast ? (
     "Đã diễn ra"

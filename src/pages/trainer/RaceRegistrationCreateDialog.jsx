@@ -4,7 +4,7 @@ import SelectField from "../../components/SelectField";
 import TextAreaField from "../../components/TextAreaField";
 import useAuth from "../../hooks/useAuth";
 import useHorseCondition from "../../hooks/useHorseCondition";
-import { createRaceRegistration, getRaceOptions, submitRaceRegistration } from "../../services/raceRegistrationMock";
+import { createRaceRegistration, getRaceOptions, submitRaceRegistration } from "../../services/raceRegistrationApi";
 import { getHorses } from "../../services/trainingApi";
 import { formatCurrency } from "../../utils/currency";
 import { formatDate, todayISO } from "../../utils/date";

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, SearchX } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
@@ -11,6 +11,7 @@ import { CHIP_STATUSES, swatchClass } from "./sessionChipStyles";
 import useApiResource from "../../hooks/useApiResource";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
+import { subscribePlanApprovals } from "../../services/planApprovalApi";
 import { addDays, formatDate, formatDayMonth, startOfWeek, todayISO, weekdayName } from "../../utils/date";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -56,6 +57,12 @@ export default function Schedule() {
     "base"
   );
   const sessionsResource = useApiResource(() => searchTrainingSessions({ from: weekStart, to: weekEnd }), weekStart);
+  const refreshSessions = sessionsResource.refresh;
+  const refreshBase = baseResource.refresh;
+  useEffect(() => subscribePlanApprovals(() => {
+    refreshSessions();
+    refreshBase();
+  }), [refreshSessions, refreshBase]);
   const [horses = [], staffList = [], activePlans = []] = baseResource.data ?? [];
   const staff = [...staffList].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
   const sortedHorses = [...horses].sort((a, b) => a.name.localeCompare(b.name, "vi"));

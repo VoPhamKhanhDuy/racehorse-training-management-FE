@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import TablePager from "../../components/TablePager";
 import RaceInfoDialog from "./RaceInfoDialog";
 import { getRaceRegistrations } from "../../services/raceService";
-import { getRaceOptions } from "../../services/raceRegistrationMock";
+import { getRaceOptions } from "../../services/raceRegistrationApi";
 import { formatCurrency } from "../../utils/currency";
 import { formatDate, todayISO } from "../../utils/date";
 

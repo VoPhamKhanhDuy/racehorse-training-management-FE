@@ -16,7 +16,7 @@ import {
   getTrainingSession,
   startTrainingSession,
 } from "../../services/trainingApi";
-import { getPlanApproval } from "../../services/planApprovalMock";
+import { getPlanApproval } from "../../services/planApprovalApi";
 import { sessionState } from "../../utils/sessionReview";
 import { formatDate, todayISO, weekdayName } from "../../utils/date";
 import { GROOM_LOCK_HINT, canAssignGroom } from "../../utils/planStatus";

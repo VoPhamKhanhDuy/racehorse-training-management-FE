@@ -16,7 +16,6 @@ import SessionTable from "./SessionTable";
 import useApiResource from "../../hooks/useApiResource";
 import useAuth from "../../hooks/useAuth";
 import useHorseFitness from "../../hooks/useHorseFitness";
-import useTrainingOptions from "../../hooks/useTrainingOptions";
 import {
   activateTrainingPlan,
   cancelTrainingPlan,
@@ -24,15 +23,12 @@ import {
   deleteTrainingPlan,
   getTrainingPlan,
 } from "../../services/trainingApi";
-import { setPlanGroom } from "../../services/planGroomMock";
 import {
-  clearPlanApproval,
   getPlanApproval,
   markNoticesRead,
   sendPlanToOwner,
   subscribePlanApprovals,
-  syncPlanSessions,
-} from "../../services/planApprovalMock";
+} from "../../services/planApprovalApi";
 import { APPLY_LOCK_HINT, PLAN_APPROVAL, approvalLabel, approvalNotice, canApplyPlan, canSendToOwner } from "../../utils/planStatus";
 import { formatKm, formatNumber } from "../../utils/trainingFormat";
 
@@ -51,7 +47,6 @@ export default function TrainingPlanDetail() {
   const { id } = useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { label } = useTrainingOptions();
   const { user } = useAuth();
   // Vừa lập giáo án (state.created): thông báo xanh lấy theo trạng thái duyệt hiện tại thay vì chuỗi cố định
   const [message, setMessage] = useState(state?.created ? "" : (state?.message ?? ""));
@@ -65,25 +60,22 @@ export default function TrainingPlanDetail() {
   const planResource = useApiResource(() => getTrainingPlan(id), id);
   const { data: plan, loading, error: loadError } = planResource;
   const fitnessState = useHorseFitness(plan?.horseId);
-  // Trạng thái duyệt của chủ ngựa (MOCK — services/planApprovalMock.js)
+  // Trạng thái duyệt của chủ ngựa (MOCK — services/planApprovalApi.js)
   const approvalResource = useApiResource(() => getPlanApproval(id), id);
-
-  // Kế hoạch đã đồng ý: chép danh sách buổi tập sang mock để Chủ ngựa thấy ở "Sắp tới" (cầu nối tạm, xem planApprovalMock.js)
-  useEffect(() => {
-    if (planResource.data) syncPlanSessions(planResource.data);
-  }, [planResource.data, approvalResource.data?.status]);
 
   // Mở kế hoạch = đã xem thông báo của kế hoạch này; chủ ngựa vừa quyết định (cùng trình duyệt) thì tải lại
   useEffect(() => {
-    markNoticesRead("head_trainer", { planId: id });
+    markNoticesRead("head_trainer", { planId: id }).catch(() => {});
     return subscribePlanApprovals(() => {
-      markNoticesRead("head_trainer", { planId: id });
+      markNoticesRead("head_trainer", { planId: id }).catch(() => {});
       approvalResource.refresh();
+      planResource.refresh();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (loading) return <LoadingState />;
+  if (loading || approvalResource.loading) return <LoadingState />;
+  if (approvalResource.error) return <ApiErrorNotice variant="page" error={approvalResource.error} onRetry={approvalResource.reload} />;
   if (loadError) return <ApiErrorNotice variant="page" error={loadError} onRetry={planResource.reload} />;
 
   const { status, progress = {} } = plan;
@@ -138,7 +130,6 @@ export default function TrainingPlanDetail() {
       danger: true,
       run: async () => {
         const result = await deleteTrainingPlan(plan.planId);
-        await clearPlanApproval(plan.planId);
         return result;
       },
       done: `Đã xóa giáo án nháp "${plan.planName}".`,
@@ -155,8 +146,7 @@ export default function TrainingPlanDetail() {
     setMessage("");
     setStatusNotice(false);
     try {
-      const updated = await activateTrainingPlan(plan.planId);
-      setPlanGroom(plan.planId, groom);
+      const updated = await activateTrainingPlan(plan.planId, groom.userId);
       planResource.setData(updated);
       fitnessState.reload();
       setMessage(`Đã áp dụng giáo án, giao cho ${groom.fullName}. Bấm "Xếp lịch tuần" để sinh các buổi tập.`);
@@ -168,7 +158,6 @@ export default function TrainingPlanDetail() {
 
   // Bị từ chối → đưa về Nháp (bản ghi duyệt được dọn) rồi mở form sửa để soạn lại và gửi chủ ngựa lần nữa
   const handleReopen = async () => {
-    await clearPlanApproval(plan.planId);
     navigate(`/trainer/plans/${plan.planId}/edit`);
   };
 

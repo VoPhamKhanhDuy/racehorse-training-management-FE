@@ -15,7 +15,7 @@ import {
   getRaceRegistrations,
   getRaces,
 } from "../../services/trainerService";
-import { buildDirectRegistration, listRaceRegistrations, subscribeRaceRegistrations, syncPendingRegistrations } from "../../services/raceRegistrationMock";
+import { buildDirectRegistration, listRaceRegistrations, subscribeRaceRegistrations } from "../../services/raceRegistrationApi";
 import { formatDayMonth, todayISO } from "../../utils/date";
 import { RR_STATUS } from "../../utils/raceRegistration";
 import { isResultComplete } from "../../utils/raceResult";
@@ -55,14 +55,9 @@ export default function Races() {
   useEffect(() => {
     let ignore = false;
     // Trước hết đồng bộ các đăng ký đã duyệt mà chưa có đăng ký thật (chạy bằng quyền Trainer), rồi mới tải danh sách giải
-    syncPendingRegistrations()
-      .catch(() => ({ synced: 0, failed: 0 }))
-      .then((sync) =>
-        Promise.all([getRaces(), getRaceRegistrations(), getHorses(), getActiveTrainingLocks(), getHealthStatuses()]).then((data) => [data, sync])
-      )
-      .then(([[raceList, regList, horseList, lockList, healthList], sync]) => {
+    Promise.all([getRaces(), getRaceRegistrations(), getHorses(), getActiveTrainingLocks(), getHealthStatuses()])
+      .then(([raceList, regList, horseList, lockList, healthList]) => {
         if (ignore) return;
-        if (sync.synced > 0) setToast({ text: `Đã đồng bộ ${sync.synced} đăng ký` });
         setRaces(raceList);
         setRegistrations(regList);
         setHorses(horseList);
@@ -85,9 +80,10 @@ export default function Races() {
     const loadPending = async () => {
       const list = await listRaceRegistrations("head_trainer");
       setAllFlowRegs(list);
+      setRegistrations(await getRaceRegistrations());
       setPendingRegs(list.filter((r) => [RR_STATUS.DRAFT, RR_STATUS.PENDING_OWNER, RR_STATUS.PENDING_MANAGER].includes(r.status)));
     };
-    loadPending();
+    loadPending().catch((err) => setLoadError(err.message));
     return subscribeRaceRegistrations(loadPending);
   }, []);
   const pendingOfRace = (raceId) => pendingRegs.filter((r) => Number(r.raceId) === Number(raceId));

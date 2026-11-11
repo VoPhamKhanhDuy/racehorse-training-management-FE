@@ -38,6 +38,9 @@ function mapRace(raw) {
     TenGiai: pick(raw, "tenGiai", "TenGiai") ?? "",
     Ngay: asDate(pick(raw, "ngay", "Ngay")),
     DiaDiem: pick(raw, "diaDiem", "DiaDiem") ?? "",
+    registrationDeadline: asDate(pick(raw, "registrationDeadline", "RegistrationDeadline")),
+    entryFee: asMoney(pick(raw, "entryFee", "EntryFee")),
+    status: pick(raw, "status", "Status"),
   };
 }
 

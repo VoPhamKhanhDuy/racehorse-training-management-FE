@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 // Gọi API theo khóa: key đổi → gọi lại load(); key = null → không gọi (vd chưa chọn ngựa).
 // key là chuỗi đại diện cho tham số của lần gọi (vd `${horseId}|${weekStart}`).
@@ -12,16 +12,22 @@ export default function useApiResource(load, key) {
   const [reloadCount, setReloadCount] = useState(0);
   const [state, setState] = useState({ key: undefined, data: undefined, error: null });
   const requestKey = key === null || key === undefined ? null : `${key}#${reloadCount}`;
+  const current = useRef({ load, requestKey, sequence: 0 });
+  useLayoutEffect(() => {
+    current.current.load = load;
+    current.current.requestKey = requestKey;
+  });
 
   useEffect(() => {
     if (requestKey === null) return undefined;
     let ignore = false;
-    load().then(
+    const sequence = ++current.current.sequence;
+    current.current.load().then(
       (data) => {
-        if (!ignore) setState({ key: requestKey, data, error: null });
+        if (!ignore && sequence === current.current.sequence) setState({ key: requestKey, data, error: null });
       },
       (error) => {
-        if (!ignore) setState({ key: requestKey, data: undefined, error });
+        if (!ignore && sequence === current.current.sequence) setState({ key: requestKey, data: undefined, error });
       }
     );
     return () => {
@@ -33,22 +39,31 @@ export default function useApiResource(load, key) {
 
   const isCurrent = requestKey !== null && state.key === requestKey;
 
-  const refresh = () => {
-    const keyAtCall = requestKey;
+  const refresh = useCallback(() => {
+    const keyAtCall = current.current.requestKey;
     if (keyAtCall === null) return Promise.resolve();
-    return load().then(
-      (data) => setState((prev) => (prev.key === keyAtCall ? { key: keyAtCall, data, error: null } : prev)),
-      () => {
-        // giữ dữ liệu cũ khi tải ngầm lỗi
+    const sequence = ++current.current.sequence;
+    return current.current.load().then(
+      (data) => {
+        if (current.current.requestKey === keyAtCall && current.current.sequence === sequence)
+          setState({ key: keyAtCall, data, error: null });
+      },
+      (error) => {
+        if (current.current.requestKey === keyAtCall && current.current.sequence === sequence)
+          setState((prev) => prev.key === keyAtCall ? prev : { key: keyAtCall, data: undefined, error });
       }
     );
-  };
+  }, []);
 
-  const setData = (valueOrUpdater) =>
+  const setData = useCallback((valueOrUpdater) => {
+    ++current.current.sequence;
+    const keyAtCall = current.current.requestKey;
     setState((prev) => ({
       ...prev,
+      key: keyAtCall,
       data: typeof valueOrUpdater === "function" ? valueOrUpdater(prev.data) : valueOrUpdater,
     }));
+  }, []);
 
   return {
     data: isCurrent ? state.data : undefined,

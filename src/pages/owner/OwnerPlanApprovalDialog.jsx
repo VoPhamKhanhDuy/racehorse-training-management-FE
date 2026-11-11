@@ -5,7 +5,7 @@ import HorseAvatar from "../../components/HorseAvatar";
 import IntensityText from "../../components/IntensityText";
 import TextAreaField from "../../components/TextAreaField";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
-import { PLAN_APPROVAL_NOTE_MAX } from "../../services/planApprovalMock";
+import { PLAN_APPROVAL_NOTE_MAX } from "../../services/planApprovalApi";
 import { daysBetween, formatDate, formatDayMonth } from "../../utils/date";
 import { PLAN_APPROVAL } from "../../utils/planStatus";
 import { formatKm } from "../../utils/trainingFormat";
@@ -40,7 +40,7 @@ function PhaseStat({ label, children }) {
   );
 }
 
-// Chi tiết kế hoạch huấn luyện của Chủ ngựa: MODAL giữa màn hình (MOCK — services/planApprovalMock.js). Chỉ đọc, ẩn ghi chú nội bộ của Trainer.
+// Chi tiết kế hoạch huấn luyện của Chủ ngựa: MODAL giữa màn hình (MOCK — services/planApprovalApi.js). Chỉ đọc, ẩn ghi chú nội bộ của Trainer.
 // Đầu + chân cố định, chỉ thân cuộn. Chờ duyệt: chân có "Yêu cầu chỉnh sửa" / "Đồng ý"; bấm Yêu cầu chỉnh sửa thì ô lý do
 // (bắt buộc, ≤ 300 ký tự) hiện ngay phía trên chân. Đã quyết định: chỉ có nút "Đóng".
 // onApprove(planId) / onRequestChanges(planId, note) / onReject(planId, note): async, trang cha lo đóng modal + toast; ném lỗi thì hiện trong modal.

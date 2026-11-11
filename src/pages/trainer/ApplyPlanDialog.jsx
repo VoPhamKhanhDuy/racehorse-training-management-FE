@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import CenterDialog from "../../components/CenterDialog";
 import SelectField from "../../components/SelectField";
-import { getLastGroomUserId } from "../../services/planGroomMock";
 import { getAssignableStaff } from "../../services/trainingApi";
 
 const OUTLINE_BUTTON =
@@ -23,7 +22,7 @@ export default function ApplyPlanDialog({ plan, busy, onApply, onClose }) {
         if (ignore) return;
         const list = staff.filter((s) => s.roleId === "groom");
         setGrooms(list);
-        const last = getLastGroomUserId();
+        const last = plan.defaultAssignedToUserId;
         if (last != null && list.some((g) => g.userId === last)) setGroomId(String(last));
         setLoading(false);
       })
@@ -35,7 +34,7 @@ export default function ApplyPlanDialog({ plan, busy, onApply, onClose }) {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [plan.defaultAssignedToUserId]);
 
   const handleApply = async () => {
     if (!groomId) {

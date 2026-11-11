@@ -11,9 +11,8 @@ import PlanPhaseEditor from "./PlanPhaseEditor";
 import PlanPhaseTable from "./PlanPhaseTable";
 import { createPhase, hasPhaseErrors, phaseToForm, phaseToPayload, validatePhases } from "./planPhaseForm";
 import { PLAN_RULES } from "../../data/trainingCodes";
-import { clearPlanApproval, getPlanApproval, resubmitEditedPlan } from "../../services/planApprovalMock";
+import { getPlanApproval } from "../../services/planApprovalApi";
 import { PLAN_APPROVAL } from "../../utils/planStatus";
-import useAuth from "../../hooks/useAuth";
 import useHorseFitness from "../../hooks/useHorseFitness";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import {
@@ -35,7 +34,6 @@ export default function TrainingPlanForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { options, label } = useTrainingOptions();
-  const { user } = useAuth();
 
   const [horses, setHorses] = useState([]);
   const [plan, setPlan] = useState(null); // giáo án đang sửa
@@ -174,8 +172,6 @@ export default function TrainingPlanForm() {
     try {
       const saved = isEdit ? await updateTrainingPlan(id, body) : await createTrainingPlan({ horseId: Number(form.horseId), ...body });
       // Đã gửi / đã đồng ý mà sửa → cập nhật bản chụp cho chủ ngựa và quay lại Chờ chủ ngựa duyệt
-      if (isEdit) await resubmitEditedPlan(saved, user.fullName);
-      if (isEdit && approval?.status === PLAN_APPROVAL.REJECTED) await clearPlanApproval(saved.planId);
       const backToPending = isEdit && approval?.status === PLAN_APPROVAL.APPROVED;
       navigate(`/trainer/plans/${saved.planId}`, {
         state: {

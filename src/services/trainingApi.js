@@ -1,7 +1,7 @@
 // API thật cho luồng Lập & Thực hiện giáo án huấn luyện (BE: docs/API_GiaoAn_HuanLuyen.md).
 // /api/trainer/** chỉ cho head_trainer; /api/training-assignments/me cho groom + head_trainer.
 // Ngày dạng "yyyy-MM-dd", giờ "HH:mm"; dữ liệu trả về giữ nguyên field camelCase của BE.
-// Khác trainerService.js (mock): các màn khác (Chủ ngựa, Quản lý, Bác sĩ) vẫn đọc mock cho tới khi có API tương ứng.
+// Các màn hồ sơ/báo cáo cũ đọc cùng database qua trainerService.js.
 import { apiRequest } from "./apiClient";
 
 const TRAINER = "/api/trainer";
@@ -69,8 +69,8 @@ export function deleteTrainingPlan(planId) {
   return apiRequest(`${PLANS}/${planId}`, { method: "DELETE" });
 }
 
-export function activateTrainingPlan(planId) {
-  return apiRequest(`${PLANS}/${planId}/activate`, { method: "POST" });
+export function activateTrainingPlan(planId, assignedToUserId) {
+  return apiRequest(`${PLANS}/${planId}/activate`, { method: "POST", body: { assignedToUserId } });
 }
 
 export function completeTrainingPlan(planId) {

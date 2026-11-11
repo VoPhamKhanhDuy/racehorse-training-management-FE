@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import RaceRegistrationBoard from "../../components/RaceRegistrationBoard";
-import { syncPendingRegistrations } from "../../services/raceRegistrationMock";
 import Toast from "../../components/Toast";
 import OpenRaceTable from "./OpenRaceTable";
 import RaceRegistrationCreateDialog from "./RaceRegistrationCreateDialog";
 
-// Trainer > Đăng ký thi đấu (luồng duyệt Trainer → Chủ ngựa → Quản lý, MOCK — services/raceRegistrationMock.js).
+// Trainer > Đăng ký thi đấu (luồng duyệt Trainer → Chủ ngựa → Quản lý, MOCK — services/raceRegistrationApi.js).
 // Bảng + khung chi tiết nằm trong RaceRegistrationBoard (dùng chung các vai trò); ở đây thêm nút "Tạo đăng ký".
 // Ma trận ngựa × giải và nhập kết quả thi đấu vẫn ở trang "Kết quả thi đấu" (/trainer/races).
 export default function RaceRegistrations() {
@@ -27,15 +26,6 @@ export default function RaceRegistrations() {
     setCreateRaceId(raceId);
     setCreating(true);
   };
-
-  // Mở trang = đồng bộ các đăng ký đã duyệt mà chưa tạo được đăng ký thật (xem syncPendingRegistrations trong raceRegistrationMock.js)
-  useEffect(() => {
-    syncPendingRegistrations()
-      .then(({ synced }) => {
-        if (synced > 0) setToast({ text: `Đã đồng bộ ${synced} đăng ký` });
-      })
-      .catch(() => {});
-  }, []);
 
   return (
     <>

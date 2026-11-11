@@ -4,8 +4,8 @@ import useAuth from "../../hooks/useAuth";
 import useHorseRealtime from "../../hooks/useHorseRealtime";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { getActiveLockDates, getOwnerHorses, getRaceRegistrations, getRaces } from "../../services/ownerService";
-import { getOwnerUpcomingSessions, subscribePlanApprovals } from "../../services/planApprovalMock";
-import { getOwnerApprovedRaces, subscribeRaceRegistrations } from "../../services/raceRegistrationMock";
+import { getOwnerUpcomingSessions, subscribePlanApprovals } from "../../services/planApprovalApi";
+import { getOwnerApprovedRaces, subscribeRaceRegistrations } from "../../services/raceRegistrationApi";
 import { getOwnerSessionReviews } from "../../services/sessionReviewMock";
 import { addDays, todayISO } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
@@ -32,7 +32,7 @@ export default function OwnerSchedule() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [approvedRaces, setApprovedRaces] = useState([]); // cuộc đua đã duyệt qua luồng đăng ký (MOCK — raceRegistrationMock.js)
+  const [approvedRaces, setApprovedRaces] = useState([]); // cuộc đua đã duyệt qua luồng đăng ký (MOCK — raceRegistrationApi.js)
   const [reviews, setReviews] = useState([]); // đánh giá của HLV được bật hiển thị (MOCK — services/sessionReviewMock.js)
   const [plannedSessions, setPlannedSessions] = useState([]); // buổi tập của kế hoạch đã đồng ý (cùng nguồn với phía Trainer)
   const { label } = useTrainingOptions({ remote: false });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, SearchX } from "lucide-react";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
@@ -7,7 +7,7 @@ import { statusDisplayLabel } from "../../utils/statusLabels";
 import TabFilter from "../../components/TabFilter";
 import useApiResource from "../../hooks/useApiResource";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
-import { getPlanApprovalMap } from "../../services/planApprovalMock";
+import { getPlanApprovalMap, subscribePlanApprovals } from "../../services/planApprovalApi";
 import { getHorses, getTrainingPlans } from "../../services/trainingApi";
 import PlanPagination from "./PlanPagination";
 import TrainingPlanRow, { PLAN_BORDER, PLAN_HEAD_CELL, PLAN_ROW_GRID, PLAN_TABLE_MIN_WIDTH } from "./TrainingPlanRow";
@@ -38,6 +38,8 @@ export default function TrainingPlans() {
   // Trạng thái duyệt của chủ ngựa theo planId (MOCK) — giáo án Nháp hiện trạng thái duyệt thay vì "Nháp"
   const approvalsResource = useApiResource(getPlanApprovalMap, "approvals");
   const approvalMap = approvalsResource.data ?? {};
+  const refreshApprovals = approvalsResource.refresh;
+  useEffect(() => subscribePlanApprovals(refreshApprovals), [refreshApprovals]);
   const horses = horsesResource.data ?? [];
   const plans = plansResource.data ?? [];
   const { loading, error } = plansResource;

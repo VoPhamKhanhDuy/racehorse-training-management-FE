@@ -7,8 +7,7 @@ import LoadingState from "../../components/LoadingState";
 import SelectField from "../../components/SelectField";
 import TrainingBadge from "../../components/TrainingBadge";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
-import { getPlanApproval, syncPlanSessions } from "../../services/planApprovalMock";
-import { getPlanGroom } from "../../services/planGroomMock";
+import { getPlanApproval } from "../../services/planApprovalApi";
 import { GROOM_LOCK_HINT, canAssignGroom } from "../../utils/planStatus";
 import { generateWeeklySchedule, getAssignableStaff, getTrainingPlan } from "../../services/trainingApi";
 import { addDays, formatDate, formatDayMonth, startOfWeek, todayISO, weekdayName } from "../../utils/date";
@@ -54,8 +53,8 @@ export default function WeeklyScheduleGenerator() {
         setPlan(planDetail);
         setApprovalStatus(approval.status);
         // Groom đã chọn lúc Áp dụng kế hoạch → người được giao mặc định (vẫn đổi được)
-        const groom = getPlanGroom(planDetail.planId);
-        if (groom && staffList.some((person) => person.userId === groom.userId)) setAssignee(String(groom.userId));
+        const groomId = planDetail.defaultAssignedToUserId;
+        if (groomId && staffList.some((person) => person.userId === groomId)) setAssignee(String(groomId));
         setStaff(staffList);
         // Tuần mặc định: tuần hiện tại, hoặc tuần đầu của giáo án nếu giáo án chưa bắt đầu
         const today = todayISO();
@@ -94,12 +93,12 @@ export default function WeeklyScheduleGenerator() {
         weekStartDate: weekStart,
         defaultStartTime: startTime,
         assignedToUserId: groomLocked ? null : assignee ? Number(assignee) : null,
+        usePlanAssignee: false,
         replaceExisting,
         previewOnly,
       });
       setResult(data);
-      // Tạo lịch thật xong → chép sang mock cho Chủ ngựa thấy (cầu nối tạm)
-      if (!previewOnly) getTrainingPlan(plan.planId).then(syncPlanSessions).catch(() => {});
+      // BE lưu lịch và phát sự kiện cập nhật cho các phiên đang mở.
     } catch (err) {
       setResult(null);
       setError(err);

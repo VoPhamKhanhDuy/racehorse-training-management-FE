@@ -3,7 +3,7 @@
 // "Thông tin giải", KHÔNG phải thông tin thật và không nhắc tới tổ chức hay địa chỉ ngoài đời. Giải nào không khớp thì modal chỉ hiện
 // phần có thật (tên, ngày, địa điểm) và dòng "Chưa có mô tả chi tiết".
 // Khớp theo mã giải (RaceID) HOẶC từ khóa trong tên giải (không phân biệt hoa thường) vì mã giải của BE và mock cũ khác nhau.
-// Lệ phí không đặt ở đây: lệ phí mẫu lấy từ raceRegistrationMock.sampleEntryFee để các màn khác dùng cùng một số.
+// Lệ phí không đặt ở đây: lệ phí mẫu lấy từ raceRegistrationApi.sampleEntryFee để các màn khác dùng cùng một số.
 // Cơ cấu giải thưởng MẪU dùng để điền sẵn tiền thưởng khi giải chưa có dữ liệu mẫu riêng (hạng 1 / 2 / 3)
 export const DEFAULT_SAMPLE_PAYOUTS = [50000000, 30000000, 20000000];
 

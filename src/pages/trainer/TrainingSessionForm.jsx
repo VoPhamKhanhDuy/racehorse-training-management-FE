@@ -17,7 +17,7 @@ import {
   getTrainingSession,
   updateTrainingSession,
 } from "../../services/trainingApi";
-import { getPlanApproval } from "../../services/planApprovalMock";
+import { getPlanApproval } from "../../services/planApprovalApi";
 import { formatDate, todayISO, weekdayName } from "../../utils/date";
 import { GROOM_LOCK_HINT, canAssignGroom } from "../../utils/planStatus";
 import { formatKm, formatMinutes, intensityRank, lowerIntensity } from "../../utils/trainingFormat";
@@ -98,7 +98,8 @@ export default function TrainingSessionForm() {
           const today = todayISO();
           const dateParam = searchParams.get("date");
           const fallback = planData.startDate > today ? planData.startDate : today;
-          setForm({ ...emptyForm, trainingDate: DATE_PATTERN.test(dateParam ?? "") && dateParam >= today ? dateParam : fallback });
+          setForm({ ...emptyForm, trainingDate: DATE_PATTERN.test(dateParam ?? "") && dateParam >= today ? dateParam : fallback,
+            assignee: planData.defaultAssignedToUserId ? String(planData.defaultAssignedToUserId) : "" });
         }
         setLoading(false);
       })
@@ -182,6 +183,7 @@ export default function TrainingSessionForm() {
       sessionTitle: form.sessionTitle.trim() || null,
       notes: form.notes.trim() || null,
       assignedToUserId: form.assignee ? Number(form.assignee) : null,
+      usePlanAssignee: false,
     };
     try {
       const saved = isEdit ? await updateTrainingSession(id, body) : await addPlanSession(plan.planId, body);

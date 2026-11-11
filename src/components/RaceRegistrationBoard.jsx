@@ -6,13 +6,13 @@ import Toast from "./Toast";
 import useAuth from "../hooks/useAuth";
 import { getHealthStatuses, getHorseOwners, getHorses } from "../services/horseService";
 import { getOwnerHorses } from "../services/ownerService";
-import { listRaceRegistrations, markRaceRegistrationSeen, subscribeRaceRegistrations } from "../services/raceRegistrationMock";
+import { listRaceRegistrations, markRaceRegistrationSeen, subscribeRaceRegistrations } from "../services/raceRegistrationApi";
 import { getActiveTrainingLocks } from "../services/vetService";
-import { ACTION_STATUS_BY_ROLE, RR_STATUS } from "../utils/raceRegistration";
+import { ACTION_STATUS_BY_ROLE } from "../utils/raceRegistration";
 
 const lastActivityAt = (record) => record.history.at(-1)?.at ?? record.createdAt;
 
-// Trang danh sách "Đăng ký thi đấu" dùng chung cho Trainer / Chủ ngựa / Quản lý (MOCK — services/raceRegistrationMock.js):
+// Trang danh sách "Đăng ký thi đấu" dùng chung cho Trainer / Chủ ngựa / Quản lý (MOCK — services/raceRegistrationApi.js):
 // tiêu đề + (nút hành động riêng của vai trò) + bảng + khung chi tiết + thông báo. Tự tải lại khi đăng ký đổi (cùng trình duyệt).
 // Chủ ngựa / Quản lý: hai tab "Chờ duyệt (n)" (mặc định) và "Đã xử lý" (mới xử lý trước). Trainer: một danh sách "Đăng ký của tôi".
 export default function RaceRegistrationBoard({ title, description, headerAction = null, extraTab = null }) {

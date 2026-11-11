@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getOwnerHorses } from "../services/ownerService";
-import { countUnreadNotices, subscribePlanApprovals } from "../services/planApprovalMock";
+import { countUnreadNotices, subscribePlanApprovals } from "../services/planApprovalApi";
 
 // Số thông báo duyệt kế hoạch chưa đọc → huy hiệu "Mới" ở menu (Trainer: Giáo án tập luyện, Chủ ngựa: Lịch trình).
 // Role khác luôn trả 0. Tự cập nhật khi trạng thái duyệt đổi.
@@ -12,8 +12,11 @@ export default function usePlanApprovalBadge(roleId) {
     let ignore = false;
     let horseIds = null;
 
-    const refresh = () => {
-      if (!ignore) setCount(countUnreadNotices(roleId, horseIds));
+    const refresh = async () => {
+      try {
+        const next = await countUnreadNotices(roleId, horseIds);
+        if (!ignore) setCount(next);
+      } catch { /* Recheck on reconnect/focus; no unhandled background rejection. */ }
     };
 
     const start = async () => {

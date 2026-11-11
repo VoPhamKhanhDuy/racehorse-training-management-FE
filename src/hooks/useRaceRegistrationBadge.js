@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getOwnerHorses } from "../services/ownerService";
-import { countRaceRegistrationsWaiting, subscribeRaceRegistrations } from "../services/raceRegistrationMock";
+import { countRaceRegistrationsWaiting, subscribeRaceRegistrations } from "../services/raceRegistrationApi";
 
 // Số đăng ký thi đấu cần chú ý → huy hiệu "Mới" ở menu: Chủ ngựa (Thi đấu) / Quản lý (Đăng ký thi đấu) = đang chờ mình duyệt;
 // Trainer (Đăng ký thi đấu) = đăng ký của mình vừa được duyệt hoặc bị từ chối mà chưa xem.
@@ -14,8 +14,10 @@ export default function useRaceRegistrationBadge(roleId) {
     let horseIds = [];
 
     const refresh = async () => {
+      try {
       const next = await countRaceRegistrationsWaiting(roleId, { horseIds });
       if (!ignore) setCount(next);
+      } catch { /* Retry through the shared update subscription. */ }
     };
 
     (async () => {
