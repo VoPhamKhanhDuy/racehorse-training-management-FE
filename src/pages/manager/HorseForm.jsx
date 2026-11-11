@@ -6,8 +6,15 @@ import SelectField from "../../components/SelectField";
 import HorsePhotoPicker from "./HorsePhotoPicker";
 import { getHorseById, getHorseOwners, getHorses, saveHorseWithPhoto } from "../../services/horseService";
 import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_GENDER_LABELS, HORSE_LIMITS, INVALID_BIRTH_DATE } from "../../data/horseOptions";
-import { getHorseAge, todayISO, yearsFromToday } from "../../utils/date";
+import { birthDateRangeForAge, formatDate, getHorseAge } from "../../utils/date";
+import { HORSE_MAX_AGE, HORSE_MIN_AGE } from "../../config/horseAge";
 import GenderChips from "./GenderChips";
+
+// "Ngựa phải từ 2 đến 20 tuổi (sinh từ dd/MM/yyyy đến dd/MM/yyyy)" — tính theo ngày hiện tại
+function birthRangeMessage() {
+  const { min, max } = birthDateRangeForAge(HORSE_MIN_AGE, HORSE_MAX_AGE);
+  return `Ngựa phải từ ${HORSE_MIN_AGE} đến ${HORSE_MAX_AGE} tuổi (sinh từ ${formatDate(min)} đến ${formatDate(max)})`;
+}
 
 const emptyForm = { Ten: "", Giong: "", NgaySinh: "", GioiTinh: "", MauLong: "", CanNang: "", DongDoi: "", OwnerID: "", photo: null };
 
@@ -18,7 +25,7 @@ const sameText = (a, b) => a.toLocaleLowerCase("vi") === b.toLocaleLowerCase("vi
 function validateHorse(form, otherHorses) {
   const errors = {};
   const name = collapseSpaces(form.Ten);
-  const { Ten, Age, CanNang, DongDoi } = HORSE_LIMITS;
+  const { Ten, CanNang, DongDoi } = HORSE_LIMITS;
 
   if (!name) errors.Ten = "Vui lòng nhập tên ngựa.";
   else if (name.length < Ten.min || name.length > Ten.max) errors.Ten = `Tên ngựa phải từ ${Ten.min} đến ${Ten.max} ký tự.`;
@@ -26,11 +33,11 @@ function validateHorse(form, otherHorses) {
 
   if (!form.Giong.trim()) errors.Giong = "Vui lòng nhập giống ngựa.";
 
-  // Tuổi không nhập trực tiếp: tính từ NgaySinh, phải nằm trong 1–40 (ngày tương lai cũng rơi vào đây)
+  // NgaySinh phải nằm trong khoảng ứng với tuổi 2–20 tính theo hôm nay (ngày tương lai cũng rơi vào đây)
   if (!form.NgaySinh) errors.NgaySinh = "Vui lòng chọn ngày sinh.";
   else {
-    const age = getHorseAge(form.NgaySinh);
-    if (form.NgaySinh > todayISO() || age < Age.min || age > Age.max) errors.NgaySinh = INVALID_BIRTH_DATE;
+    const { min, max } = birthDateRangeForAge(HORSE_MIN_AGE, HORSE_MAX_AGE);
+    if (form.NgaySinh < min || form.NgaySinh > max) errors.NgaySinh = birthRangeMessage();
   }
 
   if (!form.GioiTinh) errors.GioiTinh = "Vui lòng chọn giới tính.";
@@ -116,6 +123,7 @@ export default function HorseForm() {
 
   // Tuổi xem trước dưới ô Ngày sinh (cập nhật ngay khi chọn ngày)
   const birthAge = getHorseAge(form.NgaySinh);
+  const birthRange = birthDateRangeForAge(HORSE_MIN_AGE, HORSE_MAX_AGE);
 
   // Chỉ cho chọn chủ ngựa đang hoạt động; khi sửa, vẫn giữ chủ hiện tại dù tài khoản đã bị khóa
   const ownerOptions = owners.filter((o) => o.isActive || String(o.UserID) === originalOwnerId);
@@ -160,7 +168,7 @@ export default function HorseForm() {
       });
     } catch (err) {
       if (err.message === DUPLICATE_HORSE_NAME) setErrors({ Ten: err.message });
-      else if (err.message === INVALID_BIRTH_DATE) setErrors({ NgaySinh: err.message });
+      else if (err.message === INVALID_BIRTH_DATE) setErrors({ NgaySinh: birthRangeMessage() });
       else if (err.field === "photo") setErrors({ photo: err.message });
       else setErrors({ form: err.message ?? "Không lưu được hồ sơ ngựa, vui lòng thử lại." });
       setSubmitting(false);
@@ -246,8 +254,10 @@ export default function HorseForm() {
               id="NgaySinh"
               name="NgaySinh"
               type="date"
-              min={yearsFromToday(-40)}
-              max={todayISO()}
+              min={birthRange.min}
+              max={birthRange.max}
+              rangeMessage={birthRangeMessage}
+              emitOutOfRange
               value={form.NgaySinh}
               onChange={handleChange}
               error={errors.NgaySinh}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CheckCircle } from "lucide-react";
 import useSessionReviews from "../../hooks/useSessionReviews";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { formatDayMonth, shortWeekdayName, todayISO } from "../../utils/date";
@@ -16,7 +17,7 @@ const byDateTime = (a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`$
 // Cột: STT | Ngày giờ (bấm để đổi thứ tự) | Ngựa (+ người phụ trách) | Buổi tập (+ mặt đường · cường độ) | Quãng đường | Trạng thái | Chi tiết.
 // showHorse = false (trang chi tiết giáo án): bỏ cột Ngựa. Dưới 1100px ẩn cột STT, .
 // Trạng thái theo 4 tình trạng (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá) từ báo cáo của Groom + đánh giá của Trainer; chữ trung tính.
-// Chân bảng: "Hiển thị a–b trong n buổi" + phân trang 10 dòng/trang. Bấm cả dòng hoặc link "Xem" → onSelect(sessionId).
+// Chân bảng: "Hiển thị a–b trong n buổi" + phân trang 10 dòng/trang. Chỉ link "Xem" mở chi tiết → onSelect(sessionId); bấm dòng / trạng thái không làm gì.
 export default function SessionTable({ sessions, onSelect, showHorse = false, emptyText = "Không có buổi tập nào." }) {
   const { label } = useTrainingOptions();
   const records = useSessionReviews();
@@ -91,11 +92,8 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
               .filter(Boolean)
               .join(" · ");
             return (
-              <tr
-                key={session.sessionId}
-                onClick={() => onSelect(session.sessionId)}
-                className="h-14 cursor-pointer bg-white transition-colors hover:bg-[#FAFAFA]"
-              >
+              <tr key={session.sessionId} className="h-14 bg-white">
+
                 <td className={`${TD} text-center text-[#6b6b6b] tabular-nums ${HIDE_STT}`}>{offset + index + 1}</td>
                 <td className={`${TD} whitespace-nowrap`}>
                   <span className="block truncate font-medium text-[#1f1f1f]">
@@ -133,15 +131,18 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
                   </span>
                 </td>
                 <td className={`${TD} text-center`}>
-                  <span className={`text-sm font-semibold ${stageColor(stage)}`}>{stageLabel(stage)}</span>
+                  {/* Chỉ hiển thị, không bấm được; chỉ buổi "Đã đánh giá" có tích xanh */}
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${stageColor(stage)}`}>
+                    {stage === "Reviewed" && (
+                      <CheckCircle className="h-4 w-4 shrink-0 text-green-600" aria-hidden="true" />
+                    )}
+                    {stageLabel(stage)}
+                  </span>
                 </td>
                 <td className={`${TD} text-center`}>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelect(session.sessionId);
-                    }}
+                    onClick={() => onSelect(session.sessionId)}
                     className={`cursor-pointer text-sm text-[#c2570c] hover:underline ${stage === "AwaitingReview" ? "font-semibold" : "font-medium"}`}
                   >
                     Xem

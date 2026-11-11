@@ -151,3 +151,8 @@ export function shortWeekdayName(isoDate) {
 export function yearsFromToday(n) {
   return monthsFromToday(n * 12);
 }
+
+// Khoảng ngày sinh hợp lệ của ngựa tuổi [minAge, maxAge] tính theo hôm nay: min = sinh sớm nhất, max = sinh muộn nhất
+export function birthDateRangeForAge(minAge, maxAge) {
+  return { min: yearsFromToday(-maxAge), max: yearsFromToday(-minAge) };
+}
