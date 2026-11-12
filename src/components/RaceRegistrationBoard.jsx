@@ -4,17 +4,19 @@ import RaceRegistrationDialog from "./RaceRegistrationDialog";
 import RaceRegistrationTable from "./RaceRegistrationTable";
 import Toast from "./Toast";
 import useAuth from "../hooks/useAuth";
+import useHorseRealtime from "../hooks/useHorseRealtime";
 import { getHealthStatuses, getHorseOwners, getHorses } from "../services/horseService";
 import { getOwnerHorses } from "../services/ownerService";
 import { listRaceRegistrations, markRaceRegistrationSeen, subscribeRaceRegistrations } from "../services/raceRegistrationApi";
 import { getActiveTrainingLocks } from "../services/vetService";
-import { ACTION_STATUS_BY_ROLE } from "../utils/raceRegistration";
+import { todayISO } from "../utils/date";
+import { hasResult } from "../utils/raceResult";
+import { ACTION_STATUS_BY_ROLE, RR_STATUS } from "../utils/raceRegistration";
 
-const lastActivityAt = (record) => record.history.at(-1)?.at ?? record.createdAt;
+const lastActivityAt = (record) => record.history?.at(-1)?.at ?? record.createdAt;
 
-// Trang danh sách "Đăng ký thi đấu" dùng chung cho Trainer / Chủ ngựa / Quản lý (MOCK — services/raceRegistrationApi.js):
-// tiêu đề + (nút hành động riêng của vai trò) + bảng + khung chi tiết + thông báo. Tự tải lại khi đăng ký đổi (cùng trình duyệt).
-// Chủ ngựa / Quản lý: hai tab "Chờ duyệt (n)" (mặc định) và "Đã xử lý" (mới xử lý trước). Trainer: một danh sách "Đăng ký của tôi".
+// Trang danh sách đăng ký thi đấu (Trainer / Chủ ngựa / Quản lý) — API /approvals/races.
+// Chủ ngựa gộp thêm hạng/thưởng từ /api/races/registrations; SignalR ThiDau → tải lại.
 export default function RaceRegistrationBoard({ title, description, headerAction = null, extraTab = null }) {
   const { user } = useAuth();
   const role = user.roleId;
@@ -27,23 +29,32 @@ export default function RaceRegistrationBoard({ title, description, headerAction
   const [openId, setOpenId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
     try {
-      // Chủ ngựa chỉ thấy đăng ký của ngựa mình
-      const horseIds = role === "horse_owner" ? (await getOwnerHorses()).map((h) => h.HorseID) : [];
-      setRecords(await listRaceRegistrations(role, { horseIds }));
+      let horseIds = [];
+      let horseNameById = {};
+      if (role === "horse_owner") {
+        const horses = await getOwnerHorses();
+        horseIds = horses.map((h) => h.HorseID);
+        horseNameById = Object.fromEntries(horses.map((h) => [h.HorseID, h.Ten]));
+      }
+      setRecords(await listRaceRegistrations(role, { horseIds, horseNameById }));
       setLoadError("");
     } catch (err) {
-      setLoadError(err.message || "Không tải được danh sách đăng ký.");
+      if (!silent) setLoadError(err.message || "Không tải được danh sách đăng ký.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [role]);
 
   useEffect(() => {
     load();
-    return subscribeRaceRegistrations(load);
+    return subscribeRaceRegistrations(() => load({ silent: true }));
   }, [load]);
+
+  useHorseRealtime(() => {
+    if (role === "horse_owner") load({ silent: true });
+  });
 
   // Tình trạng ngựa (khóa tập, sức khỏe) và tên chủ ngựa cho các cột của người duyệt — role nào chưa gọi được API nào thì bỏ qua phần đó
   useEffect(() => {
@@ -80,10 +91,21 @@ export default function RaceRegistrationBoard({ title, description, headerAction
 
   const closeToast = useCallback(() => setToast(null), []);
   const openRecord = records.find((r) => r.id === openId) ?? null;
+  const today = todayISO();
+  const openResult =
+    openRecord &&
+    openRecord.status === RR_STATUS.APPROVED &&
+    (String(openRecord.raceDate).slice(0, 10) < today || hasResult({ ThuHang: openRecord.thuHang }))
+      ? {
+          hasResult: hasResult({ ThuHang: openRecord.thuHang }),
+          thuHang: openRecord.thuHang ?? null,
+          tienThuong: openRecord.tienThuong ?? null,
+        }
+      : null;
 
   // Phân tab cho người duyệt
   const pendingStatus = ACTION_STATUS_BY_ROLE[role];
-  const reachedManager = (r) => r.history.some((h) => h.step === "Owner" && h.action === "Đồng ý");
+  const reachedManager = (r) => (r.history ?? []).some((h) => h.step === "Owner" && h.action === "Đồng ý");
   const pending = records.filter((r) => r.status === pendingStatus);
   const processed = records
     .filter((r) => r.status !== pendingStatus && (role === "club_manager" ? reachedManager(r) : true))
@@ -149,14 +171,16 @@ export default function RaceRegistrationBoard({ title, description, headerAction
 
       {openRecord && (
         <RaceRegistrationDialog
-          key={`${openRecord.id}-${openRecord.status}`}
+          key={`${openRecord.id}-${openRecord.status}-${openRecord.thuHang ?? "x"}-${openRecord.tienThuong ?? "x"}`}
           record={openRecord}
           role={role}
           userName={user.fullName}
+          result={openResult}
           onClose={() => setOpenId(null)}
           onChanged={(text) => {
             setOpenId(null);
             setToast({ text });
+            load({ silent: true });
           }}
         />
       )}

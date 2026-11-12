@@ -1,22 +1,22 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { UserCheck } from "lucide-react";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import ApprovalRow from "./ApprovalRow";
 import roles from "../../data/roles";
-import { approveAccountApi, fetchPendingApprovals } from "../../services/authApi";
+import { approveAccountApi, fetchOwnerApprovals, rejectAccountApi } from "../../services/authApi";
 
 // Chỉ tài khoản Chủ ngựa tự đăng ký mới cần duyệt; nhân sự nội bộ do Quản lý CLB tạo sẵn ở trạng thái "approved"
 const APPROVAL_ROLE_ID = "horse_owner";
 const roleNameById = Object.fromEntries(roles.map((role) => [role.id, role.name]));
 
 const STATUS_FILTERS = [
+  { status: "all", label: "Tất cả", emptyText: "Chưa có tài khoản chủ ngựa nào." },
   { status: "pending", label: "Đang chờ", statLabel: "Đang chờ duyệt", emptyText: "Không có tài khoản nào đang chờ duyệt." },
   { status: "approved", label: "Đã duyệt", statLabel: "Đã duyệt", emptyText: "Chưa có tài khoản nào được duyệt." },
   { status: "rejected", label: "Đã từ chối", statLabel: "Đã từ chối", emptyText: "Chưa có tài khoản nào bị từ chối." },
 ];
 
-// Nội dung hộp xác nhận + thông báo theo từng hành động
 const ACTIONS = {
   approve: {
     status: "approved",
@@ -44,57 +44,60 @@ const MESSAGE_STYLES = {
 export default function AccountApprovals() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [loadError, setLoadError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [pendingAction, setPendingAction] = useState(null); // { type: "approve" | "reject", account }
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState(null); // { text, tone: "success" | "danger" }
 
-  useEffect(() => {
-    let ignore = false;
-    fetchPendingApprovals()
-      .then((pending) => {
-        if (ignore) return;
-        setAccounts(pending.filter((u) => u.roleId === APPROVAL_ROLE_ID));
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!ignore) {
-          setAccounts([]);
-          setLoading(false);
-        }
-      });
-    return () => {
-      ignore = true;
-    };
+  const load = useCallback(async () => {
+    try {
+      const list = await fetchOwnerApprovals();
+      setAccounts(list.filter((u) => u.roleId === APPROVAL_ROLE_ID));
+      setLoadError("");
+    } catch (err) {
+      setAccounts([]);
+      setLoadError(err.message || "Không tải được danh sách duyệt tài khoản.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const countByStatus = (status) => accounts.filter((a) => a.status === status).length;
-  const stats = STATUS_FILTERS.map((f) => ({ label: f.statLabel, value: countByStatus(f.status) }));
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // Đang chờ: ai đăng ký trước xếp trước (chờ lâu nhất lên đầu); đã xử lý: mới nhất lên đầu
+  const countByStatus = (status) => accounts.filter((a) => a.status === status).length;
+  const stats = STATUS_FILTERS.filter((f) => f.status !== "all").map((f) => ({
+    label: f.statLabel,
+    value: countByStatus(f.status),
+  }));
+
   const visibleAccounts = accounts
-    .filter((a) => a.status === statusFilter)
+    .filter((a) => statusFilter === "all" || a.status === statusFilter)
     .sort((a, b) =>
-      statusFilter === "pending" ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt)
+      statusFilter === "pending" || (statusFilter === "all" && a.status === "pending" && b.status === "pending")
+        ? a.createdAt.localeCompare(b.createdAt)
+        : b.createdAt.localeCompare(a.createdAt)
     );
   const activeFilter = STATUS_FILTERS.find((f) => f.status === statusFilter);
 
   const handleConfirm = async () => {
     const { type, account } = pendingAction;
     const action = ACTIONS[type];
-    if (type === "reject") {
-      setPendingAction(null);
-      setMessage({ text: "Từ chối tài khoản chưa có trên API — liên hệ quản trị DB nếu cần.", tone: "danger" });
-      return;
-    }
     setProcessing(true);
     try {
       const userId = account.userId ?? Number(String(account.id).replace(/\D/g, ""));
-      await approveAccountApi(userId);
-      setAccounts((prev) => prev.filter((a) => a.id !== account.id));
+      const updated = type === "reject" ? await rejectAccountApi(userId) : await approveAccountApi(userId);
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === account.id ? { ...a, status: updated?.status ?? action.status } : a))
+      );
       setMessage({ text: action.doneText(account), tone: "success" });
-    } catch {
-      setMessage({ text: "Không duyệt được tài khoản, vui lòng thử lại.", tone: "danger" });
+    } catch (err) {
+      setMessage({
+        text: err.message || (type === "reject" ? "Không từ chối được tài khoản." : "Không duyệt được tài khoản."),
+        tone: "danger",
+      });
     } finally {
       setProcessing(false);
       setPendingAction(null);
@@ -128,9 +131,10 @@ export default function AccountApprovals() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <div className="space-y-5">
-          {/* Dải số liệu: không bo góc, không shadow, chỉ có vạch dọc ngăn cách (giống trang hồ sơ ngựa) */}
           <div className="grid grid-cols-3 divide-x divide-stone/20 bg-white">
             {stats.map((stat) => (
               <div key={stat.label} className="px-4 py-3 sm:px-5">
@@ -167,13 +171,10 @@ export default function AccountApprovals() {
               {activeFilter.emptyText}
             </div>
           ) : (
-            // Bảng kiểu cũ của trang ngựa: header kẻ đậm, dòng ngăn bằng hairline, không zebra.
-            // Màn hẹp cuộn ngang, cột Hành động dính mép phải.
             <div className="overflow-x-auto bg-white">
               <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
                 <thead className="whitespace-nowrap text-stone">
                   <tr>
-                    {/* Viền trái trong suốt để thẳng cột với vạch ưu tiên 4px ở dòng */}
                     <th className="border-b-2 border-l-4 border-b-brass-deep border-l-transparent px-4 py-3 font-medium">Họ tên</th>
                     <th className="border-b-2 border-b-brass-deep px-4 py-3 font-medium">Email</th>
                     <th className="border-b-2 border-b-brass-deep px-4 py-3 font-medium">Vai trò</th>

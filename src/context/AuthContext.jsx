@@ -162,6 +162,11 @@ export function AuthProvider({ children }) {
           statusScreen: { status: "Chờ duyệt", fullName: findUserByEmail(email)?.fullName ?? "", email: email.trim() },
         };
       }
+      if (err.code === "ACCOUNT_REJECTED") {
+        return {
+          statusScreen: { status: "Từ chối", fullName: findUserByEmail(email)?.fullName ?? "", email: email.trim() },
+        };
+      }
       if (err.code === "ACCOUNT_LOCKED") {
         return {
           error: err.message || "Tài khoản đã bị khóa, liên hệ Quản lý CLB.",
