@@ -2,9 +2,9 @@ import { useState } from "react";
 import CenterDialog from "../../components/CenterDialog";
 import SelectField from "../../components/SelectField";
 import TextAreaField from "../../components/TextAreaField";
-import useAuth from "../../hooks/useAuth";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
-import { submitSessionReview } from "../../services/sessionReviewMock";
+import SendReviewConfirmDialog from "./SendReviewConfirmDialog";
+import { sendEvaluationToOwner, submitSessionReview } from "../../services/sessionReviewMock";
 import { formatDate, weekdayName } from "../../utils/date";
 import {
   ASSESSMENTS,
@@ -13,6 +13,7 @@ import {
   assessmentLabel,
   reactionLabel,
   resultLabel,
+  sessionRecord,
   sessionStage,
 } from "../../utils/sessionReview";
 import { formatDateTime, formatKm, formatMinutes, formatTimeRange } from "../../utils/trainingFormat";
@@ -35,48 +36,63 @@ function InfoRow({ label, children }) {
 // 1. Chưa diễn ra → thông tin buổi, chân "Đóng"
 // 2. Chờ báo cáo (đã qua giờ, Groom chưa báo cáo) → thông tin + "<Groom> chưa báo cáo buổi tập này.", chân "Đóng"
 // 3. Chờ đánh giá (Groom đã báo cáo) → thông tin + báo cáo của Groom + form đánh giá, chân "Hủy" / "Lưu đánh giá"
-// 4. Đã đánh giá → báo cáo + đánh giá chỉ đọc, chân "Sửa đánh giá" / "Đóng" (Sửa → quay lại form như tình trạng 3)
-export default function SessionReviewDialog({ session, record, onClose, onSaved }) {
-  const { user } = useAuth();
+// 4. Đã đánh giá (chưa gửi) → báo cáo + đánh giá chỉ đọc, chân "Đóng" / "Sửa đánh giá" / "Gửi chủ ngựa" (Sửa → quay lại form như tình trạng 3)
+// 5. Đã gửi chủ ngựa → chỉ đọc, chân "Đóng" (không sửa được)
+// Form có "Lưu" (chủ ngựa chưa thấy) và "Lưu và gửi chủ ngựa" (hỏi xác nhận một dòng)
+export default function SessionReviewDialog({ session, record, startEditing = false, onClose, onSaved, onSent }) {
   const { label } = useTrainingOptions();
   const stage = sessionStage(session, record);
-  const report = record?.report ?? null;
-  const review = record?.review ?? null;
-  const [editing, setEditing] = useState(stage === "AwaitingReview");
+  const report = sessionRecord(session, record)?.report ?? null;
+  const review = sessionRecord(session, record)?.review ?? null;
+  const [editing, setEditing] = useState(stage === "AwaitingReview" || (stage === "Reviewed" && startEditing));
   const [form, setForm] = useState({
     score: review ? String(review.score) : "",
     assessment: review?.assessment ?? "",
     comment: review?.comment ?? "",
-    visibleToOwner: review?.visibleToOwner ?? true,
   });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmSend, setConfirmSend] = useState(null); // null | "form" (lưu rồi gửi) | "saved" (gửi bản đã lưu)
 
   const setField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const validate = () => {
     const nextErrors = {};
     if (!form.score) nextErrors.score = "Chọn điểm từ 1 đến 10";
     if (!form.assessment) nextErrors.assessment = "Vui lòng chọn nhận định";
     if (!form.comment.trim()) nextErrors.comment = "Vui lòng nhập nhận xét";
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  // Nút "Lưu": chỉ lưu, chủ ngựa chưa thấy; thông báo kèm nút "Gửi chủ ngựa"
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
     setBusy(true);
     setSubmitError("");
     try {
-      await submitSessionReview(session, form, user.fullName);
-      onSaved("Đã lưu đánh giá buổi tập");
+      await submitSessionReview(session, form);
+      onSaved(session.sessionId);
     } catch (err) {
       setSubmitError(err.message || "Không lưu được đánh giá, vui lòng thử lại.");
       setBusy(false);
     }
+  };
+
+  // Nút "Lưu và gửi chủ ngựa": kiểm tra form rồi hỏi xác nhận
+  const handleSaveAndSend = () => {
+    if (validate()) setConfirmSend("form");
+  };
+
+  const handleConfirmSend = async () => {
+    if (confirmSend === "form") await submitSessionReview(session, form);
+    await sendEvaluationToOwner(session.sessionId);
+    onSent();
   };
 
   const title = { Upcoming: "Buổi tập chưa diễn ra", AwaitingReport: "Chờ báo cáo" }[stage] ?? "Đánh giá buổi tập";
@@ -105,8 +121,11 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
           >
             Hủy
           </button>
-          <button type="submit" form="sessionReviewForm" disabled={busy} className="btn-primary">
-            {busy ? "Đang lưu..." : "Lưu đánh giá"}
+          <button type="submit" form="sessionReviewForm" disabled={busy} className={OUTLINE_BUTTON}>
+            {busy ? "Đang lưu..." : "Lưu"}
+          </button>
+          <button type="button" onClick={handleSaveAndSend} disabled={busy} className="btn-primary">
+            Lưu và gửi chủ ngựa
           </button>
         </div>
       </div>
@@ -117,8 +136,11 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
         <button type="button" onClick={onClose} className={OUTLINE_BUTTON}>
           Đóng
         </button>
-        <button type="button" onClick={() => setEditing(true)} className="btn-primary">
+        <button type="button" onClick={() => setEditing(true)} className={OUTLINE_BUTTON}>
           Sửa đánh giá
+        </button>
+        <button type="button" onClick={() => setConfirmSend("saved")} className="btn-primary">
+          Gửi chủ ngựa
         </button>
       </div>
     );
@@ -133,7 +155,7 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
   }
 
   return (
-    <CenterDialog label={title} header={header} footer={footer} onClose={onClose} busy={busy}>
+    <CenterDialog label={title} header={header} footer={footer} onClose={onClose} busy={busy || Boolean(confirmSend)}>
       <section>
         <h3 className={SECTION_TITLE}>{session.sessionTitle}</h3>
         <dl className="mt-3 space-y-2">
@@ -228,20 +250,11 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
               onChange={(e) => setField("comment", e.target.value)}
               error={errors.comment}
             />
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm text-[#2b2118]">
-              <input
-                type="checkbox"
-                checked={form.visibleToOwner}
-                onChange={(e) => setField("visibleToOwner", e.target.checked)}
-                className="h-4 w-4 cursor-pointer accent-[#c2570c]"
-              />
-              Hiển thị cho chủ ngựa
-            </label>
           </form>
         </section>
       )}
 
-      {stage === "Reviewed" && !editing && review && (
+      {(stage === "Sent" || (stage === "Reviewed" && !editing)) && review && (
         <section className="mt-6 border-t border-stone/15 pt-6">
           <h3 className={SECTION_TITLE}>Đánh giá của bạn</h3>
           <dl className="mt-3 space-y-2">
@@ -254,11 +267,15 @@ export default function SessionReviewDialog({ session, record, onClose, onSaved 
             <InfoRow label="Nhận xét">
               <span className="whitespace-pre-line">{review.comment}</span>
             </InfoRow>
-            <InfoRow label="Chủ ngựa">{review.visibleToOwner ? "Được hiển thị cho chủ ngựa" : "Không hiển thị cho chủ ngựa"}</InfoRow>
+            <InfoRow label="Chủ ngựa">
+              {review.sentToOwner ? `Đã gửi lúc ${formatDateTime(review.sentAt)}` : "Chưa gửi, chủ ngựa chưa thấy"}
+            </InfoRow>
             <InfoRow label="Đánh giá lúc">{formatDateTime(review.reviewedAt)}</InfoRow>
           </dl>
         </section>
       )}
+
+      {confirmSend && <SendReviewConfirmDialog onConfirm={handleConfirmSend} onClose={() => setConfirmSend(null)} />}
     </CenterDialog>
   );
 }

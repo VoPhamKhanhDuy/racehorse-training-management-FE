@@ -3,13 +3,14 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import ApiErrorNotice from "../../components/ApiErrorNotice";
 import LoadingState from "../../components/LoadingState";
 import SessionDrawer from "./SessionDrawer";
+import SendReviewConfirmDialog from "./SendReviewConfirmDialog";
 import SessionReviewDialog from "./SessionReviewDialog";
+import { sendEvaluationToOwner } from "../../services/sessionReviewMock";
 import SessionTable from "./SessionTable";
 import { SESSION_QUERY_MAX_DAYS } from "../../data/trainingCodes";
 import useApiResource from "../../hooks/useApiResource";
 import useAuth from "../../hooks/useAuth";
 import useSessionReviews from "../../hooks/useSessionReviews";
-import { getDemoSessions } from "../../data/demoTrainingSessions";
 import { STAGES, actualDistanceOf, isCompletedSession, scoreOf, sessionStage } from "../../utils/sessionReview";
 import { getAssignableStaff, getHorses, getTrainingPlans, searchTrainingSessions } from "../../services/trainingApi";
 import { addDays, daysBetween, startOfWeek, todayISO } from "../../utils/date";
@@ -55,10 +56,12 @@ export default function TrainingSessions() {
         ? `Mỗi lần tra cứu tối đa ${SESSION_QUERY_MAX_DAYS} ngày.`
         : "";
 
-  const [message, setMessage] = useState(state?.message ?? "");
+  const [notice, setNotice] = useState(state?.message ? { text: state.message } : null); // { text, sendId? } — sendId: hiện nút chữ "Gửi chủ ngựa"
   const [openSessionId, setOpenSessionId] = useState(null);
   const [reviewSessionId, setReviewSessionId] = useState(null); // buổi đang mở khung "Đánh giá buổi tập"
-  const records = useSessionReviews(); // báo cáo của Groom + đánh giá của Trainer (MOCK)
+  const [reviewEdit, setReviewEdit] = useState(false); // mở thẳng form (nút "Đánh giá" / "Sửa")
+  const [sendSessionId, setSendSessionId] = useState(null); // buổi đang hỏi xác nhận "Gửi chủ ngựa" (từ bảng hoặc thông báo)
+  const records = useSessionReviews(); // không còn dữ liệu riêng: báo cáo + đánh giá đi kèm từng buổi từ API
 
   // Danh sách cho bộ lọc — lỗi thì bộ lọc trống, lỗi chính hiện ở kết quả tra cứu
   const filterResource = useApiResource(() => Promise.all([getHorses(), getTrainingPlans(), getAssignableStaff()]), "filters");
@@ -70,11 +73,7 @@ export default function TrainingSessions() {
   // Khoảng ngày sai → không gọi API (key = null), chỉ báo lỗi
   const sessionsResource = useApiResource(() => searchTrainingSessions(query), rangeError ? null : JSON.stringify(query));
   // Buổi đã hủy không hiện trong danh sách (chỉ hiện khi chủ động lọc trạng thái "Đã hủy")
-  // Buổi mẫu đã qua (data/demoTrainingSessions.js — MOCK chờ dữ liệu thật) trộn vào khi khớp khoảng ngày và bộ lọc; sắp theo ngày giờ như API
-  const demoSessions = sessionsResource.data
-    ? getDemoSessions().filter((s) => s.trainingDate >= from && s.trainingDate <= to && !horseId && !planId && !assignedToUserId)
-    : [];
-  const sessions = [...(sessionsResource.data ?? []), ...demoSessions]
+  const sessions = [...(sessionsResource.data ?? [])]
     .filter((s) => s.status !== "Cancelled" && (!status || sessionStage(s, records[s.sessionId]) === status))
     .sort((a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`${b.trainingDate} ${b.startTime}`));
   const { loading, error } = sessionsResource;
@@ -90,7 +89,7 @@ export default function TrainingSessions() {
 
   // Dòng tóm tắt chỉ tính buổi đã có báo cáo / đánh giá hợp lệ (đã đến giờ + có bản ghi); buổi chưa diễn ra hoặc chưa báo cáo không tính
   // Hoàn thành / điểm / km thực tế tính theo báo cáo của Groom và đánh giá của Trainer, không có thì theo dữ liệu BE
-  const reportedSessions = sessions.filter((s) => ["AwaitingReview", "Reviewed"].includes(sessionStage(s, records[s.sessionId])));
+  const reportedSessions = sessions.filter((s) => ["AwaitingReview", "Reviewed", "Sent"].includes(sessionStage(s, records[s.sessionId])));
   const completed = reportedSessions.filter((s) => isCompletedSession(s, records[s.sessionId]));
   const scoredValues = reportedSessions.map((s) => scoreOf(s, records[s.sessionId])).filter((v) => v != null);
   const averageScore = scoredValues.length ? scoredValues.reduce((sum, v) => sum + Number(v), 0) / scoredValues.length : null;
@@ -98,10 +97,13 @@ export default function TrainingSessions() {
 
   // Bấm "Xem" → khung chi tiết theo tình trạng buổi (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá).
   // Buổi đang tập (đã bắt đầu qua BE) vẫn mở ngăn thao tác cũ để ghi kết quả.
-  const handleSelect = (sessionId) => {
+  const handleSelect = (sessionId, { edit = false } = {}) => {
     const target = sessions.find((s) => s.sessionId === sessionId);
     if (target?.status === "InProgress") setOpenSessionId(sessionId);
-    else setReviewSessionId(sessionId);
+    else {
+      setReviewEdit(edit);
+      setReviewSessionId(sessionId);
+    }
   };
   const reviewSession = sessions.find((s) => s.sessionId === reviewSessionId) ?? null;
   const activeRange = quickRanges(today).find((r) => r.from === from && r.to === to)?.key;
@@ -111,10 +113,21 @@ export default function TrainingSessions() {
     <div>
       <h1 className="mb-4 font-serif text-2xl font-semibold tracking-tight text-[#2b2118] sm:text-[1.75rem]">Buổi tập</h1>
 
-      {message && (
+      {notice && (
         <div className="mb-4 flex min-h-11 items-center justify-between gap-4 rounded-sm border border-[#cfd8b4] border-l-[3px] border-l-[#6b7a3a] bg-[#f6f8ee] px-4 py-2 text-sm text-[#3f5420]">
-          {message}
-          <button type="button" onClick={() => setMessage("")} className="cursor-pointer font-medium text-[#3f5420] hover:underline">
+          <span>
+            {notice.text}
+            {notice.sendId && (
+              <button
+                type="button"
+                onClick={() => setSendSessionId(notice.sendId)}
+                className="ml-3 cursor-pointer font-semibold text-[#c2570c] hover:underline"
+              >
+                Gửi chủ ngựa
+              </button>
+            )}
+          </span>
+          <button type="button" onClick={() => setNotice(null)} className="cursor-pointer font-medium text-[#3f5420] hover:underline">
             Đóng
           </button>
         </div>
@@ -272,6 +285,7 @@ export default function TrainingSessions() {
           <SessionTable
             sessions={sessions}
             onSelect={handleSelect}
+            onSend={setSendSessionId}
             showHorse
             emptyText="Không có buổi tập nào trong khoảng ngày và bộ lọc đã chọn."
           />
@@ -283,10 +297,29 @@ export default function TrainingSessions() {
           key={reviewSession.sessionId}
           session={reviewSession}
           record={records[reviewSession.sessionId]}
+          startEditing={reviewEdit}
           onClose={() => setReviewSessionId(null)}
-          onSaved={(text) => {
+          onSaved={(sessionId) => {
             setReviewSessionId(null);
-            setMessage(text);
+            setNotice({ text: "Đã lưu đánh giá. Chủ ngựa chưa thấy cho đến khi bạn gửi.", sendId: sessionId });
+            sessionsResource.refresh();
+          }}
+          onSent={() => {
+            setReviewSessionId(null);
+            setNotice({ text: "Đã gửi đánh giá cho chủ ngựa." });
+            sessionsResource.refresh();
+          }}
+        />
+      )}
+
+      {sendSessionId && (
+        <SendReviewConfirmDialog
+          onClose={() => setSendSessionId(null)}
+          onConfirm={async () => {
+            await sendEvaluationToOwner(sendSessionId);
+            setSendSessionId(null);
+            setNotice({ text: "Đã gửi đánh giá cho chủ ngựa." });
+            sessionsResource.refresh();
           }}
         />
       )}

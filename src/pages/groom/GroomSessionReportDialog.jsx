@@ -4,11 +4,10 @@ import CenterDialog from "../../components/CenterDialog";
 import FormField from "../../components/FormField";
 import SelectField from "../../components/SelectField";
 import TextAreaField from "../../components/TextAreaField";
-import useAuth from "../../hooks/useAuth";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
-import { submitSessionReport } from "../../services/sessionReviewMock";
+import { submitGroomSessionReport } from "../../services/trainingApi";
 import { formatDate, weekdayName } from "../../utils/date";
-import { HORSE_REACTIONS, REPORT_DISTANCE_MAX, hasSessionStarted, REPORT_NOTE_MAX, REPORT_RESULTS, reactionLabel, resultLabel } from "../../utils/sessionReview";
+import { HORSE_REACTIONS, REPORT_DISTANCE_MAX, hasSessionStarted, REPORT_NOTE_MAX, REPORT_RESULTS, reactionLabel, resultLabel, sessionRecord } from "../../utils/sessionReview";
 import { formatKm, formatTimeRange } from "../../utils/trainingFormat";
 
 const SECTION_TITLE = "font-serif text-base font-semibold text-[#2b2118]";
@@ -28,9 +27,8 @@ function InfoRow({ label, children }) {
 // phản ứng của ngựa, ghi chú. Groom chỉ báo cáo sự thật, KHÔNG đánh giá — đánh giá là việc của Trainer.
 // record?.report đã có → chế độ XEM (chỉ đọc, chân chỉ có "Đóng"). Chọn "Có dấu hiệu bất thường" → gợi ý gửi báo cáo sự cố (không chặn lưu).
 export default function GroomSessionReportDialog({ session, record, onClose, onSaved }) {
-  const { user } = useAuth();
   const { label } = useTrainingOptions({ remote: false });
-  const report = record?.report ?? null;
+  const report = sessionRecord(session, record)?.report ?? null;
   const [form, setForm] = useState({ result: "", actualDistanceKm: "", horseReaction: "", note: "" });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
@@ -60,7 +58,12 @@ export default function GroomSessionReportDialog({ session, record, onClose, onS
     setBusy(true);
     setSubmitError("");
     try {
-      await submitSessionReport(session, form, user.fullName);
+      await submitGroomSessionReport(session.sessionId, {
+        result: form.result,
+        actualDistanceKm: notTrained || form.actualDistanceKm === "" ? null : Number(form.actualDistanceKm),
+        horseReaction: form.horseReaction,
+        note: form.note.trim(),
+      });
       onSaved("Đã lưu báo cáo buổi tập");
     } catch (err) {
       setSubmitError(err.message || "Không lưu được báo cáo, vui lòng thử lại.");

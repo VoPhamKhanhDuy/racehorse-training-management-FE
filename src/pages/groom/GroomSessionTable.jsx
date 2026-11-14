@@ -1,5 +1,5 @@
 import useTrainingOptions from "../../hooks/useTrainingOptions";
-import { hasSessionStarted } from "../../utils/sessionReview";
+import { hasSessionStarted, sessionRecord } from "../../utils/sessionReview";
 import { formatKm } from "../../utils/trainingFormat";
 
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
@@ -37,7 +37,7 @@ export default function GroomSessionTable({ sessions, records, onOpen }) {
           </thead>
           <tbody className="[&>tr:last-child>td]:border-b-0">
             {sessions.map((session) => {
-              const reported = Boolean(records[session.sessionId]?.report);
+              const reported = Boolean(sessionRecord(session, records[session.sessionId])?.report);
               const started = hasSessionStarted(session);
               const subtitle = [session.surface && label("surfaces", session.surface), session.intensityLevel && label("intensityLevels", session.intensityLevel)]
                 .filter(Boolean)

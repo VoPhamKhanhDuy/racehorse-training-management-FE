@@ -41,7 +41,7 @@ function formatFeeding(feeding) {
 // tập (KHÔNG hiện lý do), rồi bảng "Hồ sơ" đường chấm; cột phải căn đỉnh theo đỉnh ảnh.
 // Bên dưới: "Chăm sóc hằng ngày" | "Thành tích thi đấu" cạnh nhau (≥ 1100px) hoặc xếp dọc full-width.
 // care: { stable, feeding } từ getHorseDailyCare.
-export default function OwnerHorseDetail({ horse, health, locked, care, achievements, activities }) {
+export default function OwnerHorseDetail({ horse, health, locked, care, achievements, activities, reviews }) {
   const healthLine = HEALTH_LINES[health?.TrangThai];
 
   return (
@@ -113,7 +113,7 @@ export default function OwnerHorseDetail({ horse, health, locked, care, achievem
         <OwnerHorseAchievements achievements={achievements} />
       </div>
 
-      <OwnerHorseActivityLog activities={activities} />
+      <OwnerHorseActivityLog activities={activities} reviews={reviews} />
     </article>
   );
 }
