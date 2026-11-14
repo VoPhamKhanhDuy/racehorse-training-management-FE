@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { CheckCircle } from "lucide-react";
 import useSessionReviews from "../../hooks/useSessionReviews";
 import useTrainingOptions from "../../hooks/useTrainingOptions";
 import { formatDayMonth, shortWeekdayName, todayISO } from "../../utils/date";
@@ -10,15 +9,17 @@ const PAGE_SIZE = 10;
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
 const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 
+const ACTION_LINK = "cursor-pointer text-sm font-medium text-[#c2570c] hover:underline";
+
 const byDateTime = (a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`${b.trainingDate} ${b.startTime}`);
 
 // Bảng dữ liệu buổi tập (TrainingSession): header – body – footer, kẻ ô đầy đủ, không cuộn ngang (table-layout: fixed).
 // MỘT tông trung tính (#1f1f1f / #6b6b6b / viền #E3E3E3) + MỘT màu nhấn cam đậm chỉ cho việc cần làm (chấm "Chờ đánh giá", link "Xem" của hàng đó).
 // Cột: STT | Ngày giờ (bấm để đổi thứ tự) | Ngựa (+ người phụ trách) | Buổi tập (+ mặt đường · cường độ) | Quãng đường | Trạng thái | Chi tiết.
 // showHorse = false (trang chi tiết giáo án): bỏ cột Ngựa. Dưới 1100px ẩn cột STT, .
-// Trạng thái theo 4 tình trạng (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá) từ báo cáo của Groom + đánh giá của Trainer; chữ trung tính.
+// Trạng thái theo 5 tình trạng (chưa diễn ra / chờ báo cáo / chờ đánh giá / đã đánh giá / đã gửi chủ ngựa) từ báo cáo của Groom + đánh giá của Trainer; chữ trung tính.
 // Chân bảng: "Hiển thị a–b trong n buổi" + phân trang 10 dòng/trang. Chỉ link "Xem" mở chi tiết → onSelect(sessionId); bấm dòng / trạng thái không làm gì.
-export default function SessionTable({ sessions, onSelect, showHorse = false, emptyText = "Không có buổi tập nào." }) {
+export default function SessionTable({ sessions, onSelect, onSend, showHorse = false, emptyText = "Không có buổi tập nào." }) {
   const { label } = useTrainingOptions();
   const records = useSessionReviews();
   const today = todayISO();
@@ -38,7 +39,7 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
   const pageItems = sorted.slice(offset, offset + PAGE_SIZE);
 
   // Độ rộng cột theo % (tổng 100%); không có cột Ngựa thì chia phần đó cho cột Buổi tập
-  const widths = { stt: 4, date: 12, horse: showHorse ? 16 : 0, session: showHorse ? 30 : 46, distance: 15, status: 13, detail: 10 };
+  const widths = { stt: 4, date: 12, horse: showHorse ? 16 : 0, session: showHorse ? 27 : 43, distance: 14, status: 14, detail: 13 };
   const col = (key, hideClass = "") => <col style={{ width: `${widths[key]}%` }} className={hideClass} />;
   const HIDE_STT = "max-[1099px]:hidden";
 
@@ -131,22 +132,36 @@ export default function SessionTable({ sessions, onSelect, showHorse = false, em
                   </span>
                 </td>
                 <td className={`${TD} text-center`}>
-                  {/* Chỉ hiển thị, không bấm được; chỉ buổi "Đã đánh giá" có tích xanh */}
-                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${stageColor(stage)}`}>
-                    {stage === "Reviewed" && (
-                      <CheckCircle className="h-4 w-4 shrink-0 text-green-600" aria-hidden="true" />
-                    )}
-                    {stageLabel(stage)}
-                  </span>
+                  {/* Chỉ hiển thị, không bấm được */}
+                  <span className={`text-sm font-semibold ${stageColor(stage)}`}>{stageLabel(stage)}</span>
                 </td>
                 <td className={`${TD} text-center`}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(session.sessionId)}
-                    className={`cursor-pointer text-sm text-[#c2570c] hover:underline ${stage === "AwaitingReview" ? "font-semibold" : "font-medium"}`}
-                  >
-                    Xem
-                  </button>
+                  {/* Chờ đánh giá → "Đánh giá"; Đã đánh giá → "Gửi chủ ngựa" + "Sửa"; còn lại (gồm Đã gửi chủ ngựa) → "Xem".
+                      Trang không truyền onSend (chi tiết giáo án) thì luôn là "Xem". */}
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                    {onSend && stage === "AwaitingReview" ? (
+                      <button type="button" onClick={() => onSelect(session.sessionId, { edit: true })} className={ACTION_LINK}>
+                        Đánh giá
+                      </button>
+                    ) : onSend && stage === "Reviewed" ? (
+                      <>
+                        <button type="button" onClick={() => onSend(session.sessionId)} className={ACTION_LINK}>
+                          Gửi chủ ngựa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onSelect(session.sessionId, { edit: true })}
+                          className="cursor-pointer text-xs text-[#6b6b6b] underline underline-offset-2 hover:text-[#1f1f1f]"
+                        >
+                          Sửa
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => onSelect(session.sessionId)} className={ACTION_LINK}>
+                        Xem
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

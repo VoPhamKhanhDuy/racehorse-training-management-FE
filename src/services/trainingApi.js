@@ -137,3 +137,32 @@ export function deleteTrainingSession(sessionId) {
 export function getMyTrainingAssignments({ from, to } = {}) {
   return apiRequest("/api/training-assignments/me", { query: { from, to } });
 }
+
+// Groom báo cáo buổi tập được giao (chỉ khi đã tới giờ, mỗi buổi 1 báo cáo).
+// body: { result: Completed|Abandoned|NotTrained, actualDistanceKm?, horseReaction: Good|Normal|Tired|Abnormal, note? }
+export function submitGroomSessionReport(sessionId, body) {
+  return apiRequest(`/api/groom/training-sessions/${sessionId}/report`, { method: "POST", body });
+}
+
+// ---- Đánh giá buổi tập của HLV (1 buổi tối đa 1 đánh giá) ----
+
+// HLV lưu đánh giá (buổi phải có báo cáo, quãng đường thực tế > 0). Chủ ngựa chưa thấy cho đến khi gửi. Lần 2 → 409.
+// body: { score: 1–10, assessment: Progress|Stable|Attention, comment (≤ 500 ký tự) }
+export function submitTrainerSessionReview(sessionId, body) {
+  return apiRequest(`${SESSIONS}/${sessionId}/review`, { method: "POST", body });
+}
+
+// Sửa đánh giá khi chưa gửi chủ ngựa (đã gửi → 409). Cùng body với POST.
+export function updateTrainerSessionReview(sessionId, body) {
+  return apiRequest(`${SESSIONS}/${sessionId}/review`, { method: "PUT", body });
+}
+
+// Gửi đánh giá đã lưu cho chủ ngựa; gửi rồi → 409.
+export function sendTrainerSessionReviewToOwner(sessionId) {
+  return apiRequest(`${SESSIONS}/${sessionId}/review/send-to-owner`, { method: "POST" });
+}
+
+// Chủ ngựa: đánh giá ĐÃ GỬI của ngựa mình, mới nhất trước. horseId của người khác → 404.
+export function getOwnerSessionReviewList({ horseId, from, to, limit } = {}) {
+  return apiRequest("/api/owner/session-reviews", { query: { horseId, from, to, limit } });
+}

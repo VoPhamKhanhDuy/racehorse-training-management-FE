@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import LoadingState from "../../components/LoadingState";
 import useHorseRealtime from "../../hooks/useHorseRealtime";
 import OwnerHorseDetail from "./OwnerHorseDetail";
+import { getOwnerSessionReviews } from "../../services/sessionReviewMock";
 import { getHealthStatuses, getLockedHorseIds, getOwnerHorseDetail } from "../../services/ownerService";
 
 // Chi tiết 1 ngựa của Chủ ngựa (/owner/horses/:id) — CHỈ XEM, dùng "thẻ ngựa" OwnerHorseDetail.
@@ -27,6 +28,8 @@ export default function OwnerHorseProfile() {
         setData(null);
         return;
       }
+      // Đánh giá đã gửi của đúng ngựa này (cùng nguồn với "Nhận xét gần đây"; ngựa đã được API xác nhận thuộc chủ)
+      const reviews = await getOwnerSessionReviews([detail.horse], 0);
       setMissing(false);
       setData({
         horse: detail.horse,
@@ -35,6 +38,7 @@ export default function OwnerHorseProfile() {
         care: detail.care,
         achievements: detail.achievements,
         activities: detail.activities ?? [],
+        reviews,
       });
     } finally {
       if (!silent) setLoading(false);

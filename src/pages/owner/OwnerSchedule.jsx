@@ -21,7 +21,7 @@ const SECTION_TITLE = "font-serif text-[18px] font-semibold text-[#2b2118]";
 // Đầu trang: bảng "Kế hoạch huấn luyện" cần duyệt (OwnerPlanApprovals).
 // Khối "Sắp tới" (~65%): bảng buổi tập của kế hoạch ĐÃ ĐỒNG Ý + giải thi đấu (đăng ký thật và đã duyệt qua luồng duyệt) trong 14 ngày tới.
 // Ngựa đang khóa tập: không có buổi tập, có dòng "Đang tạm ngưng huấn luyện" phía trên bảng (không hiện lý do).
-// Khối "Nhận xét gần đây" (~35%): đánh giá của huấn luyện viên được bật hiển thị cho chủ ngựa, tối đa 5, không có báo cáo thô của Groom.
+// Khối "Nhận xét gần đây" (~35%): đánh giá của huấn luyện viên đã gửi cho chủ ngựa, tối đa 5, không có báo cáo thô của Groom.
 export default function OwnerSchedule() {
   const { user } = useAuth();
   const ownerId = toUserID(user.id);
@@ -33,7 +33,7 @@ export default function OwnerSchedule() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [approvedRaces, setApprovedRaces] = useState([]); // cuộc đua đã duyệt qua luồng đăng ký (MOCK — raceRegistrationApi.js)
-  const [reviews, setReviews] = useState([]); // đánh giá của HLV được bật hiển thị (MOCK — services/sessionReviewMock.js)
+  const [reviews, setReviews] = useState([]); // đánh giá HLV đã gửi cho chủ ngựa (services/sessionReviewMock.js → API)
   const [plannedSessions, setPlannedSessions] = useState([]); // buổi tập của kế hoạch đã đồng ý (cùng nguồn với phía Trainer)
   const { label } = useTrainingOptions({ remote: false });
 

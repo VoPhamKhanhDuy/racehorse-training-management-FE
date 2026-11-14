@@ -129,6 +129,7 @@ export default function TrainingAssignments() {
           onClose={() => setReportSession(null)}
           onSaved={(text) => {
             setReportSession(null);
+            refreshAssignments();
             setToast({ text });
           }}
         />

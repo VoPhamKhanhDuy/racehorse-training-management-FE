@@ -5,7 +5,7 @@ import { assessmentLabel } from "../../utils/sessionReview";
 
 // "Nhận xét gần đây" của Chủ ngựa: danh sách gọn, mỗi mục 3 dòng — "Ngựa · dd/MM" + "Điểm x/10 · Nhận định" (chữ trung tính, chỉ "Cần chú ý"
 // có chấm cam); nhận xét (tối đa 2 dòng, cắt "…", bấm mở khung đọc đầy đủ); "Huấn luyện viên <tên>". Không kẻ ngang, cách nhau 14px.
-// reviews: đánh giá được bật hiển thị cho chủ ngựa (không có báo cáo thô của Groom).
+// reviews: đánh giá HLV ĐÃ GỬI cho chủ ngựa (không có báo cáo thô của Groom). Chỉ đọc.
 export default function OwnerReviewList({ reviews }) {
   const [open, setOpen] = useState(null);
 
@@ -21,7 +21,10 @@ export default function OwnerReviewList({ reviews }) {
   const header = open && (
     <div>
       <h2 className="font-serif text-xl leading-tight font-semibold text-[#2b2118]">{open.horseName}</h2>
-      <p className="mt-1 text-sm text-[#6b6055]">{formatDate(open.date)}</p>
+      <p className="mt-1 text-sm text-[#6b6055]">
+        {formatDate(open.date)}
+        {open.sessionTitle && <> · {open.sessionTitle}</>}
+      </p>
     </div>
   );
 
@@ -33,6 +36,7 @@ export default function OwnerReviewList({ reviews }) {
             <div className="flex items-baseline justify-between gap-3 text-sm text-[#1f1f1f]">
               <span className="min-w-0 truncate">
                 <b className="font-semibold">{review.horseName}</b> · {formatDayMonth(review.date)}
+                {review.sessionTitle && <> · {review.sessionTitle}</>}
               </span>
               {scoreLine(review)}
             </div>

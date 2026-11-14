@@ -1,10 +1,9 @@
 // Báo cáo & đánh giá buổi tập: Groom BÁO CÁO sự thật (có tập không, bao nhiêu km, ngựa phản ứng ra sao),
-// Trainer ĐÁNH GIÁ (điểm 1–10, nhận định, nhận xét, có hiển thị cho chủ ngựa không). Chủ ngựa chỉ thấy đánh giá được bật hiển thị.
+// Trainer ĐÁNH GIÁ (điểm 1–10, nhận định, nhận xét) rồi GỬI cho chủ ngựa (review.sentToOwner). Chủ ngựa chỉ thấy đánh giá đã gửi; đã gửi thì không sửa được.
 
 export const REPORT_RESULTS = [
   { code: "Completed", label: "Hoàn thành" },
   { code: "Abandoned", label: "Bỏ dở" },
-  { code: "NotTrained", label: "Không tập" },
 ];
 
 export const HORSE_REACTIONS = [
@@ -40,6 +39,7 @@ const STATE_LABELS = {
   Abandoned: "Bỏ dở",
   NotTrained: "Không tập",
   Reviewed: "Đã đánh giá",
+  Sent: "Đã gửi chủ ngựa",
   Cancelled: "Đã hủy",
 };
 
@@ -52,6 +52,7 @@ const STATE_COLORS = {
   Abandoned: "text-[#9e5954]",
   NotTrained: "text-[#9e5954]",
   Reviewed: "text-[#4d6b2a]",
+  Sent: "text-[#4d6b2a]",
   Cancelled: "text-[#8a7f6e]",
 };
 
@@ -71,14 +72,33 @@ export function hasSessionStarted(session, now = new Date()) {
   return new Date(`${session.trainingDate}T${session.startTime || "00:00"}`) <= now;
 }
 
-// Báo cáo / đánh giá chỉ có giá trị khi buổi đã đến giờ bắt đầu; buổi tương lai bỏ qua mọi bản ghi (kể cả bản ghi lỗi còn sót)
-const validRecord = (session, record) => (record && hasSessionStarted(session) ? record : undefined);
+// Đánh giá của BE (session.review: { score, assessment, comment, reviewedByName, reviewedAt, sentToOwnerAt }) → dạng dùng trong giao diện
+export const reviewFromApi = (dto) =>
+  dto
+    ? {
+        score: dto.score,
+        assessment: dto.assessment,
+        comment: dto.comment,
+        trainerName: dto.reviewedByName,
+        reviewedAt: dto.reviewedAt,
+        sentToOwner: Boolean(dto.sentToOwnerAt),
+        sentAt: dto.sentToOwnerAt ?? null,
+      }
+    : null;
+
+// Báo cáo (session.report, Groom) và đánh giá (session.review, Trainer) đều đến từ API cùng buổi tập; chỉ có giá trị khi buổi đã đến giờ bắt đầu.
+// Tham số thứ hai của các hàm bên dưới được giữ cho các nơi gọi cũ nhưng không còn dùng.
+const validRecord = (session) => {
+  if (!hasSessionStarted(session)) return undefined;
+  return { report: session.report ?? null, review: reviewFromApi(session.review) };
+};
+export const sessionRecord = validRecord;
 
 // record: bản ghi báo cáo / đánh giá của buổi (services/sessionReviewMock.js) hoặc undefined
 export function sessionState(session, record) {
   record = validRecord(session, record);
   if (session.status === "Cancelled") return "Cancelled";
-  if (record?.review) return "Reviewed";
+  if (record?.review) return record.review.sentToOwner ? "Sent" : "Reviewed";
   if (record?.report) return record.report.result;
   if (session.status === "Completed") return "Completed";
   if (session.status === "InProgress") return "InProgress";
@@ -108,15 +128,16 @@ export const STAGES = [
   { code: "AwaitingReport", label: "Chờ báo cáo" },
   { code: "AwaitingReview", label: "Chờ đánh giá" },
   { code: "Reviewed", label: "Đã đánh giá" },
+  { code: "Sent", label: "Đã gửi chủ ngựa" },
 ];
 
 // Chưa đến giờ bắt đầu → luôn "Chưa diễn ra"; đã đến giờ → Chờ báo cáo / Chờ đánh giá / Đã đánh giá
 export function sessionStage(session, record) {
   record = validRecord(session, record);
   if (!hasSessionStarted(session)) return "Upcoming";
-  if (record?.review) return "Reviewed";
-  if (record?.report) return "AwaitingReview";
-  return "AwaitingReport";
+  if (!record?.report) return "AwaitingReport";
+  if (record.review) return record.review.sentToOwner ? "Sent" : "Reviewed";
+  return "AwaitingReview";
 }
 
 // Màu chữ cột "Trạng thái" của bảng buổi tập theo 4 tình trạng (màu có sẵn trong hệ thống)
@@ -125,6 +146,7 @@ const STAGE_COLORS = {
   AwaitingReport: "text-[#c2570c]",
   AwaitingReview: "text-[#9e5954]",
   Reviewed: "text-[#4d6b2a]",
+  Sent: "text-[#4d6b2a]",
 };
 export const stageColor = (stage) => STAGE_COLORS[stage] ?? "text-[#6b6055]";
 export const stageLabel = (stage) => STAGES.find((item) => item.code === stage)?.label ?? stage;

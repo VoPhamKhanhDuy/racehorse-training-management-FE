@@ -360,6 +360,7 @@ export default function GroomTasks() {
           onClose={() => setReportSession(null)}
           onSaved={(text) => {
             setReportSession(null);
+            trainingResource.refresh();
             setToast({ text });
           }}
         />
