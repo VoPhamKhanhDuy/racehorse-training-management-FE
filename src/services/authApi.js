@@ -67,6 +67,15 @@ export async function registerWithApi({ fullName, email, password }) {
   });
 }
 
+/** Map Status BE → status FE: Pending→pending, Active→approved, Rejected→rejected. */
+export function mapApprovalStatus(raw) {
+  const value = String(raw ?? "").trim().toLowerCase();
+  if (value === "pending") return "pending";
+  if (value === "rejected") return "rejected";
+  if (value === "active") return "approved";
+  return value || "pending";
+}
+
 export function mapPendingUser(dto) {
   const userId = dto.userId ?? dto.UserId;
   const created = dto.createdAt ?? dto.CreatedAt;
@@ -80,7 +89,7 @@ export function mapPendingUser(dto) {
     fullName: dto.fullName ?? dto.FullName,
     email: dto.email ?? dto.Email,
     roleId: dto.roleId ?? dto.RoleId ?? "horse_owner",
-    status: "pending",
+    status: mapApprovalStatus(dto.status ?? dto.Status),
     createdAt,
   };
 }
@@ -90,6 +99,18 @@ export async function fetchPendingApprovals() {
   return (list ?? []).map(mapPendingUser);
 }
 
+/** Toàn bộ chủ ngựa (mọi trạng thái) — tab Tất cả / Đã duyệt / Đã từ chối. */
+export async function fetchOwnerApprovals() {
+  const list = await apiRequest("/manager/account-approvals");
+  return (list ?? []).map(mapPendingUser);
+}
+
 export async function approveAccountApi(userId) {
-  await apiRequest(`/manager/account-approvals/${userId}/approve`, { method: "POST" });
+  const data = await apiRequest(`/manager/account-approvals/${userId}/approve`, { method: "POST" });
+  return data ? mapPendingUser(data) : null;
+}
+
+export async function rejectAccountApi(userId) {
+  const data = await apiRequest(`/manager/account-approvals/${userId}/reject`, { method: "POST" });
+  return data ? mapPendingUser(data) : null;
 }

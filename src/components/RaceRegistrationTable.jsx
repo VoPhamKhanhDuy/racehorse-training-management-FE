@@ -3,6 +3,7 @@ import TablePager from "./TablePager";
 import { formatCurrency } from "../utils/currency";
 import { daysBetween, formatDate, todayISO } from "../utils/date";
 import { isReadyHealth } from "../utils/healthGroups";
+import { formatRank } from "../utils/raceResult";
 import { RR_STATUS, stepText } from "../utils/raceRegistration";
 import { formatDateTime } from "../utils/trainingFormat";
 
@@ -60,11 +61,15 @@ export default function RaceRegistrationTable({ records, role, tab = "pending", 
   };
   const dateTimeCell = (iso) => (iso ? <span className="whitespace-nowrap tabular-nums">{formatDateTime(iso)}</span> : EMPTY);
 
-  // Kết quả (tab "Đã xử lý") theo vai trò đang xem — chữ trung tính
+  // Kết quả (tab "Đã xử lý") — chủ ngựa thấy hạng từ /api/races/registrations nếu đã nhập
   const resultText = (r) => {
     switch (r.status) {
-      case RR_STATUS.APPROVED:
+      case RR_STATUS.APPROVED: {
+        if (r.thuHang !== null && r.thuHang !== undefined) {
+          return formatRank(r.thuHang) || "Đã duyệt";
+        }
         return "Đã duyệt";
+      }
       case RR_STATUS.PENDING_MANAGER:
         return "Chờ quản lý duyệt";
       case RR_STATUS.REJECTED:
