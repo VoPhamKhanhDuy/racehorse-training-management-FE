@@ -12,6 +12,14 @@ const GENDER_LABELS = {
   gelding: "Gelding",
 };
 
+// Nhãn tiếng Việt ngắn (Đực / Cái / Thiến) cho các bảng quản lý; giá trị lạ in nguyên văn.
+const GENDER_LABELS_VI = { Male: "Đực", Female: "Cái", Gelding: "Thiến" };
+
+export function genderLabelVi(value) {
+  const english = genderLabel(value);
+  return GENDER_LABELS_VI[english] ?? english;
+}
+
 export function genderLabel(value) {
   if (!value) return "";
   return GENDER_LABELS[String(value).normalize("NFC").trim().toLowerCase()] ?? value;
