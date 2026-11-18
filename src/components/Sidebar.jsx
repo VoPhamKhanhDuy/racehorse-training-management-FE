@@ -32,8 +32,8 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
 
       {/* Màn nhỏ khi đóng: vừa trượt ra ngoài vừa invisible — không lộ chữ ra mép trái, không Tab vào được link ẩn */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 lg:w-56 shrink-0 flex-col overflow-hidden border-r border-[#E6DDCF] bg-[#F5F0E8] transition-[translate,visibility] lg:visible lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width] ${
-          collapsed ? "lg:w-16" : ""
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col overflow-hidden border-r border-[#E6DDCF] bg-[#F5F0E8] transition-[translate,visibility] lg:visible lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width] ${
+          collapsed ? "lg:w-16" : "lg:w-56"
         } ${
           isOpen ? "visible translate-x-0" : "invisible -translate-x-full"
         }`}
