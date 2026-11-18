@@ -13,10 +13,6 @@ const healthStatusStyles = {
 // Ngựa chưa có bản ghi sức khỏe
 const unknownStyle = { badge: "bg-gray-100 text-stone", tint: "bg-gray-100 text-stone/35", text: "text-stone" };
 
-export function isHealthStatus(status) {
-  return status in healthStatusStyles;
-}
-
 export function getHealthStyle(status) {
   return healthStatusStyles[status] ?? unknownStyle;
 }

@@ -58,9 +58,3 @@ export function nextMondayISO() {
   const monday = startOfWeek(today);
   return monday === today ? today : addDays(monday, 7);
 }
-
-// Thứ Hai → Chủ Nhật của tuần chứa ngày isoDate
-export function weekBounds(isoDate) {
-  const start = startOfWeek(isoDate);
-  return { start, end: addDays(start, 6) };
-}

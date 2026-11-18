@@ -75,16 +75,6 @@ export function toISODateTime(date) {
   return `${toISODate(date)}T${hours}:${minutes}`;
 }
 
-// Thời điểm cách hiện tại n giờ (n âm = quá khứ), dạng "YYYY-MM-DDTHH:mm"
-export function hoursFromNow(n) {
-  return toISODateTime(new Date(Date.now() + n * 3600000));
-}
-
-// Thời điểm lúc "HH:mm" của ngày cách hôm nay n ngày, dạng "YYYY-MM-DDTHH:mm"
-export function dateTimeFromToday(n, time) {
-  return `${daysFromToday(n)}T${time}`;
-}
-
 // "YYYY-MM-DDTHH:mm" → Date theo giờ địa phương
 export function parseISODateTime(isoDateTime) {
   const [datePart, timePart = "00:00"] = isoDateTime.split("T");

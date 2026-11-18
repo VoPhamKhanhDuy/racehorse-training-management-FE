@@ -59,13 +59,6 @@ const STATE_COLORS = {
 export const sessionStateLabel = (state) => STATE_LABELS[state] ?? state;
 export const sessionStateColor = (state) => STATE_COLORS[state] ?? "text-[#6b6055]";
 
-// Buổi đã qua giờ kết thúc (hoặc giờ bắt đầu nếu không có giờ kết thúc)?
-export function isSessionPast(session, now = new Date()) {
-  if (!session.trainingDate) return false;
-  const time = session.endTime || session.startTime || "23:59";
-  return new Date(`${session.trainingDate}T${time}`) < now;
-}
-
 // Buổi đã ĐẾN GIỜ BẮT ĐẦU chưa? (Groom chỉ được báo cáo, Trainer chỉ được đánh giá khi đã đến giờ) — thiếu giờ thì coi là đầu ngày
 export function hasSessionStarted(session, now = new Date()) {
   if (!session.trainingDate) return false;
