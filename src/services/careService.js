@@ -49,7 +49,7 @@ function mapReport(raw) {
     ReportID: Number(pick(raw, "reportID", "ReportID")),
     HorseID: Number(pick(raw, "horseID", "HorseID")),
     GroomID: Number(pick(raw, "groomID", "GroomID")),
-    LoaiSuCo: pick(raw, "loaiSuCo", "LoaiSuCo") ?? "",
+    LoaiSuCo: (pick(raw, "loaiSuCo", "LoaiSuCo") ?? "").trim(),
     MoTa: pick(raw, "moTa", "MoTa") ?? "",
     HinhAnh: pick(raw, "hinhAnh", "HinhAnh") ?? "",
     Ngay: isoDatePart(pick(raw, "ngay", "Ngay")),
@@ -115,8 +115,12 @@ export async function getAllIncidentReports() {
 }
 
 // Manager chỉ cập nhật sự cố chuồng trại / thiết bị — POST /api/manager/incidents/{id}/status
-export async function updateIncidentStatus(reportId, { TrangThai, GhiChuXuLy }) {
-  const saved = await apiRequest(`/manager/incidents/${Number(reportId)}/status`, {
+export async function updateIncidentStatus(report, { TrangThai, GhiChuXuLy }) {
+  if (!FACILITY_INCIDENT_TYPES.includes(report.LoaiSuCo)) {
+    throw new Error("Quản lý CLB chỉ xử lý sự cố chuồng trại hoặc thiết bị.");
+  }
+
+  const saved = await apiRequest(`/manager/incidents/${report.ReportID}/status`, {
     method: "POST",
     body: {
       trangThai: TrangThai,

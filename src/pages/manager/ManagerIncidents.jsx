@@ -10,11 +10,10 @@ import { addAuditLog } from "../../services/auditService";
 import { INCIDENT_STATUS } from "../../data/incidentOptions";
 import { toUserID } from "../../utils/userId";
 
-// Club Manager: xem mọi sự cố (GET /api/manager/incidents). Bảng + modal chi tiết DÙNG CHUNG với Thú y (components/IncidentTable.jsx, IncidentDetailDialog.jsx).
-// Quy tắc nhận: chuồng / thiết bị / khác chỉ Quản lý nhận; sự cố sức khỏe ai "Nhận xử lý" trước thì giữ, người còn lại chỉ xem.
-// TODO(BE): xác nhận POST /manager/incidents/{id}/status cho phép Quản lý nhận sự cố SỨC KHỎE (trước đây chỉ chuồng / thiết bị) và trả HandledBy.
+// Quản lý xem mọi báo cáo và xử lý sự cố chuồng hoặc thiết bị.
 export default function ManagerIncidents() {
   const { user } = useAuth();
+  const managerId = user.apiUserId ?? toUserID(user.id);
   const [reports, setReports] = useState([]);
   const [horses, setHorses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,8 +48,7 @@ export default function ManagerIncidents() {
 
   // Lưu trạng thái + ghi nhật ký; cập nhật danh sách, đóng khung và báo toast (lỗi ném lại cho khung hiện)
   const handleUpdate = async (report, changes) => {
-    const managerId = toUserID(user.id);
-    const updated = await updateIncidentStatus(report.ReportID, changes);
+    const updated = await updateIncidentStatus(report, changes);
     addAuditLog({
       UserID: managerId,
       HanhDong: updated.TrangThai === INCIDENT_STATUS.DONE ? "Đánh dấu đã xử lý sự cố" : "Nhận xử lý sự cố",
@@ -91,7 +89,7 @@ export default function ManagerIncidents() {
         <IncidentDetailDialog
           key={selected.ReportID}
           role="club_manager"
-          userId={toUserID(user.id)}
+          userId={managerId}
           report={selected}
           horse={horseById[selected.HorseID]}
           stable={selected.SoChuong}

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import CenterDialog from "./CenterDialog";
 import ConfirmDialog from "./ConfirmDialog";
 import HorseAvatar from "./HorseAvatar";
-import { HEALTH_INCIDENT_TYPES, INCIDENT_STATUS } from "../data/incidentOptions";
+import { FACILITY_INCIDENT_TYPES, HEALTH_INCIDENT_TYPES, INCIDENT_STATUS } from "../data/incidentOptions";
 import { formatDate, formatDayMonth } from "../utils/date";
 import { capitalizeFirst } from "../utils/text";
 
@@ -14,7 +14,7 @@ const GROUP_TITLE = "text-base font-semibold text-[#1f1f1f]";
 const DISABLED_LINK =
   "inline-flex h-10 cursor-not-allowed items-center rounded-[4px] border border-[#E3E3E3] bg-white px-5 text-sm font-semibold text-[#8a8a8a]";
 
-// Mỗi trạng thái hiện đúng 1 nút chính: Mới → "Nhận xử lý"; Đang xử lý (do chính mình nhận) → "Hoàn tất xử lý" (bắt buộc ghi chú); Đã xử lý → không còn nút
+// Các bước xử lý trên giao diện: Mới → Đang xử lý → Đã xử lý.
 const NEXT_ACTION = {
   [INCIDENT_STATUS.NEW]: { status: INCIDENT_STATUS.IN_PROGRESS, label: "Nhận xử lý" },
   [INCIDENT_STATUS.IN_PROGRESS]: { status: INCIDENT_STATUS.DONE, label: "Hoàn tất xử lý" },
@@ -34,8 +34,7 @@ function Field({ label, children }) {
 
 // Chi tiết sự cố — MODAL giữa màn hình DÙNG CHUNG cho Thú y (role="veterinarian") và Quản lý (role="club_manager"), rộng ≤ 620px, đầu + chân cố định, chỉ thân cuộn:
 // Thông tin, Tiến trình 3 bước, Xử lý (không có ô ghi chú), Việc liên quan (CHỈ Thú y + sự cố sức khỏe). Đổi trạng thái qua hộp xác nhận.
-// Quy tắc nhận: sự cố sức khỏe cả Thú y lẫn Quản lý nhận được — ai "Nhận xử lý" trước thì giữ, người kia chỉ xem ("Đang được xử lý bởi …");
-// chuồng / thiết bị / khác chỉ Quản lý. Không thể "Hoàn tất" khi chưa "Nhận". userId: UserID của người đang đăng nhập (so với report.HandledBy).
+// Thú y xử lý sự cố sức khỏe ngựa, Quản lý xử lý sự cố chuồng hoặc thiết bị.
 // onUpdate(report, { TrangThai, GhiChuXuLy }) trả Promise; lỗi thì ném ra để hiện trong khung.
 export default function IncidentDetailDialog({ role, userId, report, horse, stable, lockedSince, onClose, onUpdate }) {
   const [pendingAction, setPendingAction] = useState(null);
@@ -45,10 +44,10 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
 
   const isHealth = HEALTH_INCIDENT_TYPES.includes(report.LoaiSuCo);
   const isVet = role === "veterinarian";
-  const canTakeType = isVet ? isHealth : true; // Thú y chỉ sức khỏe; Quản lý mọi loại
+  const canHandleType = isVet ? isHealth : role === "club_manager" && FACILITY_INCIDENT_TYPES.includes(report.LoaiSuCo);
   // Đã có người nhận và không phải mình → chỉ xem
   const heldByOther = report.TrangThai !== INCIDENT_STATUS.NEW && report.HandledBy != null && report.HandledBy !== userId;
-  const action = canTakeType && !heldByOther ? NEXT_ACTION[report.TrangThai] : undefined;
+  const action = canHandleType && !heldByOther ? NEXT_ACTION[report.TrangThai] : undefined;
   const isNew = report.TrangThai === INCIDENT_STATUS.NEW;
   const inProgress = report.TrangThai === INCIDENT_STATUS.IN_PROGRESS;
   const isDone = report.TrangThai === INCIDENT_STATUS.DONE;
@@ -167,11 +166,14 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
 
         <section className="mt-5">
           <h3 className={GROUP_TITLE}>Xử lý</h3>
-          {isNew && (
-            <p className="mt-2 text-sm text-[#6b6055]">{canTakeType ? "Nhấn 'Nhận xử lý' để bắt đầu." : "Sự cố này do Quản lý CLB xử lý."}</p>
+          {!isDone && !canHandleType && (
+            <p className="mt-2 text-sm text-[#6b6055]">
+              {isHealth ? "Sự cố sức khỏe ngựa do bác sĩ thú y xử lý." : "Báo cáo này chỉ xem được với vai trò hiện tại."}
+            </p>
           )}
+          {isNew && action && <p className="mt-2 text-sm text-[#6b6055]">Nhấn 'Nhận xử lý' để bắt đầu.</p>}
           {inProgress && heldByOther && <p className="mt-2 text-sm font-semibold text-[#1f1f1f]">Đang được xử lý bởi {report.HandlerName ?? "người khác"}</p>}
-          {inProgress && !heldByOther && (
+          {inProgress && action && (
             <>
               {lockedSince && <p className="mt-2 text-sm font-semibold text-[#1f1f1f]">Ngựa đang bị khóa tập từ {formatDayMonth(lockedSince)}</p>}
               <p className="mt-2 text-sm text-[#6b6055]">Nhấn 'Hoàn tất xử lý' khi đã xử lý xong.</p>
