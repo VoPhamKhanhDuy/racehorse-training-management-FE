@@ -16,6 +16,15 @@ import { formatKm, formatMinutes } from "../../utils/trainingFormat";
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const NAV_BUTTON =
   "flex h-[46px] w-10 cursor-pointer items-center justify-center rounded-md border border-stone/25 bg-white text-ink transition-colors hover:border-stone/40";
+
+// Khoảng ngày được chọn: từ Thứ Hai của tuần hiện tại (hoặc ngày bắt đầu giáo án nếu muộn hơn) đến ngày kết thúc giáo án.
+// maxDate = undefined khi giáo án không có ngày kết thúc. minDate > maxDate khi giáo án đã kết thúc từ lâu (không còn tuần nào).
+const selectableRange = (plan) => {
+  const thisMonday = startOfWeek(todayISO());
+  return { minDate: plan.startDate > thisMonday ? plan.startDate : thisMonday, maxDate: plan.endDate || undefined };
+};
+const clampDate = (date, { minDate, maxDate }) => (date < minDate ? minDate : maxDate && date > maxDate ? maxDate : date);
+const NAV_BUTTON_OFF = "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-stone/25";
 const TH = "px-3 py-2.5 text-xs font-medium text-stone whitespace-nowrap";
 const TD = "px-3 py-2.5 align-top";
 
@@ -60,7 +69,7 @@ export default function WeeklyScheduleGenerator() {
         const today = todayISO();
         const initialWeek = startOfWeek(planDetail.startDate > today ? planDetail.startDate : today);
         setWeekStart(initialWeek);
-        setPickedDate(initialWeek);
+        setPickedDate(clampDate(initialWeek, selectableRange(planDetail)));
         setLoading(false);
       })
       .catch((err) => {
@@ -73,8 +82,11 @@ export default function WeeklyScheduleGenerator() {
     };
   }, [id, reloadKey]);
 
+  // Chỉ nhận ngày trong khoảng được phép (plan chưa tải xong thì không làm gì)
   const changeWeek = (value) => {
-    if (!value) return;
+    if (!value || !plan) return;
+    const { minDate, maxDate } = selectableRange(plan);
+    if (value < minDate || (maxDate && value > maxDate)) return;
     setPickedDate(value);
     setWeekStart(startOfWeek(value));
     setResult(null);
@@ -122,6 +134,15 @@ export default function WeeklyScheduleGenerator() {
   const canPreview = isDraft || canSchedule;
   const weekEnd = addDays(weekStart, 6);
   const outsidePlan = weekEnd < plan.startDate || weekStart > plan.endDate;
+  const range = selectableRange(plan);
+  const { minDate, maxDate } = range;
+  const noSelectableWeek = maxDate !== undefined && minDate > maxDate; // giáo án đã kết thúc
+  const canPrevWeek = !noSelectableWeek && addDays(weekStart, -1) >= minDate;
+  const canNextWeek = !noSelectableWeek && (!maxDate || addDays(weekStart, 7) <= maxDate);
+  const goWeek = (delta) => {
+    if (delta < 0 ? !canPrevWeek : !canNextWeek) return;
+    changeWeek(clampDate(addDays(weekStart, delta * 7), range));
+  };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -150,7 +171,7 @@ export default function WeeklyScheduleGenerator() {
           <section className="mt-6 space-y-5 rounded-lg border border-stone/15 bg-white px-5 py-5">
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex items-end gap-2">
-                <button type="button" onClick={() => changeWeek(addDays(weekStart, -7))} aria-label="Tuần trước" className={NAV_BUTTON}>
+                <button type="button" onClick={() => goWeek(-1)} disabled={!canPrevWeek} aria-label="Tuần trước" className={`${NAV_BUTTON} ${NAV_BUTTON_OFF}`}>
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <div className="w-44">
@@ -160,10 +181,15 @@ export default function WeeklyScheduleGenerator() {
                     id="weekStart"
                     type="date"
                     value={pickedDate}
+                    min={noSelectableWeek ? undefined : minDate}
+                    max={maxDate}
+                    required
+                    hideTodayWhenDisabled
+                    disabled={noSelectableWeek}
                     onChange={(e) => changeWeek(e.target.value)}
                   />
                 </div>
-                <button type="button" onClick={() => changeWeek(addDays(weekStart, 7))} aria-label="Tuần sau" className={NAV_BUTTON}>
+                <button type="button" onClick={() => goWeek(1)} disabled={!canNextWeek} aria-label="Tuần sau" className={`${NAV_BUTTON} ${NAV_BUTTON_OFF}`}>
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
@@ -201,6 +227,12 @@ export default function WeeklyScheduleGenerator() {
                 {groomLocked && <p className="mt-1 text-xs text-stone">{GROOM_LOCK_HINT}</p>}
               </div>
             </div>
+
+            {noSelectableWeek && (
+              <p className="rounded-sm border-l-2 border-stone/40 bg-white px-4 py-3 text-sm text-stone">
+                Giáo án đã kết thúc ({formatDate(plan.endDate)}), không còn tuần nào để xếp lịch.
+              </p>
+            )}
 
             <p className="text-sm text-ink">
               Tuần <span className="font-semibold">Thứ Hai {formatDayMonth(weekStart)} – Chủ Nhật {formatDayMonth(weekEnd)}</span>
