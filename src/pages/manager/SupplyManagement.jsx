@@ -6,6 +6,7 @@ import LoadingState from "../../components/LoadingState";
 import StockAdjustModal from "./StockAdjustModal";
 import SupplyRequestsPanel from "./SupplyRequestsPanel";
 import SupplyRow from "./SupplyRow";
+import { compareSuppliesByName, supplyDisplayName, supplyDisplayType } from "../../config/supplyConfig";
 import { adjustStock, deleteSupply, getStaffMembers, getSupplies } from "../../services/supplyService";
 
 export default function SupplyManagement() {
@@ -44,8 +45,8 @@ export default function SupplyManagement() {
   // Join SUPPLY.ManagedBy → USER để hiện tên người quản lý
   const managerNameById = Object.fromEntries(staffMembers.map((s) => [s.UserID, s.HoTen]));
   // Pill loại lấy động từ dữ liệu
-  const supplyTypes = [...new Set(supplies.map((s) => s.Loai).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi"));
-  const typeFilters = [{ value: "", label: "Tất cả" }, ...supplyTypes.map((type) => ({ value: type, label: type }))];
+  const supplyTypes = [...new Set(supplies.map((s) => s.Loai).filter(Boolean))].sort((a, b) => supplyDisplayType(a).localeCompare(supplyDisplayType(b), "vi"));
+  const typeFilters = [{ value: "", label: "Tất cả" }, ...supplyTypes.map((type) => ({ value: type, label: supplyDisplayType(type) }))];
   // Xóa hết vật tư của loại đang lọc thì pill đó biến mất → quay về "Tất cả"
   const activeType = supplyTypes.includes(typeFilter) ? typeFilter : "";
 
@@ -57,13 +58,16 @@ export default function SupplyManagement() {
     { label: "Số loại vật tư", value: supplyTypes.length, icon: Tags },
   ];
 
-  // Tìm theo tên (không phân biệt hoa thường), kết hợp AND với lọc loại
-  const normalizedKeyword = keyword.trim().toLowerCase();
+  // Tìm theo tên tiếng Việt hoặc tên gốc (không phân biệt hoa thường), kết hợp AND với lọc loại
+  const normalizedKeyword = keyword.trim().toLocaleLowerCase("vi");
   const visibleSupplies = supplies
     .filter(
-      (s) => (!activeType || s.Loai === activeType) && s.TenVatTu.toLowerCase().includes(normalizedKeyword)
+      (s) =>
+        (!activeType || s.Loai === activeType) &&
+        (supplyDisplayName(s).toLocaleLowerCase("vi").includes(normalizedKeyword) ||
+          s.TenVatTu.toLocaleLowerCase("vi").includes(normalizedKeyword))
     )
-    .sort((a, b) => a.TenVatTu.localeCompare(b.TenVatTu, "vi"));
+    .sort(compareSuppliesByName);
 
   const handleStockSubmit = async (delta) => {
     const { supply } = stockAction;
@@ -73,8 +77,8 @@ export default function SupplyManagement() {
     const amount = Math.abs(delta).toLocaleString("vi-VN");
     setMessage(
       delta > 0
-        ? `Đã nhập kho ${amount} "${updated.TenVatTu}". Tồn kho: ${updated.SoLuongTon.toLocaleString("vi-VN")}.`
-        : `Đã xuất kho ${amount} "${updated.TenVatTu}". Tồn kho: ${updated.SoLuongTon.toLocaleString("vi-VN")}.`
+        ? `Đã nhập kho ${amount} "${supplyDisplayName(updated)}". Tồn kho: ${updated.SoLuongTon.toLocaleString("vi-VN")}.`
+        : `Đã xuất kho ${amount} "${supplyDisplayName(updated)}". Tồn kho: ${updated.SoLuongTon.toLocaleString("vi-VN")}.`
     );
   };
 
@@ -85,7 +89,7 @@ export default function SupplyManagement() {
       await deleteSupply(supply.SupplyID);
       setSupplies((prev) => prev.filter((s) => s.SupplyID !== supply.SupplyID));
       setSupplyToDelete(null);
-      setMessage(`Đã xóa vật tư "${supply.TenVatTu}".`);
+      setMessage(`Đã xóa vật tư "${supplyDisplayName(supply)}".`);
     } catch (err) {
       setMessage(err.message || "Không xóa được vật tư.");
       setSupplyToDelete(null);
@@ -206,6 +210,7 @@ export default function SupplyManagement() {
                     <th className="border-b border-b-stone/20 px-4 py-3 font-medium">Tên vật tư</th>
                     <th className="hidden border-b border-b-stone/20 px-4 py-3 font-medium md:table-cell">Loại</th>
                     <th className="hidden border-b border-b-stone/20 px-4 py-3 text-right font-medium sm:table-cell">Số lượng tồn</th>
+                    <th className="hidden border-b border-b-stone/20 px-4 py-3 text-right font-medium sm:table-cell">Mức tối thiểu</th>
                     <th className="hidden border-b border-b-stone/20 px-4 py-3 font-medium xl:table-cell">Người quản lý</th>
                     <th className="sticky right-0 border-b border-b-stone/20 bg-white py-3 pr-4 pl-6 text-right font-medium">
                       Hành động
@@ -243,7 +248,7 @@ export default function SupplyManagement() {
       <ConfirmDialog
         open={Boolean(supplyToDelete)}
         title="Xóa vật tư"
-        message={`Bạn có chắc muốn xóa vật tư "${supplyToDelete?.TenVatTu ?? ""}"? Thao tác này không thể hoàn tác.`}
+        message={`Bạn có chắc muốn xóa vật tư "${supplyToDelete ? supplyDisplayName(supplyToDelete) : ""}"? Thao tác này không thể hoàn tác.`}
         loading={deleting}
         onConfirm={handleConfirmDelete}
         onCancel={() => setSupplyToDelete(null)}
