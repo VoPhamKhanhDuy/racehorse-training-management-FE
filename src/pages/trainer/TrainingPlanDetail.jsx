@@ -227,7 +227,7 @@ export default function TrainingPlanDetail() {
   const showProgress = status !== "Draft" || (progress.totalSessions ?? 0) > 0;
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div className="w-full">
       <Link to="/trainer/plans" className="text-sm font-medium text-[#c2570c] hover:underline">
         ← Giáo án tập luyện
       </Link>

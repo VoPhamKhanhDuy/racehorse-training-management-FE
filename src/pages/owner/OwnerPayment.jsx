@@ -96,7 +96,7 @@ export default function OwnerPayment() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[960px] md:px-8">
+    <div className="w-full">
       <Link
         to={FINANCE_PATH}
         state={backState}

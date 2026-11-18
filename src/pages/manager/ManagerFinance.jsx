@@ -274,7 +274,7 @@ export default function ManagerFinance() {
   const dropdownLabel = "mb-1 block text-[13px] font-semibold text-[#4a3f33]";
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+    <div className="w-full">
       <div>
         <h1 className="font-serif text-[32px] leading-tight font-semibold tracking-tight text-[#2b2118]">Chi phí &amp; tiền thưởng</h1>
         <p className="mt-1 text-[15px] text-[#4a3f33]">Ghi nhận chi phí và tiền thưởng của từng ngựa. Chủ ngựa xem được các khoản này.</p>

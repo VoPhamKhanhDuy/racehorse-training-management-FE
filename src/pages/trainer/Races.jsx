@@ -144,7 +144,7 @@ export default function Races() {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div className="w-full">
       <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">Kết quả thi đấu</h1>
       <p className="mt-1 text-sm text-[#6b6055]">Theo dõi kết quả thi đấu của ngựa do bạn huấn luyện.</p>
       <p className="mt-0.5 mb-4 text-[13px] text-[#6b6055]">

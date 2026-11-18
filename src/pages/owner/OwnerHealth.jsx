@@ -60,7 +60,7 @@ export default function OwnerHealth() {
   const schedule = [...vaccinations.filter((v) => !isDone(v)), ...vaccinations.filter(isDone)];
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+    <div className="w-full">
       <div>
         <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Sức khỏe</h1>
         <p className="mt-1 text-sm text-[#4a3f33]">Tình trạng và lịch tiêm phòng của ngựa bạn.</p>

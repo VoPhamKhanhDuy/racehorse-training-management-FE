@@ -133,7 +133,7 @@ export default function RaceResults() {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div className="w-full">
       <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-[#2b2118]">
         Kết quả thi đấu
       </h1>

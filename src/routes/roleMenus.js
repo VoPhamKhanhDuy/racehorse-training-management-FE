@@ -6,6 +6,7 @@ import {
   FolderOpen,
   HeartPulse,
   History,
+  LayoutDashboard,
   LayoutGrid,
   ListChecks,
   Package,
@@ -29,6 +30,7 @@ const roleMenus = {
     { label: "Đăng ký thi đấu", path: "/trainer/race-registrations", icon: FileCheck },
     { label: "Kết quả thi đấu", path: "/trainer/races", icon: Trophy },
     { label: "Hồ sơ ngựa", path: "/trainer/horses", icon: FolderOpen },
+    { label: "Dashboard", path: "/trainer/dashboard", icon: LayoutDashboard },
   ],
   veterinarian: [
     { label: "Tổng quan sức khỏe", path: "/vet/overview", icon: HeartPulse },
@@ -36,6 +38,7 @@ const roleMenus = {
     { label: "Sự cố", path: "/vet/incidents", icon: TriangleAlert },
     { label: "Lệnh khóa huấn luyện", path: "/vet/locks", icon: ShieldAlert },
     { label: "Lịch tiêm phòng", path: "/vet/vaccinations", icon: Syringe },
+    { label: "Dashboard", path: "/vet/dashboard", icon: LayoutDashboard },
   ],
   groom: [
     { label: "Công việc hôm nay", path: "/groom/tasks", icon: ListChecks },
@@ -63,6 +66,7 @@ const roleMenus = {
     // Ẩn tạm: Báo cáo hiệu suất & tài chính (/manager/reports)
     { label: "Chi phí & tiền thưởng", path: "/manager/finance", icon: Wallet },
     { label: "Nhật ký thao tác", path: "/manager/audit-log", icon: History },
+    { label: "Dashboard", path: "/manager/dashboard", icon: LayoutDashboard },
   ],
 };
 

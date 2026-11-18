@@ -37,7 +37,7 @@ export default function Layout() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:px-8 lg:pt-6">
+        <main className="flex-1 p-4 sm:p-5 lg:px-6 lg:py-5">
           <Outlet />
         </main>
       </div>

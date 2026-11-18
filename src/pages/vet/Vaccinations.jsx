@@ -217,7 +217,7 @@ export default function Vaccinations() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] md:px-8">
+    <div className="w-full">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Lịch tiêm phòng</h1>
         <Link to={`/vet/vaccinations/new${horseFilter ? `?horse=${horseFilter}` : ""}`} className="btn-primary">

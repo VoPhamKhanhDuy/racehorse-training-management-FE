@@ -3,6 +3,27 @@ import { getHorseAge } from "../utils/date";
 import { DUPLICATE_HORSE_NAME, INVALID_BIRTH_DATE } from "../data/horseOptions";
 import { collapseSpaces } from "../utils/text";
 import { pick } from "../utils/object";
+import thunderPhoto from "../assets/images/horses/thunder.jpg";
+import lightningPhoto from "../assets/images/horses/lightning.jpg";
+import stormPhoto from "../assets/images/horses/storm.jpg";
+import blazePhoto from "../assets/images/horses/blaze.jpg";
+import shadowPhoto from "../assets/images/horses/shadow.jpg";
+import spiritPhoto from "../assets/images/horses/spirit.jpg";
+
+const DEFAULT_HORSE_PHOTOS = [
+  thunderPhoto,
+  lightningPhoto,
+  stormPhoto,
+  blazePhoto,
+  shadowPhoto,
+  spiritPhoto,
+];
+
+export function fallbackHorsePhoto(horseId) {
+  const n = Number(horseId);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_HORSE_PHOTOS[0];
+  return DEFAULT_HORSE_PHOTOS[(n - 1) % DEFAULT_HORSE_PHOTOS.length];
+}
 
 export function extractHorseId(raw) {
   const id = pick(raw, "horseID", "horseId", "HorseID", "HorseId", "id");
@@ -19,15 +40,17 @@ function resolvePhotoUrl(url) {
 /** Chuẩn hóa HorseDto từ API → shape FE (photo, HorseID, …). */
 export function mapHorseFromApi(raw) {
   if (!raw) return null;
+  const horseId = extractHorseId(raw) ?? 0;
+  const rawPhoto = resolvePhotoUrl(pick(raw, "photoUrl", "PhotoUrl") ?? null);
   return {
-    HorseID: extractHorseId(raw) ?? 0,
+    HorseID: horseId,
     Ten: pick(raw, "ten", "Ten") ?? "",
     Giong: pick(raw, "giong", "Giong") ?? "",
     Tuoi: pick(raw, "tuoi", "Tuoi") ?? 0,
     CanNang: Number(pick(raw, "canNang", "CanNang") ?? 0),
     DongDoi: pick(raw, "dongDoi", "DongDoi") ?? "",
     OwnerID: pick(raw, "ownerID", "OwnerID"),
-    photo: resolvePhotoUrl(pick(raw, "photoUrl", "PhotoUrl") ?? null),
+    photo: rawPhoto || fallbackHorsePhoto(horseId),
     GioiTinh: pick(raw, "gioiTinh", "GioiTinh") ?? "",
     MauLong: pick(raw, "mauLong", "MauLong") ?? "",
     NgaySinh: pick(raw, "ngaySinh", "NgaySinh") ?? "",

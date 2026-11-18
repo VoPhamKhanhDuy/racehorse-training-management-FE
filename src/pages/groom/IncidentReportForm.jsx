@@ -121,7 +121,7 @@ export default function IncidentReportForm() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] md:px-8">
+    <div className="w-full">
       <Link to={BACK_TO_LIST} className={`text-sm text-[#c2570c] hover:underline ${FOCUS_RING}`}>
         ← Báo cáo sự cố
       </Link>

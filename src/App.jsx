@@ -53,6 +53,7 @@ import TrainingLocks from "./pages/vet/TrainingLocks";
 import TrainingLockForm from "./pages/vet/TrainingLockForm";
 import Vaccinations from "./pages/vet/Vaccinations";
 import VaccinationForm from "./pages/vet/VaccinationForm";
+import ClubDashboard from "./pages/common/ClubDashboard";
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
         }
       >
         <Route path="/trainer" element={<Navigate to="/trainer/plans" replace />} />
+        <Route path="/trainer/dashboard" element={<ClubDashboard />} />
         {/* Giáo án, lịch tập, buổi tập: nối API thật (services/trainingApi.js) */}
         <Route path="/trainer/plans" element={<TrainingPlans />} />
         <Route path="/trainer/plans/new" element={<TrainingPlanForm />} />
@@ -110,6 +112,7 @@ function App() {
       >
         {/* Trang đích của bác sĩ thú y sau khi đăng nhập */}
         <Route path="/vet" element={<Navigate to="/vet/overview" replace />} />
+        <Route path="/vet/dashboard" element={<ClubDashboard />} />
         <Route path="/vet/overview" element={<HealthOverview />} />
         <Route path="/vet/exams" element={<MedicalExams />} />
         <Route path="/vet/exams/new" element={<MedicalExamForm />} />
@@ -170,6 +173,7 @@ function App() {
         }
       >
         <Route path="/manager" element={<Navigate to="/manager/horses" replace />} />
+        <Route path="/manager/dashboard" element={<ClubDashboard />} />
         <Route path="/manager/horses" element={<HorseManagement />} />
         <Route path="/manager/horses/new" element={<HorseForm />} />
         <Route path="/manager/horses/:id/edit" element={<HorseForm />} />

@@ -43,7 +43,7 @@ export default function TrainingAssignments() {
   const todayCount = sessions.filter((s) => s.trainingDate === today).length;
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] md:px-8">
+    <div className="w-full">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Lịch tập được giao</h1>
         <div className="flex items-center gap-2">

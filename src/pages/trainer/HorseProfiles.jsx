@@ -75,7 +75,7 @@ export default function HorseProfiles() {
   const pagedHorses = visibleHorses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="mx-auto max-w-[1200px]">
+    <div className="w-full">
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h1 className="font-serif text-[32px] leading-tight font-semibold tracking-tight text-[#2b2118]">Hồ sơ ngựa</h1>
       </div>

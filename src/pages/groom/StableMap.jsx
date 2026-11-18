@@ -90,7 +90,7 @@ export default function StableMap() {
   const openRow = groups.flatMap((g) => g.rows.map((r) => ({ ...r, groupLabel: g.label }))).find((r) => r.stable.AssignmentID === openId) ?? null;
 
   return (
-    <div className="max-w-[1100px]">
+    <div className="w-full">
       <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Chuồng trại</h1>
       <p className="mt-1 text-sm text-[#4a3f33]">Các chuồng và ngựa bạn chăm sóc.</p>
 

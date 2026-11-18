@@ -232,7 +232,7 @@ export default function MedicalExamForm() {
   const backToList = `/vet/exams${form.HorseID ? `?horse=${form.HorseID}` : ""}`;
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+    <div className="w-full">
       <Link to={backToList} className={`text-sm text-[#c2570c] hover:underline ${FOCUS_RING}`}>
         ← Quay lại sổ khám bệnh
       </Link>

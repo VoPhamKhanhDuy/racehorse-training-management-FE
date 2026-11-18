@@ -29,7 +29,7 @@ const BOARD_STATUS_OPTIONS = [
   { value: "good", label: "Tình trạng tốt" },
 ];
 const EMPTY_FILTERS = { keyword: "", extra: "", period: "all", from: "", to: "" };
-const PAGE = "mx-auto w-full max-w-[1280px] md:px-8";
+const PAGE = "w-full";
 
 // Nội dung ngắn của 1 việc (bỏ phần đã có ở cột Loại việc / Tình trạng)
 function contentOf(alert) {

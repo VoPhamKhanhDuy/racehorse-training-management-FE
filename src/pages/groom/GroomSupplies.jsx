@@ -94,7 +94,7 @@ export default function GroomSupplies() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] md:px-8">
+    <div className="w-full">
       <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Vật tư</h1>
 
       {loading ? (

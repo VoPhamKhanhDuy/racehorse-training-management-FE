@@ -3,6 +3,7 @@
 // Ngày dạng "yyyy-MM-dd", giờ "HH:mm"; dữ liệu trả về giữ nguyên field camelCase của BE.
 // Các màn hồ sơ/báo cáo cũ đọc cùng database qua trainerService.js.
 import { apiRequest } from "./apiClient";
+import { fallbackHorsePhoto } from "./horseService";
 
 const TRAINER = "/api/trainer";
 const PLANS = `${TRAINER}/training-plans`;
@@ -12,12 +13,13 @@ const SESSIONS = `${TRAINER}/training-sessions`;
 
 // HorseDto của BE giữ tên field theo mock (HorseID, Ten, Giong, Tuoi…) → đổi sang tên dùng trong các màn giáo án
 function toHorse(dto) {
+  const horseId = dto.horseID ?? dto.horseId;
   return {
-    horseId: dto.horseID ?? dto.horseId,
+    horseId,
     name: dto.ten,
     breed: dto.giong,
     age: dto.tuoi,
-    photoUrl: dto.photoUrl ?? null,
+    photoUrl: dto.photoUrl || fallbackHorsePhoto(horseId),
   };
 }
 

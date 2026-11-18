@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, RotateCcw } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ChevronDown, ChevronRight, LogOut, RotateCcw } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import { clearDemoData } from "../services/persistedStore";
 import roles from "../data/roles";
+import roleMenus from "../routes/roleMenus";
 
 // Avatar chữ cái: nền cố định theo tên (hash) chọn trong 5 màu trầm
 const AVATAR_COLORS = ["#8a5a3c", "#5f6f3a", "#6b5a45", "#7a4b3a", "#4f5d57"];
@@ -38,7 +40,12 @@ function Avatar({ user, size }) {
 // Thanh trên cùng: nút tài khoản (avatar + chevron) mở menu (tên, email, vai trò, Đăng xuất). onMenuClick mở sidebar trên mobile.
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
+  const { pathname } = useLocation();
   const roleName = roles.find((role) => role.id === user.roleId)?.name ?? user.roleId;
+  const menuItems = roleMenus[user.roleId] ?? [];
+  const activeMenu =
+    menuItems.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`)) ?? null;
+  const isSubPage = activeMenu && pathname !== activeMenu.path;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null); // bao cả nút tài khoản + dropdown, để biết click có nằm ngoài không
@@ -80,50 +87,83 @@ export default function Header({ onMenuClick }) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-stone/15 bg-white px-4 sm:px-6 lg:px-8">
-      <button
-        type="button"
-        onClick={onMenuClick}
-        className="cursor-pointer rounded-sm p-2 text-stone hover:bg-stone/10 lg:hidden"
-        aria-label="Mở menu"
-      >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-        </svg>
-      </button>
-
-      <div ref={menuRef} className="relative ml-auto">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-stone/15 bg-white px-4 sm:px-6 lg:px-6">
+      <div className="flex items-center gap-3">
         <button
-          ref={avatarButtonRef}
           type="button"
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-controls="account-menu"
-          aria-label={`Tài khoản: ${user.fullName}`}
-          className={`flex h-10 cursor-pointer items-center gap-2.5 rounded px-2 py-1 transition-colors hover:bg-[#f0efec] ${FOCUS_RING}`}
+          onClick={onMenuClick}
+          className="cursor-pointer rounded-sm p-2 text-stone hover:bg-stone/10 lg:hidden"
+          aria-label="Mở menu"
         >
-          <Avatar user={user} size={32} />
-          <ChevronDown
-            className={`h-3.5 w-3.5 shrink-0 text-[#6b6055] transition-transform ${menuOpen ? "rotate-180" : ""}`}
-            aria-hidden="true"
-          />
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+          </svg>
         </button>
+
+        {activeMenu && (
+          <nav aria-label="Đường dẫn trang" className="hidden items-center gap-1.5 text-sm sm:flex">
+            <span className="text-[#8a7f6e]">Khu vực {roleName}</span>
+            <ChevronRight className="h-3.5 w-3.5 text-[#b9ab90]" aria-hidden="true" />
+            {isSubPage ? (
+              <>
+                <Link to={activeMenu.path} className="font-medium text-[#6b6055] hover:text-[#2b2118] hover:underline">
+                  {activeMenu.label}
+                </Link>
+                <ChevronRight className="h-3.5 w-3.5 text-[#b9ab90]" aria-hidden="true" />
+                <span className="font-semibold text-[#2b2118]">Chi tiết</span>
+              </>
+            ) : (
+              <span className="font-semibold text-[#2b2118]">{activeMenu.label}</span>
+            )}
+          </nav>
+        )}
+      </div>
+
+      <div className="ml-auto flex items-center gap-3">
+        {roleName && (
+          <div className="flex items-center gap-1.5 rounded-full border border-[#e2d5c1] bg-[#faf6f0] px-3 py-1 text-xs font-semibold text-[#2b2118]">
+            <span className="h-2 w-2 rounded-full bg-[#c2570c]" aria-hidden="true" />
+            <span className="text-[#6b6055] font-normal">Vai trò:</span>
+            <span className="text-[#c2570c]">{roleName}</span>
+          </div>
+        )}
+
+        <div ref={menuRef} className="relative">
+          <button
+            ref={avatarButtonRef}
+            type="button"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls="account-menu"
+            aria-label={`Tài khoản: ${user.fullName} (${roleName})`}
+            className={`flex h-10 cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors hover:bg-[#f0efec] ${FOCUS_RING}`}
+          >
+            <Avatar user={user} size={32} />
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 text-[#6b6055] transition-transform ${menuOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
 
         {menuOpen && (
           <div
             id="account-menu"
             role="menu"
             aria-label="Tài khoản"
-            className="absolute top-full right-0 z-30 mt-1 w-60 max-w-[calc(100vw-2rem)] rounded border border-[#b9ab90] bg-white"
+            className="absolute top-full right-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded border border-[#b9ab90] bg-white shadow-sm"
           >
             {/* Thông tin tài khoản: chỉ để đọc, không phải mục bấm được */}
-            <div role="presentation" className="flex items-center gap-3 border-b border-[#d9cfba] p-3.5">
+            <div role="presentation" className="flex items-start gap-3 border-b border-[#d9cfba] p-3.5">
               <Avatar user={user} size={40} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-[#2b2118]">{user.fullName}</p>
                 {user.email && <p className="truncate text-[13px] text-[#6b6055]">{user.email}</p>}
-                {roleName && <p className="truncate text-[13px] text-[#6b6055]">{roleName}</p>}
+                {roleName && (
+                  <span className="mt-1.5 inline-block rounded bg-[#f5ebe1] px-2 py-0.5 text-xs font-semibold text-[#c2570c]">
+                    {roleName}
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -150,6 +190,7 @@ export default function Header({ onMenuClick }) {
             )}
           </div>
         )}
+        </div>
       </div>
     </header>
   );

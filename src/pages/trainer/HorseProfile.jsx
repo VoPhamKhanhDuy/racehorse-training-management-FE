@@ -95,7 +95,7 @@ export default function HorseProfile() {
   const { horse } = profile;
 
   return (
-    <div className="mx-auto max-w-[1200px]">
+    <div className="w-full">
       <Link to="/trainer/horses" className={BACK_LINK}>
         ← Hồ sơ ngựa
       </Link>
