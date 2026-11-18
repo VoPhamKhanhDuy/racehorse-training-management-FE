@@ -1,33 +1,57 @@
 import { useState } from "react";
+import DateInput from "./DateInput";
+
+const filledStyles = {
+  label: "mb-1.5 block text-sm font-medium text-gray-600",
+  input:
+    "w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-2 autofill:shadow-[inset_0_0_0_1000px_#f9fafb] autofill:[-webkit-text-fill-color:#232328]",
+  inputState: (error) =>
+    error ? "bg-red-50 ring-1 ring-red-300 focus:ring-red-300" : "bg-gray-50 focus:ring-[#F2A71B]",
+  iconPadding: "pl-11",
+  iconBox: "w-11 text-gray-400",
+  error: "text-red-500",
+};
 
 // Class theo kiểu hiển thị:
-// - "filled" (mặc định): ô nền xám bo tròn, viền cam khi focus — dùng ở Login/Register/...
-// - "line": kiểu "điền form giấy", chỉ có gạch chân, focus đổi màu cam (giao diện mới, đang thử)
+// - "filled" (mặc định): ô nền xám bo tròn, viền cam khi focus
+// - "filledContrast": nền xám và viền rõ hơn — dùng ở trang đăng nhập
+// - "line": kiểu "điền form giấy", chỉ có gạch chân, focus đổi màu cam
 const variantStyles = {
-  filled: {
-    label: "mb-1.5 block text-sm font-medium text-gray-600",
+  filled: filledStyles,
+  filledContrast: {
+    ...filledStyles,
     input:
-      "w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-2 autofill:shadow-[inset_0_0_0_1000px_#f9fafb] autofill:[-webkit-text-fill-color:#232328]",
+      "w-full rounded-xl border px-4 py-3 text-ink outline-none transition-colors placeholder:text-gray-500 focus:bg-white focus:ring-2 autofill:shadow-[inset_0_0_0_1000px_#f3f4f6] autofill:[-webkit-text-fill-color:#232328]",
     inputState: (error) =>
-      error ? "bg-red-50 ring-1 ring-red-300 focus:ring-red-300" : "bg-gray-50 focus:ring-[#F2A71B]",
-    iconPadding: "pl-11",
-    iconBox: "w-11 text-gray-400",
-    error: "text-red-500",
+      error
+        ? "border-red-300 bg-red-50 focus:ring-red-300"
+        : "border-gray-300 bg-gray-100 hover:border-gray-400 focus:border-brass focus:ring-brass/30",
   },
   line: {
     label: "mb-1 block font-serif text-sm font-semibold text-stone",
     input:
       "w-full border-b bg-transparent px-1 py-2 text-ink outline-none transition-colors placeholder:text-stone/50 autofill:shadow-[inset_0_0_0_1000px_var(--color-parchment)] autofill:[-webkit-text-fill-color:var(--color-ink)]",
-    inputState: (error) => (error ? "border-alert" : "border-stone/50 focus:border-brass"),
+    inputState: (error) => (error ? "border-rust" : "border-stone/50 focus:border-brass"),
     iconPadding: "pl-8",
     iconBox: "w-7 text-stone",
+    error: "text-rust",
+  },
+  // "outline": viền đủ 4 cạnh, bo nhẹ, focus viền cam — đồng bộ với ô tìm kiếm ở các trang danh sách (dùng trong card form)
+  outline: {
+    label: "mb-1.5 block font-serif text-sm font-semibold text-stone",
+    input:
+      "w-full rounded-md border bg-white px-3.5 py-2.5 text-ink outline-none transition-colors placeholder:text-stone/50 focus:ring-2 focus:ring-brass/20 disabled:cursor-not-allowed disabled:bg-stone/5 disabled:text-stone",
+    inputState: (error) => (error ? "border-alert focus:ring-alert/20" : "border-stone/25 focus:border-brass"),
+    iconPadding: "pl-10",
+    iconBox: "w-10 text-stone",
     error: "text-alert",
   },
 };
 
 // Ô nhập liệu có nhãn + thông báo lỗi. type="password" sẽ có nút ẩn/hiện mật khẩu.
 // leadingIcon: icon hiển thị bên trái ô (vd kính lúp cho ô tìm kiếm)
-export default function FormField({ label, id, type = "text", error, leadingIcon, variant = "filled", ...inputProps }) {
+// suffix: chữ đơn vị nằm bên phải TRONG ô (vd "m", "km/tuần")
+export default function FormField({ label, id, type = "text", error, leadingIcon, suffix, variant = "filled", ...inputProps }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
   const styles = variantStyles[variant] ?? variantStyles.filled;
@@ -43,13 +67,29 @@ export default function FormField({ label, id, type = "text", error, leadingIcon
             {leadingIcon}
           </span>
         )}
+        {type === "date" ? (
+          <DateInput
+            id={id}
+            label={label}
+            externalError={error}
+            aria-invalid={Boolean(error)}
+            className={`${styles.input} ${styles.inputState(error)}`}
+            {...inputProps}
+          />
+        ) : (
         <input
           id={id}
           type={isPassword && showPassword ? "text" : type}
           aria-invalid={Boolean(error)}
-          className={`${styles.input} ${isPassword ? "pr-12" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
+          className={`${styles.input} ${isPassword ? "pr-12" : ""} ${suffix ? "pr-20" : ""} ${leadingIcon ? styles.iconPadding : ""} ${styles.inputState(error)}`}
           {...inputProps}
         />
+        )}
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-sm text-stone">
+            {suffix}
+          </span>
+        )}
         {isPassword && (
           <button
             type="button"

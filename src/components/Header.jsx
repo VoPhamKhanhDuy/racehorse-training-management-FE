@@ -1,18 +1,54 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ChevronDown, ChevronRight, LogOut, RotateCcw } from "lucide-react";
 import useAuth from "../hooks/useAuth";
+import { clearDemoData } from "../services/persistedStore";
 import roles from "../data/roles";
+import roleMenus from "../routes/roleMenus";
 
-// Thanh trên cùng: avatar mở menu tài khoản (tên, vai trò, Đăng xuất). onMenuClick mở sidebar trên mobile.
+// Avatar chữ cái: nền cố định theo tên (hash) chọn trong 5 màu trầm
+const AVATAR_COLORS = ["#8a5a3c", "#5f6f3a", "#6b5a45", "#7a4b3a", "#4f5d57"];
+const FOCUS_RING = "outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#c2570c]";
+
+// "Nguyễn Văn Nam" → "NN" (họ + tên); 1 từ → 1 chữ cái
+function getInitials(fullName) {
+  const words = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  const first = words[0].charAt(0);
+  const last = words.length > 1 ? words[words.length - 1].charAt(0) : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function getAvatarColor(fullName) {
+  const hash = [...(fullName ?? "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+// Avatar tròn: ảnh đại diện nếu user có, không thì chữ cái đầu trên nền màu trầm. size: px
+function Avatar({ user, size }) {
+  const photo = user.photoUrl ?? user.avatarUrl ?? user.photo;
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full font-sans font-semibold text-white"
+      style={{ width: size, height: size, backgroundColor: getAvatarColor(user.fullName), fontSize: size >= 40 ? 15 : 13 }}
+    >
+      {photo ? <img src={photo} alt={user.fullName} className="h-full w-full object-cover" /> : getInitials(user.fullName)}
+    </span>
+  );
+}
+
+// Thanh trên cùng: nút tài khoản (avatar + chevron) mở menu (tên, email, vai trò, Đăng xuất). onMenuClick mở sidebar trên mobile.
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const roleName = roles.find((role) => role.id === user.roleId)?.name ?? user.roleId;
-  const initial = user.fullName.trim().charAt(0).toUpperCase();
+  const menuItems = roleMenus[user.roleId] ?? [];
+  const activeMenu =
+    menuItems.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`)) ?? null;
+  const isSubPage = activeMenu && pathname !== activeMenu.path;
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null); // bao cả nút avatar + dropdown, để biết click có nằm ngoài không
+  const menuRef = useRef(null); // bao cả nút tài khoản + dropdown, để biết click có nằm ngoài không
   const avatarButtonRef = useRef(null);
   const logoutItemRef = useRef(null);
 
@@ -38,70 +74,123 @@ export default function Header({ onMenuClick }) {
     };
   }, [menuOpen]);
 
+  // Dev: xóa dữ liệu demo đã lưu rồi tải lại trang → về đúng SEED
+  const handleResetDemoData = () => {
+    if (!window.confirm("Xóa mọi thay đổi dữ liệu demo đã lưu trong trình duyệt và về dữ liệu mẫu ban đầu?")) return;
+    clearDemoData();
+    window.location.reload();
+  };
+
   const handleLogout = () => {
     setMenuOpen(false);
-    logout();
-    navigate("/");
+    logout(); // AuthContext: xóa session + chuyển /login (tải lại trang)
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-stone/15 bg-white px-4 sm:px-6 lg:px-8">
-      <button
-        type="button"
-        onClick={onMenuClick}
-        className="cursor-pointer rounded-sm p-2 text-stone hover:bg-stone/10 lg:hidden"
-        aria-label="Mở menu"
-      >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-        </svg>
-      </button>
-
-      <div ref={menuRef} className="relative ml-auto">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-stone/15 bg-white px-4 sm:px-6 lg:px-6">
+      <div className="flex items-center gap-3">
         <button
-          ref={avatarButtonRef}
           type="button"
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-controls="account-menu"
-          aria-label={`Tài khoản: ${user.fullName}`}
-          className="flex cursor-pointer items-center gap-1 rounded-full p-0.5 pr-1.5 transition-colors hover:bg-black/5"
+          onClick={onMenuClick}
+          className="cursor-pointer rounded-sm p-2 text-stone hover:bg-stone/10 lg:hidden"
+          aria-label="Mở menu"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brass/20 font-serif font-semibold text-brass-deep">
-            {initial}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 text-stone transition-transform ${menuOpen ? "rotate-180" : ""}`}
-            aria-hidden="true"
-          />
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+          </svg>
         </button>
+
+        {activeMenu && (
+          <nav aria-label="Đường dẫn trang" className="hidden items-center gap-1.5 text-sm sm:flex">
+            <span className="text-[#8a7f6e]">Khu vực {roleName}</span>
+            <ChevronRight className="h-3.5 w-3.5 text-[#b9ab90]" aria-hidden="true" />
+            {isSubPage ? (
+              <>
+                <Link to={activeMenu.path} className="font-medium text-[#6b6055] hover:text-[#2b2118] hover:underline">
+                  {activeMenu.label}
+                </Link>
+                <ChevronRight className="h-3.5 w-3.5 text-[#b9ab90]" aria-hidden="true" />
+                <span className="font-semibold text-[#2b2118]">Chi tiết</span>
+              </>
+            ) : (
+              <span className="font-semibold text-[#2b2118]">{activeMenu.label}</span>
+            )}
+          </nav>
+        )}
+      </div>
+
+      <div className="ml-auto flex items-center gap-3">
+        {roleName && (
+          <div className="flex items-center gap-1.5 rounded-full border border-[#e2d5c1] bg-[#faf6f0] px-3 py-1 text-xs font-semibold text-[#2b2118]">
+            <span className="h-2 w-2 rounded-full bg-[#c2570c]" aria-hidden="true" />
+            <span className="text-[#6b6055] font-normal">Vai trò:</span>
+            <span className="text-[#c2570c]">{roleName}</span>
+          </div>
+        )}
+
+        <div ref={menuRef} className="relative">
+          <button
+            ref={avatarButtonRef}
+            type="button"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls="account-menu"
+            aria-label={`Tài khoản: ${user.fullName} (${roleName})`}
+            className={`flex h-10 cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors hover:bg-[#f0efec] ${FOCUS_RING}`}
+          >
+            <Avatar user={user} size={32} />
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 text-[#6b6055] transition-transform ${menuOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
 
         {menuOpen && (
           <div
             id="account-menu"
             role="menu"
             aria-label="Tài khoản"
-            className="absolute top-full right-0 z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-md border border-stone/15 bg-white py-1 shadow-md"
+            className="absolute top-full right-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded border border-[#b9ab90] bg-white shadow-sm"
           >
             {/* Thông tin tài khoản: chỉ để đọc, không phải mục bấm được */}
-            <div role="presentation" className="px-4 py-3">
-              <p className="truncate font-semibold text-ink">{user.fullName}</p>
-              <p className="mt-0.5 text-sm text-stone">{roleName}</p>
+            <div role="presentation" className="flex items-start gap-3 border-b border-[#d9cfba] p-3.5">
+              <Avatar user={user} size={40} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[#2b2118]">{user.fullName}</p>
+                {user.email && <p className="truncate text-[13px] text-[#6b6055]">{user.email}</p>}
+                {roleName && (
+                  <span className="mt-1.5 inline-block rounded bg-[#f5ebe1] px-2 py-0.5 text-xs font-semibold text-[#c2570c]">
+                    {roleName}
+                  </span>
+                )}
+              </div>
             </div>
-            <div role="separator" className="my-1 border-t border-stone/15" />
             <button
               ref={logoutItemRef}
               type="button"
               role="menuitem"
               onClick={handleLogout}
-              className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-black/5 focus:bg-black/5 focus:outline-none"
+              className={`flex h-10 w-full cursor-pointer items-center gap-2.5 px-3.5 text-left text-sm text-[#b3473f] transition-colors hover:bg-[#f0efec] focus:bg-[#f0efec] ${FOCUS_RING}`}
             >
-              <LogOut className="h-4 w-4 text-stone" aria-hidden="true" />
+              <LogOut className="h-4 w-4" aria-hidden="true" />
               Đăng xuất
             </button>
+            {/* Chỉ khi chạy dev: xóa lớp dữ liệu demo đã lưu trong trình duyệt để về đúng SEED */}
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleResetDemoData}
+                className={`flex h-10 w-full cursor-pointer items-center gap-2.5 border-t border-[#d9cfba] px-3.5 text-left text-sm text-[#2b2118] transition-colors hover:bg-[#f0efec] focus:bg-[#f0efec] ${FOCUS_RING}`}
+              >
+                <RotateCcw className="h-4 w-4 text-[#6b6055]" aria-hidden="true" />
+                Reset dữ liệu demo
+              </button>
+            )}
           </div>
         )}
+        </div>
       </div>
     </header>
   );

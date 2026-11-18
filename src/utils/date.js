@@ -17,9 +17,150 @@ export function daysFromToday(n) {
   return toISODate(date);
 }
 
+// Ngày cách hôm nay n tháng (n âm = quá khứ), dạng "YYYY-MM-DD".
+// Tháng đích ngắn hơn thì lùi về ngày cuối tháng (vd 31/03 − 1 tháng → 28/02 hoặc 29/02)
+export function monthsFromToday(n) {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + n + 1, 0).getDate();
+  return toISODate(new Date(now.getFullYear(), now.getMonth() + n, Math.min(now.getDate(), lastDay)));
+}
+
+// Tuổi tròn của ngựa tính đến hôm nay từ NgaySinh "YYYY-MM-DD" (chưa tới sinh nhật năm nay thì trừ 1).
+// Không có ngày sinh → null. Tuổi KHÔNG lưu trong HORSE, luôn tính từ NgaySinh.
+export function getHorseAge(ngaySinh) {
+  if (!ngaySinh) return null;
+  const [year, month, day] = ngaySinh.split("-").map(Number);
+  const now = new Date();
+  const hadBirthday = now.getMonth() + 1 > month || (now.getMonth() + 1 === month && now.getDate() >= day);
+  return now.getFullYear() - year - (hadBirthday ? 0 : 1);
+}
+
+// NgaySinh → "6 tuổi" (không có ngày sinh → "")
+export function formatHorseAge(ngaySinh) {
+  const age = getHorseAge(ngaySinh);
+  return age === null ? "" : `${age} tuổi`;
+}
+
+// NgaySinh → "12/07/2020 (6 tuổi)" (không có ngày sinh → "")
+export function formatBirthDateWithAge(ngaySinh) {
+  return ngaySinh ? `${formatDate(ngaySinh)} (${formatHorseAge(ngaySinh)})` : "";
+}
+
 // "2026-10-07" → "07/10/2026"
 export function formatDate(isoDate) {
   if (!isoDate) return "";
   const [year, month, day] = isoDate.split("-");
   return `${day}/${month}/${year}`;
+}
+
+// Số ngày từ ngày "YYYY-MM-DD" tới hôm nay (theo lịch, không tính giờ)
+export function daysSince(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const then = new Date(year, month - 1, day);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((today - then) / 86400000);
+}
+
+// "2026-10-04" → "5 ngày trước" / "hôm nay"
+export function formatDaysAgo(isoDate) {
+  const days = daysSince(isoDate);
+  return days <= 0 ? "hôm nay" : `${days} ngày trước`;
+}
+
+// Đổi Date → "YYYY-MM-DDTHH:mm" theo giờ địa phương (dạng thời điểm trong nhật ký thao tác)
+export function toISODateTime(date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${toISODate(date)}T${hours}:${minutes}`;
+}
+
+// "YYYY-MM-DDTHH:mm" → Date theo giờ địa phương
+export function parseISODateTime(isoDateTime) {
+  const [datePart, timePart = "00:00"] = isoDateTime.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes);
+}
+
+// Trong vòng 1 ngày: "vừa xong" / "15 phút trước" / "2 giờ trước"; cũ hơn: "09/10/2026 18:30"
+export function formatRelativeTime(isoDateTime) {
+  const minutes = Math.floor((Date.now() - parseISODateTime(isoDateTime).getTime()) / 60000);
+  if (minutes < 1) return "vừa xong";
+  if (minutes < 60) return `${minutes} phút trước`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} giờ trước`;
+  const [datePart, timePart] = isoDateTime.split("T");
+  return `${formatDate(datePart)} ${timePart}`;
+}
+
+// Số ngày từ "YYYY-MM-DD" from tới to (theo lịch, to trước from thì âm)
+export function daysBetween(from, to) {
+  const toDate = (iso) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+  return Math.round((toDate(to) - toDate(from)) / 86400000);
+}
+
+// Cộng n ngày vào "YYYY-MM-DD"
+export function addDays(isoDate, n) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return toISODate(new Date(year, month - 1, day + n));
+}
+
+// Thứ Hai của tuần chứa ngày "YYYY-MM-DD" (tuần tính Thứ Hai → Chủ nhật)
+export function startOfWeek(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const weekday = new Date(year, month - 1, day).getDay(); // 0 = Chủ nhật
+  return addDays(isoDate, weekday === 0 ? -6 : 1 - weekday);
+}
+
+const WEEKDAY_NAMES = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
+// "2026-10-10" → "Thứ Bảy"
+export function weekdayName(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return WEEKDAY_NAMES[new Date(year, month - 1, day).getDay()];
+}
+
+// "2026-10-10" → "10/10"
+export function formatDayMonth(isoDate) {
+  const [, month, day] = isoDate.split("-");
+  return `${day}/${month}`;
+}
+
+const SHORT_WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+// "2026-10-10" → "T7"
+export function shortWeekdayName(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return SHORT_WEEKDAYS[new Date(year, month - 1, day).getDay()];
+}
+
+// Ngày cách hôm nay n năm (n âm = quá khứ), dạng "YYYY-MM-DD"; 29/02 lùi về 28/02 nếu năm đích không nhuận
+export function yearsFromToday(n) {
+  return monthsFromToday(n * 12);
+}
+
+// Khoảng ngày sinh hợp lệ của ngựa tuổi [minAge, maxAge] tính theo hôm nay: min = sinh sớm nhất, max = sinh muộn nhất
+export function birthDateRangeForAge(minAge, maxAge) {
+  return { min: yearsFromToday(-maxAge), max: yearsFromToday(-minAge) };
+}
+
+// "YYYY-MM" → "MM/YYYY"
+export const formatMonth = (month) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;
+
+// Các tháng "YYYY-MM" (không trùng) của danh sách ngày "YYYY-MM-DD", mới nhất trước
+export const monthsOf = (dates) => [...new Set(dates.map((date) => date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
+
+// Chuỗi thời điểm (ISO) → "HH:mm" theo giờ địa phương
+export const toHHmm = (iso) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+// Phần ngày "YYYY-MM-DD" của chuỗi ngày/giờ từ BE; rỗng → ""
+export function isoDatePart(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
 }

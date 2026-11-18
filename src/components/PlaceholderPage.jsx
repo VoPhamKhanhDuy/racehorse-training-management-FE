@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import { Hammer } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import roleMenus from "../routes/roleMenus";
 
@@ -12,10 +13,16 @@ export default function PlaceholderPage({ children }) {
   );
 
   return (
-    <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center">
-      <h1 className="text-2xl font-bold">{currentItem?.label ?? "Trang không tồn tại"}</h1>
-      <p className="mt-2 text-[#6E6E76]">Chức năng đang được xây dựng.</p>
-      {children && <div className="mt-8">{children}</div>}
+    <div>
+      <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">
+        {currentItem?.label ?? "Trang không tồn tại"}
+      </h1>
+      {/* Cùng kiểu trạng thái rỗng của các trang danh sách: hairline trên/dưới, chữ xám giữa khung */}
+      <div className="mt-8 border-y border-stone/20 py-16 text-center text-stone">
+        <Hammer className="mx-auto mb-3 h-10 w-10 text-stone/40" aria-hidden="true" />
+        Chức năng đang được xây dựng.
+        {children && <div className="mt-8">{children}</div>}
+      </div>
     </div>
   );
 }
