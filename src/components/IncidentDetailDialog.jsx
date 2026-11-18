@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Check, Clock, ZoomIn } from "lucide-react";
 import CenterDialog from "./CenterDialog";
 import ConfirmDialog from "./ConfirmDialog";
 import HorseAvatar from "./HorseAvatar";
@@ -8,13 +9,28 @@ import { formatDate, formatDayMonth } from "../utils/date";
 import { capitalizeFirst } from "../utils/text";
 
 const OUTLINE_BUTTON =
-  "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-[#1f1f1f] transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
-const LABEL = "text-xs text-[#6b6055]";
-const GROUP_TITLE = "text-base font-semibold text-[#1f1f1f]";
+  "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-[#cfc4ad] bg-white px-5 text-sm font-semibold text-[#2b2118] transition-colors hover:border-[#9e8e72] hover:bg-[#faf7f2] disabled:cursor-not-allowed disabled:opacity-60";
+const LABEL = "text-xs font-medium text-[#6b6055]";
+const GROUP_TITLE = "text-[13px] font-semibold tracking-wide text-[#5a4d3f] uppercase";
 const DISABLED_LINK =
-  "inline-flex h-10 cursor-not-allowed items-center rounded-[4px] border border-[#E3E3E3] bg-white px-5 text-sm font-semibold text-[#8a8a8a]";
+  "inline-flex h-10 cursor-not-allowed items-center rounded-[4px] border border-[#e3d9c6] bg-[#faf7f2] px-5 text-sm font-semibold text-[#9a8f82]";
 
-// Mỗi trạng thái hiện đúng 1 nút chính: Mới → "Nhận xử lý"; Đang xử lý (do chính mình nhận) → "Hoàn tất xử lý" (bắt buộc ghi chú); Đã xử lý → không còn nút
+const STATUS_BADGE = {
+  [INCIDENT_STATUS.NEW]: {
+    wrap: "border-[#c0262d]/25 bg-[#c0262d]/10 text-[#b4232a]",
+    dot: "bg-[#c0262d]",
+  },
+  [INCIDENT_STATUS.IN_PROGRESS]: {
+    wrap: "border-[#c2570c]/25 bg-[#c2570c]/10 text-[#a8480a]",
+    dot: "bg-[#c2570c]",
+  },
+  [INCIDENT_STATUS.DONE]: {
+    wrap: "border-[#4d6b2a]/25 bg-[#4d6b2a]/12 text-[#3a541d]",
+    dot: "bg-[#4d6b2a]",
+  },
+};
+
+// Mỗi trạng thái hiện đúng 1 nút chính: Mới → "Nhận xử lý"; Đang xử lý (do chính mình nhận) → "Hoàn tất xử lý"; Đã xử lý → không còn nút
 const NEXT_ACTION = {
   [INCIDENT_STATUS.NEW]: { status: INCIDENT_STATUS.IN_PROGRESS, label: "Nhận xử lý" },
   [INCIDENT_STATUS.IN_PROGRESS]: { status: INCIDENT_STATUS.DONE, label: "Hoàn tất xử lý" },
@@ -27,16 +43,12 @@ function Field({ label, children }) {
   return (
     <div className="min-w-0">
       <dt className={LABEL}>{label}</dt>
-      <dd className="mt-0.5 text-sm text-[#2b2118]">{children}</dd>
+      <dd className="mt-1 text-sm font-medium text-[#2b2118]">{children}</dd>
     </div>
   );
 }
 
-// Chi tiết sự cố — MODAL giữa màn hình DÙNG CHUNG cho Thú y (role="veterinarian") và Quản lý (role="club_manager"), rộng ≤ 620px, đầu + chân cố định, chỉ thân cuộn:
-// Thông tin, Tiến trình 3 bước, Xử lý (không có ô ghi chú), Việc liên quan (CHỈ Thú y + sự cố sức khỏe). Đổi trạng thái qua hộp xác nhận.
-// Quy tắc nhận: sự cố sức khỏe cả Thú y lẫn Quản lý nhận được — ai "Nhận xử lý" trước thì giữ, người kia chỉ xem ("Đang được xử lý bởi …");
-// chuồng / thiết bị / khác chỉ Quản lý. Không thể "Hoàn tất" khi chưa "Nhận". userId: UserID của người đang đăng nhập (so với report.HandledBy).
-// onUpdate(report, { TrangThai, GhiChuXuLy }) trả Promise; lỗi thì ném ra để hiện trong khung.
+// Chi tiết sự cố — MODAL giữa màn hình DÙNG CHUNG cho Thú y (role="veterinarian") và Quản lý (role="club_manager"), rộng ≤ 620px
 export default function IncidentDetailDialog({ role, userId, report, horse, stable, lockedSince, onClose, onUpdate }) {
   const [pendingAction, setPendingAction] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -54,6 +66,11 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
   const isDone = report.TrangThai === INCIDENT_STATUS.DONE;
   const relatedEnabled = inProgress && !heldByOther;
 
+  const badge = STATUS_BADGE[report.TrangThai] ?? {
+    wrap: "border-[#d6ccb8] bg-[#f6f1e7] text-[#4a3f33]",
+    dot: "bg-[#6b6055]",
+  };
+
   const handleConfirm = async () => {
     setSaving(true);
     setError("");
@@ -68,34 +85,50 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
     }
   };
 
-  // Tiến trình: bước hiện tại chữ weight 600, bước chưa tới chữ xám
   const handledAt = formatHandledAt(report.HandledAt);
   const steps = [
-    { key: "reported", current: isNew, reached: true, text: `Đã báo — ${report.ReporterName}, ${formatDayMonth(report.Ngay)}` },
+    {
+      key: "reported",
+      title: "Đã gửi báo cáo",
+      detail: `${report.ReporterName} · ${formatDayMonth(report.Ngay)}`,
+      current: isNew,
+      reached: true,
+    },
     {
       key: "accepted",
+      title: "Tiếp nhận xử lý",
+      detail:
+        inProgress || isDone
+          ? `${report.HandlerName ?? "—"}${inProgress && handledAt ? ` · ${handledAt}` : ""}`
+          : "Chưa có người nhận xử lý",
       current: inProgress,
       reached: inProgress || isDone,
-      text: inProgress || isDone ? `Nhận xử lý — ${report.HandlerName ?? "—"}${inProgress && handledAt ? `, ${handledAt}` : ""}` : "Chưa có người nhận xử lý",
     },
     {
       key: "done",
+      title: "Hoàn tất xử lý",
+      detail: isDone ? (handledAt ? `Hoàn tất lúc ${handledAt}` : "Đã xử lý xong") : "Chưa hoàn tất",
       current: isDone,
       reached: isDone,
-      text: isDone ? `Hoàn tất${handledAt ? ` — ${handledAt}` : ""}` : "Chưa hoàn tất",
       note: isDone ? report.GhiChuXuLy : "",
     },
   ];
 
   const header = (
-    <div className="flex items-center gap-3">
-      <HorseAvatar horse={horse} size={40} square />
-      <div className="min-w-0">
-        <h2 className="truncate font-serif text-lg leading-tight font-semibold text-[#2b2118]">{report.HorseName}</h2>
-        <p className="text-sm text-[#6b6055]">
-          {report.LoaiSuCo} · báo ngày {formatDate(report.Ngay)}
-        </p>
+    <div className="flex flex-wrap items-center justify-between gap-3 pr-2">
+      <div className="flex min-w-0 items-center gap-3.5">
+        <HorseAvatar horse={horse} size={44} square />
+        <div className="min-w-0">
+          <h2 className="truncate font-serif text-xl leading-tight font-semibold text-[#2b2118]">{report.HorseName}</h2>
+          <p className="mt-0.5 text-xs text-[#6b6055]">
+            Báo ngày {formatDate(report.Ngay)} · Mã sự cố #{report.ReportID}
+          </p>
+        </div>
       </div>
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${badge.wrap}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} aria-hidden="true" />
+        {report.TrangThai}
+      </span>
     </div>
   );
 
@@ -127,68 +160,129 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
         busy={saving || Boolean(pendingAction) || zoomed}
         maxWidth={620}
       >
+        {/* Khối 1: Thông tin chung */}
         <section>
-          <h3 className={GROUP_TITLE}>Thông tin</h3>
-          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
-            <Field label="Người báo">{report.ReporterName}</Field>
-            <Field label="Chuồng">{stable || "—"}</Field>
-            <Field label="Loại sự cố">{report.LoaiSuCo}</Field>
-            <Field label="Trạng thái">{report.TrangThai}</Field>
-            <div className="col-span-2 min-w-0">
-              <dt className={LABEL}>Mô tả</dt>
-              <dd className="mt-0.5 text-sm leading-relaxed whitespace-pre-line text-[#2b2118]">
-                {report.MoTa ? capitalizeFirst(report.MoTa) : <span className="text-[#6b6055]">Không có mô tả</span>}
-              </dd>
-            </div>
-            {report.HinhAnh && (
-              <div className="col-span-2 min-w-0">
-                <dt className={LABEL}>Hình ảnh</dt>
-                <dd className="mt-1">
-                  <button type="button" onClick={() => setZoomed(true)} aria-label="Xem ảnh lớn" className="cursor-zoom-in">
-                    <img src={report.HinhAnh} alt={`Ảnh sự cố ${report.LoaiSuCo} – ${report.HorseName}`} className="h-24 w-24 rounded-[4px] border border-[#E3E3E3] object-cover" />
+          <h3 className={GROUP_TITLE}>Thông tin sự cố</h3>
+          <dl className="mt-2.5 grid grid-cols-2 gap-x-6 gap-y-3.5 rounded-[6px] border border-[#e3d9c6] bg-[#faf7f2]/80 p-4">
+            <Field label="Người báo cáo">{report.ReporterName}</Field>
+            <Field label="Vị trí chuồng">{stable ? `Chuồng ${stable}` : "—"}</Field>
+            <Field label="Phân loại sự cố">
+              <span className="inline-flex items-center rounded-[4px] border border-[#d6ccb8] bg-white px-2.5 py-0.5 text-xs font-semibold text-[#4a3f33]">
+                {report.LoaiSuCo}
+              </span>
+            </Field>
+            <Field label="Người phụ trách">{report.HandlerName || "Chưa phân công"}</Field>
+          </dl>
+
+          {/* Mô tả & Hình ảnh */}
+          <div className="mt-3 rounded-[6px] border border-[#e3d9c6] bg-white p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className={LABEL}>Mô tả chi tiết</p>
+                <p className="mt-1 text-sm leading-relaxed whitespace-pre-line text-[#2b2118]">
+                  {report.MoTa ? capitalizeFirst(report.MoTa) : <span className="text-[#6b6055]">Không có mô tả</span>}
+                </p>
+              </div>
+
+              {report.HinhAnh && (
+                <div className="shrink-0">
+                  <p className={`${LABEL} mb-1.5`}>Hình ảnh hiện trường</p>
+                  <button
+                    type="button"
+                    onClick={() => setZoomed(true)}
+                    aria-label="Xem ảnh lớn"
+                    className="group relative block cursor-zoom-in overflow-hidden rounded-[6px] border border-[#cfc4ad] bg-[#faf7f2]"
+                  >
+                    <img
+                      src={report.HinhAnh}
+                      alt={`Ảnh sự cố ${report.LoaiSuCo} – ${report.HorseName}`}
+                      className="h-28 w-40 object-cover transition-transform duration-200 group-hover:scale-105"
+                    />
+                    <span className="absolute right-1.5 bottom-1.5 inline-flex items-center gap-1 rounded-[4px] bg-[#2b2118]/75 px-2 py-0.5 text-[11px] font-medium text-white">
+                      <ZoomIn className="h-3 w-3" aria-hidden="true" />
+                      Phóng to
+                    </span>
                   </button>
-                </dd>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Khối 2: Tiến trình xử lý (Timeline 3 bước) */}
+        <section className="mt-5">
+          <h3 className={GROUP_TITLE}>Tiến trình xử lý</h3>
+          <div className="mt-2.5 rounded-[6px] border border-[#e3d9c6] bg-[#faf7f2]/50 p-4">
+            <ol className="relative space-y-3.5 before:absolute before:top-2.5 before:bottom-2.5 before:left-[11px] before:w-[2px] before:bg-[#dfd6c5]">
+              {steps.map((step) => {
+                const isCompleted = step.reached && (!step.current || isDone);
+                return (
+                  <li key={step.key} className="relative flex items-start gap-3 pl-8">
+                    <span
+                      className={`absolute top-0.5 left-0 flex h-6 w-6 items-center justify-center rounded-full border text-xs ${
+                        isCompleted
+                          ? "border-[#4d6b2a] bg-[#4d6b2a] text-white"
+                          : step.current
+                            ? "border-[#c2570c] bg-[#c2570c] text-white"
+                            : "border-[#cfc4ad] bg-white text-[#9a8f82]"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {isCompleted ? <Check className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                    </span>
+                    <div className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+                      <span className={`text-sm ${step.reached ? "font-semibold text-[#2b2118]" : "text-[#8a7f72]"}`}>{step.title}</span>
+                      <span className={`text-xs ${step.reached ? "font-medium text-[#5a4d3f]" : "text-[#9a8f82]"}`}>{step.detail}</span>
+                      {step.note && (
+                        <p className="mt-1 w-full rounded-[4px] bg-white px-3 py-1.5 text-xs leading-relaxed whitespace-pre-line text-[#4a3f33]">
+                          {step.note}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </section>
+
+        {/* Khối 3: Trạng thái xử lý */}
+        <section className="mt-5">
+          <h3 className={GROUP_TITLE}>Trạng thái xử lý</h3>
+          <div
+            className={`mt-2.5 rounded-[6px] border px-4 py-3 text-sm ${
+              isDone
+                ? "border-[#4d6b2a]/25 bg-[#4d6b2a]/8 text-[#3a541d]"
+                : inProgress
+                  ? "border-[#c2570c]/25 bg-[#c2570c]/8 text-[#7a3405]"
+                  : "border-[#e3d9c6] bg-[#faf7f2] text-[#4a3f33]"
+            }`}
+          >
+            {isNew && (
+              <p>{canTakeType ? "Sự cố đang chờ tiếp nhận. Nhấn 'Nhận xử lý' bên dưới để bắt đầu xử lý." : "Sự cố này thuộc phạm vi xử lý của Quản lý CLB."}</p>
+            )}
+            {inProgress && heldByOther && (
+              <p className="font-medium">Sự cố đang được xử lý bởi {report.HandlerName ?? "nhân sự khác"}.</p>
+            )}
+            {inProgress && !heldByOther && (
+              <div className="space-y-1">
+                {lockedSince && <p className="font-semibold text-[#b4232a]">Ngựa đang có lệnh khóa tập từ ngày {formatDayMonth(lockedSince)}.</p>}
+                <p>Bạn đang phụ trách sự cố này. Nhấn 'Hoàn tất xử lý' khi đã kiểm tra và xử lý xong.</p>
               </div>
             )}
-          </dl>
+            {isDone && <p className="font-medium">Sự cố đã được xử lý và đóng hồ sơ hoàn tất.</p>}
+          </div>
         </section>
 
-        <section className="mt-5">
-          <h3 className={GROUP_TITLE}>Tiến trình</h3>
-          <ul className="mt-3 space-y-2">
-            {steps.map((step) => (
-              <li key={step.key} className="text-sm">
-                <span className={step.current ? "font-semibold text-[#1f1f1f]" : step.reached ? "text-[#2b2118]" : "text-[#6b6b6b]"}>{step.text}</span>
-                {step.note && <span className="mt-0.5 block text-sm leading-relaxed whitespace-pre-line text-[#2b2118]">{step.note}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mt-5">
-          <h3 className={GROUP_TITLE}>Xử lý</h3>
-          {isNew && (
-            <p className="mt-2 text-sm text-[#6b6055]">{canTakeType ? "Nhấn 'Nhận xử lý' để bắt đầu." : "Sự cố này do Quản lý CLB xử lý."}</p>
-          )}
-          {inProgress && heldByOther && <p className="mt-2 text-sm font-semibold text-[#1f1f1f]">Đang được xử lý bởi {report.HandlerName ?? "người khác"}</p>}
-          {inProgress && !heldByOther && (
-            <>
-              {lockedSince && <p className="mt-2 text-sm font-semibold text-[#1f1f1f]">Ngựa đang bị khóa tập từ {formatDayMonth(lockedSince)}</p>}
-              <p className="mt-2 text-sm text-[#6b6055]">Nhấn 'Hoàn tất xử lý' khi đã xử lý xong.</p>
-            </>
-          )}
-          {isDone && <p className="mt-2 text-sm text-[#6b6055]">Sự cố đã được xử lý.</p>}
-        </section>
-
-        {/* Việc liên quan: chỉ Thú y + sự cố sức khỏe, ẩn khi Đã xử lý; Mới → vô hiệu; Đang xử lý → chỉ người đã nhận bấm được */}
+        {/* Việc liên quan: chỉ Thú y + sự cố sức khỏe, ẩn khi Đã xử lý */}
         {isVet && isHealth && !isDone && (
           <section className="mt-5">
-            <h3 className={GROUP_TITLE}>Việc liên quan</h3>
-            <div className="mt-3 flex flex-wrap gap-3">
+            <h3 className={GROUP_TITLE}>Nghiệp vụ y tế liên quan</h3>
+            <div className="mt-2.5 flex flex-wrap gap-3">
               {relatedEnabled ? (
                 <>
                   <Link to={`/vet/exams/new?horse=${report.HorseID}`} className={OUTLINE_BUTTON}>
-                    Ghi lần khám
+                    Ghi lần khám bệnh
                   </Link>
                   <Link to={`/vet/locks/new?horse=${report.HorseID}`} className={OUTLINE_BUTTON}>
                     Đặt lệnh khóa huấn luyện
@@ -197,7 +291,7 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
               ) : (
                 <>
                   <span aria-disabled="true" className={DISABLED_LINK}>
-                    Ghi lần khám
+                    Ghi lần khám bệnh
                   </span>
                   <span aria-disabled="true" className={DISABLED_LINK}>
                     Đặt lệnh khóa huấn luyện
@@ -206,15 +300,15 @@ export default function IncidentDetailDialog({ role, userId, report, horse, stab
               )}
             </div>
             {!relatedEnabled && (
-              <p className="mt-2 text-[13px] text-[#6b6b6b]">{isNew ? "Nhận xử lý để thực hiện các việc này." : "Chỉ người đang xử lý mới thực hiện được."}</p>
+              <p className="mt-2 text-xs text-[#6b6055]">{isNew ? "Nhận xử lý sự cố trước để thực hiện các nghiệp vụ này." : "Chỉ người đang nhận xử lý mới thực hiện được."}</p>
             )}
           </section>
         )}
       </CenterDialog>
 
       {zoomed && report.HinhAnh && (
-        <div className="fixed inset-0 z-[60] flex cursor-zoom-out items-center justify-center bg-[#232328]/70 p-4" onClick={() => setZoomed(false)} role="presentation">
-          <img src={report.HinhAnh} alt={`Ảnh sự cố ${report.LoaiSuCo} – ${report.HorseName}`} className="max-h-full max-w-full rounded-[4px] bg-white object-contain" />
+        <div className="fixed inset-0 z-[60] flex cursor-zoom-out items-center justify-center bg-[#232328]/75 p-4" onClick={() => setZoomed(false)} role="presentation">
+          <img src={report.HinhAnh} alt={`Ảnh sự cố ${report.LoaiSuCo} – ${report.HorseName}`} className="max-h-full max-w-full rounded-[6px] bg-white object-contain shadow-2xl" />
         </div>
       )}
 

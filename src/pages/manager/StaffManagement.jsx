@@ -123,7 +123,7 @@ export default function StaffManagement() {
       ) : (
         <div className="space-y-5">
           {/* Dải số liệu trong 1 card trắng (viền hairline, bo nhẹ, bóng nhẹ) để tách khỏi nền trang; vạch dọc ngăn từng ô */}
-          <div className="grid grid-cols-3 divide-x divide-stone/20 overflow-hidden rounded-lg border border-stone/15 bg-white shadow-sm">
+          <div className="grid grid-cols-3 divide-x divide-[#cfc4ad] overflow-hidden rounded-lg border border-[#b9ab90] bg-white shadow-xs">
             {stats.map((stat) => (
               <div key={stat.label} className="px-4 py-3 sm:px-5">
                 <p className="text-xs font-medium text-stone sm:text-sm">{stat.label}</p>

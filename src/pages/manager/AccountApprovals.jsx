@@ -142,7 +142,7 @@ export default function AccountApprovals() {
         <p className="border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-3 divide-x divide-stone/20 bg-white">
+          <div className="grid grid-cols-3 divide-x divide-[#cfc4ad] overflow-hidden rounded-lg border border-[#b9ab90] bg-white shadow-xs">
             {stats.map((stat) => (
               <div key={stat.label} className="px-4 py-3 sm:px-5">
                 <p className="text-xs font-medium text-stone sm:text-sm">{stat.label}</p>

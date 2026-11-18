@@ -14,7 +14,7 @@ export default function HorseCard({ horse, healthStatus, meta, note, onClick }) 
       type="button"
       onClick={() => onClick(horse)}
       aria-label={`Xem chi tiết ngựa ${horse.Ten}`}
-      className="group w-full cursor-pointer overflow-hidden rounded-md border border-stone/15 bg-white text-left transition hover:-translate-y-0.5 hover:border-brass/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-brass/50 focus-visible:outline-none"
+      className="group w-full cursor-pointer overflow-hidden rounded-md border border-[#cfc4ad] bg-white text-left transition hover:-translate-y-0.5 hover:border-brass/60 hover:shadow-md focus-visible:ring-2 focus-visible:ring-brass/50 focus-visible:outline-none"
     >
       {/* Ảnh thật nếu có, không thì icon ngựa trên nền pastel theo trạng thái sức khỏe */}
       <div className={`relative flex aspect-[16/7] items-center justify-center overflow-hidden sm:aspect-video ${getHealthStyle(healthStatus).tint}`}>

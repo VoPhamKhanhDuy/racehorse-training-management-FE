@@ -180,8 +180,8 @@ export default function HorseManagement() {
         <LoadingState />
       ) : (
         <div className="space-y-5">
-          {/* Dải số liệu: không bo góc, không shadow, chỉ có vạch dọc ngăn cách */}
-          <div className="grid grid-cols-3 divide-x divide-stone/20 bg-white">
+          {/* Dải số liệu có khung viền rõ ràng */}
+          <div className="grid grid-cols-3 divide-x divide-[#cfc4ad] overflow-hidden rounded-lg border border-[#b9ab90] bg-white shadow-xs">
             {stats.map((stat) => (
               <div key={stat.label} className="px-4 py-3 sm:px-5">
                 <p className="text-xs font-medium text-stone sm:text-sm">{stat.label}</p>

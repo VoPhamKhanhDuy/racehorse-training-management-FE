@@ -20,7 +20,7 @@ function PillSelect({ id, label, value, onChange, children }) {
         value={value}
         onChange={onChange}
         className={`cursor-pointer appearance-none rounded-lg border py-2 pr-9 pl-4 text-sm text-ink outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brass/40 ${
-          value ? "border-brass bg-brass/10" : "border-stone/25 bg-white hover:border-stone/40"
+          value ? "border-brass bg-brass/10" : "border-[#cfc4ad] bg-white hover:border-[#b9ab90]"
         }`}
       >
         {children}
@@ -51,7 +51,7 @@ export default function HorseFilters({ filters, breeds, owners, sortKey, onChang
             placeholder="Tìm theo tên ngựa"
             value={filters.keyword}
             onChange={handleChange}
-            className="w-full rounded-lg border border-stone/20 bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
+            className="w-full rounded-lg border border-[#cfc4ad] bg-white py-2 pr-4 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-stone/60 focus:border-brass"
           />
         </div>
         <PillSelect id="breed" label="Lọc theo giống" value={filters.breed} onChange={handleChange}>
@@ -85,7 +85,7 @@ export default function HorseFilters({ filters, breeds, owners, sortKey, onChang
               className={`cursor-pointer rounded-lg border px-3.5 py-1.5 text-sm transition-colors ${
                 active
                   ? "border-brass bg-brass/15 font-medium text-brass-deep"
-                  : "border-stone/25 bg-white text-ink hover:border-stone/40"
+                  : "border-[#cfc4ad] bg-white text-ink hover:border-[#b9ab90]"
               }`}
             >
               {option.label}
