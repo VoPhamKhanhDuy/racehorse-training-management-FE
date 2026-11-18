@@ -7,6 +7,7 @@ import { formatDate, toISODate, todayISO } from "../utils/date";
 // - value / min / max là "YYYY-MM-DD"; hiển thị dd/MM/yyyy, gõ tay được (tự thêm dấu "/"), bấm vào ô mở lịch tiếng Việt, tuần bắt đầu Thứ Hai.
 // - Lịch có dropdown tháng + năm (năm chỉ trong khoảng min–max), nút "Hôm nay" và "Xóa" (ẩn khi required). Ngày ngoài min/max bị làm mờ, không chọn được.
 // - onChange phát ra { target: { name, value } } giống input thường nên chỗ gọi vẫn dùng e.target.value; ngày gõ sai / ngoài khoảng phát "" kèm thông báo ngắn dưới ô.
+// - hideTodayWhenDisabled: ẩn hẳn nút "Hôm nay" (thay vì làm mờ) khi hôm nay nằm ngoài min–max.
 // - rangeMessage(iso, min, max): tuỳ biến thông báo ngoài khoảng; emitOutOfRange: vẫn phát ngày gõ tay ngoài khoảng để form tự validate khi submit.
 // - className là style của ô (do FormField / trang truyền vào); externalError: nếu form đã có lỗi riêng thì không hiện thông báo khoảng ngày của ô.
 const MONTHS = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`);
@@ -43,7 +44,7 @@ function rangeMessage(iso, min, max, label) {
   return "";
 }
 
-export default function DateInput({ value = "", onChange, min, max, required, disabled, className = "", label, externalError, name, id, placeholder = "dd/MM/yyyy", rangeMessage: customRangeMessage, emitOutOfRange = false, ...rest }) {
+export default function DateInput({ value = "", onChange, min, max, required, disabled, className = "", label, externalError, name, id, placeholder = "dd/MM/yyyy", rangeMessage: customRangeMessage, emitOutOfRange = false, hideTodayWhenDisabled = false, ...rest }) {
   const [text, setText] = useState(toDisplay(value));
   const [open, setOpen] = useState(false);
   const [rangeError, setRangeError] = useState("");
@@ -265,14 +266,18 @@ export default function DateInput({ value = "", onChange, min, max, required, di
               })}
             </div>
             <div className="mt-2 flex items-center justify-between border-t border-[#E3E3E3] pt-2">
-              <button
-                type="button"
-                disabled={isDisabledDay(today)}
-                onClick={() => pick(today)}
-                className="cursor-pointer text-sm font-semibold text-[#c2570c] hover:underline disabled:cursor-not-allowed disabled:text-[#B5B5B5] disabled:no-underline"
-              >
-                Hôm nay
-              </button>
+              {hideTodayWhenDisabled && isDisabledDay(today) ? (
+                <span />
+              ) : (
+                <button
+                  type="button"
+                  disabled={isDisabledDay(today)}
+                  onClick={() => pick(today)}
+                  className="cursor-pointer text-sm font-semibold text-[#c2570c] hover:underline disabled:cursor-not-allowed disabled:text-[#B5B5B5] disabled:no-underline"
+                >
+                  Hôm nay
+                </button>
+              )}
               {!required && (
                 <button
                   type="button"
