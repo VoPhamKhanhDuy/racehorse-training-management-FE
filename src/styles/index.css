@@ -96,7 +96,7 @@
 /* Thu nhỏ toàn bộ giao diện còn 90% (đổi hệ số ở --app-zoom). Đơn vị vh không được zoom theo nên chia lại để
    các khối "cao bằng màn hình" (min-h-screen, sidebar h-screen) vẫn phủ kín khung nhìn. */
 :root {
-  --app-zoom: 0.9;
+  --app-zoom: 1;
 }
 
 html {

@@ -124,7 +124,7 @@ export default function OwnerSchedule() {
   const lockedHorses = horses.filter((h) => lockByHorse[h.HorseID]);
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] md:px-8">
+    <div className="w-full">
       <div>
         <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Lịch trình</h1>
         <p className="mt-1 text-sm text-[#4a3f33]">Lịch tập, lịch thi đấu và nhận xét của huấn luyện viên.</p>

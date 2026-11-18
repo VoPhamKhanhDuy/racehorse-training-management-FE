@@ -82,7 +82,7 @@ export default function VetIncidents() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] md:px-8">
+    <div className="w-full">
       <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Sự cố cần xử lý</h1>
       <p className="mt-1 text-sm text-[#4a3f33]">Báo cáo về sức khỏe ngựa từ nhân viên chăm sóc.</p>
 

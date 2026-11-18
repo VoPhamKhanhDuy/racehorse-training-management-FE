@@ -144,7 +144,7 @@ export default function MedicalExams() {
   const relatedLock = selected && locks.find((l) => l.HorseID === selected.HorseID && l.NgayDat === selected.Ngay);
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] md:px-8">
+    <div className="w-full">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
           <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Khám bệnh</h1>

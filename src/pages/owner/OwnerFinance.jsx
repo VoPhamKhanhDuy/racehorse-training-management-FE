@@ -197,7 +197,7 @@ export default function OwnerFinance() {
   const overdueOthers = isExpenseTab ? months.filter((m) => m !== month && periodStatus("expense", ownerId, m, today) === "overdue") : [];
 
   return (
-    <div className="mx-auto w-full max-w-[880px] md:px-8">
+    <div className="w-full">
       <div>
         <h1 className="font-serif text-[32px] leading-tight font-semibold tracking-tight text-[#2b2118]">Chi phí &amp; tiền thưởng</h1>
         <p className="mt-1 text-[15px] text-[#4a3f33]">

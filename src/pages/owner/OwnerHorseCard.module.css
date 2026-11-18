@@ -5,7 +5,7 @@
    - Tiêu đề mục dùng components/SectionTitle (cách phía trên 56px). */
 
 .page {
-  max-width: 1040px;
+  width: 100%;
 }
 
 /* Phần đầu: 1 cột (màn hẹp); ≥ 900px: ảnh | thông tin */
