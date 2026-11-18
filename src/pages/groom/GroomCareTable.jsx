@@ -3,14 +3,11 @@ import Modal from "../../components/Modal";
 import useAuth from "../../hooks/useAuth";
 import { completeCareTask } from "../../services/careLogMock";
 import { toMinutes } from "../../config/careTaskSchedule";
+import { toHHmm } from "../../utils/date";
 
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
 const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 const FILTER = "h-9 cursor-pointer rounded-[4px] border border-[#E3E3E3] bg-white px-2.5 text-sm text-[#1f1f1f] outline-none focus:border-[#c2570c]";
-const hhmm = (iso) => {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-};
 
 // Bảng "Chăm sóc hằng ngày" (bảng trung tính). Cột: Giờ | Ngựa (chuồng) | Công việc (dòng phụ: khẩu phần) | Trạng thái.
 // Trạng thái = ô DẤU TÍCH: bấm tích → hộp nhỏ ghi chú tùy chọn (≤ 200 ký tự) → "Xác nhận" mới hoàn thành (không hoàn tác được);
@@ -137,7 +134,7 @@ export default function GroomCareTable({ tasks, logs, nowMin }) {
                               state === "done" ? "font-semibold text-[#4d6b2a]" : state === "overdue" ? "font-semibold text-[#c2570c]" : "font-medium"
                             }`}
                           >
-                            {state === "done" ? `Đã hoàn thành lúc ${hhmm(log.completedAt)}` : state === "overdue" ? "Quá giờ" : "Chưa xác nhận"}
+                            {state === "done" ? `Đã hoàn thành lúc ${toHHmm(log.completedAt)}` : state === "overdue" ? "Quá giờ" : "Chưa xác nhận"}
                           </span>
                           {state === "done" && log.note && (
                             <span className="block truncate text-xs text-[#6b6b6b]" title={log.note}>

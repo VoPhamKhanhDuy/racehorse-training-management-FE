@@ -46,7 +46,7 @@ export default function TrainingPlanForm() {
   const [errors, setErrors] = useState({ phases: [] });
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [approval, setApproval] = useState(null); // trạng thái duyệt của giáo án đang sửa (MOCK)
+  const [approval, setApproval] = useState(null); // trạng thái duyệt của giáo án đang sửa
   const [confirmSave, setConfirmSave] = useState(false);
 
   const fitnessState = useHorseFitness(form.horseId);

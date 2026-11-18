@@ -63,6 +63,8 @@ Object.assign(SUPPLY_CONFIG, {
 
 export const supplyDisplayName = (item) => NAME_LABELS[item.TenVatTu] ?? item.TenVatTu;
 export const supplyDisplayType = (loai) => TYPE_LABELS[loai] ?? loai;
+// So sánh 2 vật tư theo tên hiển thị (tiếng Việt), dùng cho .sort()
+export const compareSuppliesByName = (a, b) => supplyDisplayName(a).localeCompare(supplyDisplayName(b), "vi");
 export const supplyUnit = (item) => {
   const raw = item.DonVi || getSupplyConfig(supplyDisplayName(item)).donVi;
   return UNIT_LABELS[raw] ?? raw;

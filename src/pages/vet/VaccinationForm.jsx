@@ -18,8 +18,7 @@ import { addAuditLog } from "../../services/auditService";
 import { DUPLICATE_PENDING_VACCINE, VACCINE_PENDING, VACCINE_TYPE_LIMITS, VACCINE_TYPES } from "../../data/vaccinationOptions";
 import { todayISO, yearsFromToday } from "../../utils/date";
 import { toUserID } from "../../utils/userId";
-
-const sameText = (a, b) => a.toLocaleLowerCase("vi") === b.toLocaleLowerCase("vi");
+import { sameText } from "../../utils/text";
 
 // Kiểm tra form. original: lịch đang sửa (giữ nguyên ngày cũ — kể cả đã quá hạn — vẫn hợp lệ). Trả { field: thông báo }
 function validateVaccination(form, items, original) {

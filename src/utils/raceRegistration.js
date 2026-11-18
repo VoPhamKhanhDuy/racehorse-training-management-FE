@@ -79,3 +79,6 @@ export function stepProgress(record) {
     { key: "Manager", label: "Quản lý", state: managerState, entry: manager },
   ];
 }
+
+// Thời điểm hoạt động gần nhất của đăng ký (bản ghi lịch sử cuối, không có thì lúc tạo)
+export const lastActivityAt = (record) => record.history?.at(-1)?.at ?? record.createdAt;

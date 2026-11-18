@@ -1,17 +1,16 @@
 import HorseAvatar from "../../components/HorseAvatar";
 import { FEED_COMPONENTS } from "../../data/feedingOptions";
+import { formatOneDecimal } from "../../utils/number";
 
 const TH = "border-r border-[#E3E3E3] px-[14px] text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
 const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
 const EMPTY = <span className="text-[#B5B5B5]">—</span>;
 
-const formatNumber = (value) => (Math.round(value * 10) / 10).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
-
 // Tổng khẩu phần cả ngày → "Cỏ 8 kg · Ngũ cốc 2 kg" ("" nếu không có)
 export function dailyRationSummary(feeding) {
   return FEED_COMPONENTS.map((c) => {
     const total = feeding.reduce((sum, plan) => sum + Number(plan[c.field] || 0), 0);
-    return total > 0 ? `${c.label} ${formatNumber(total)} ${c.unit}` : null;
+    return total > 0 ? `${c.label} ${formatOneDecimal(total)} ${c.unit}` : null;
   })
     .filter(Boolean)
     .join(" · ");

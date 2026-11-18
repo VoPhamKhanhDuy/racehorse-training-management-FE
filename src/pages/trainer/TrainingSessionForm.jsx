@@ -50,7 +50,7 @@ export default function TrainingSessionForm() {
   const { options, label } = useTrainingOptions();
 
   const [plan, setPlan] = useState(null);
-  const [approvalStatus, setApprovalStatus] = useState(null); // trạng thái duyệt của chủ ngựa (MOCK)
+  const [approvalStatus, setApprovalStatus] = useState(null); // trạng thái duyệt của chủ ngựa
   const [session, setSession] = useState(null);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -9,14 +9,13 @@ import SupplyRequestHistory from "./SupplyRequestHistory";
 import SupplyStockRow from "./SupplyStockRow";
 import { getSupplies } from "../../services/supplyService";
 import { REQUEST_STATUS, createSupplyRequest, listSupplyRequests, subscribeSupplyRequests } from "../../services/supplyRequestMock";
-import { SUPPLY_STATES, getSupplyState, supplyDisplayName, supplyDisplayType, supplyUnit } from "../../config/supplyConfig";
+import { SUPPLY_STATES, getSupplyState, supplyDisplayName, supplyDisplayType, supplyUnit, compareSuppliesByName } from "../../config/supplyConfig";
 
 const PAGE_SIZE = 10;
 // Header bảng trung tính: nền #F5F5F5, chữ #1f1f1f weight 600 13px, kẻ ô dọc #E3E3E3 (ô cuối không kẻ)
 const HEAD = "border-r border-[#E3E3E3] px-4 text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
 const FIELD =
   "h-10 w-full rounded-[4px] border border-[#E3E3E3] bg-white text-sm text-[#1f1f1f] outline-none transition-colors focus:border-[#c2570c]";
-const byName = (a, b) => supplyDisplayName(a).localeCompare(supplyDisplayName(b), "vi");
 
 // Tồn kho vật tư (SUPPLY) cho nhân viên chăm sóc — không sửa kho (việc của Quản lý CLB). KHÔNG có cột Tình trạng / Thao tác; dòng không bấm được. Dòng thiếu hàng (số lượng ≤ mức tối thiểu)
 // có số lượng chữ đỏ; nút "Yêu cầu bổ sung" ở đầu trang mở khung chọn vật tư và gửi đến Quản lý CLB (MOCK services/supplyRequestMock.js, Quản lý xử lý ở /manager/supplies). Tên / nhóm / đơn vị hiển thị tiếng Việt qua config/supplyConfig.js.
@@ -76,7 +75,7 @@ export default function GroomSupplies() {
 
   // Cần bổ sung trước (Hết hàng trước Sắp hết), rồi theo tên
   const rank = (s) => (getSupplyState(s) === SUPPLY_STATES.OUT ? 0 : needsRestock(s) ? 1 : 2);
-  const rows = [...visible].sort((a, b) => rank(a) - rank(b) || byName(a, b));
+  const rows = [...visible].sort((a, b) => rank(a) - rank(b) || compareSuppliesByName(a, b));
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);

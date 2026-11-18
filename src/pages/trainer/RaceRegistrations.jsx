@@ -5,7 +5,7 @@ import Toast from "../../components/Toast";
 import OpenRaceTable from "./OpenRaceTable";
 import RaceRegistrationCreateDialog from "./RaceRegistrationCreateDialog";
 
-// Trainer > Đăng ký thi đấu (luồng duyệt Trainer → Chủ ngựa → Quản lý, MOCK — services/raceRegistrationApi.js).
+// Trainer > Đăng ký thi đấu (luồng duyệt Trainer → Chủ ngựa → Quản lý, API — services/raceRegistrationApi.js).
 // Bảng + khung chi tiết nằm trong RaceRegistrationBoard (dùng chung các vai trò); ở đây thêm nút "Tạo đăng ký".
 // Ma trận ngựa × giải và nhập kết quả thi đấu vẫn ở trang "Kết quả thi đấu" (/trainer/races).
 export default function RaceRegistrations() {

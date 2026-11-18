@@ -11,6 +11,7 @@ import { ALERT_TYPES, getHealthAlerts, getVaccineState } from "../../utils/healt
 import { INCIDENT_STATUS } from "../../data/incidentOptions";
 import { inRange, periodRange } from "../../utils/dateRange";
 import { daysSince, formatDate, formatDayMonth, todayISO } from "../../utils/date";
+import { capitalizeFirst } from "../../utils/text";
 
 const ATTENTION_ORDER = { "Đang điều trị": 0, "Chấn thương": 0, "Cách ly": 1, "Cần theo dõi": 2 };
 const PAGE_TABS = [
@@ -29,8 +30,6 @@ const BOARD_STATUS_OPTIONS = [
 ];
 const EMPTY_FILTERS = { keyword: "", extra: "", period: "all", from: "", to: "" };
 const PAGE = "mx-auto w-full max-w-[1280px] md:px-8";
-
-const capitalizeFirst = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 // Nội dung ngắn của 1 việc (bỏ phần đã có ở cột Loại việc / Tình trạng)
 function contentOf(alert) {

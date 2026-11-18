@@ -1,13 +1,7 @@
 import { apiRequest } from "./apiClient";
+import { pick } from "../utils/object";
 
 export const DEFAULT_STAFF_PASSWORD = "123456";
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  }
-  return undefined;
-}
 
 function mapStaff(raw) {
   if (!raw) return null;

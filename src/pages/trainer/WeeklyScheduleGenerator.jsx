@@ -36,7 +36,7 @@ export default function WeeklyScheduleGenerator() {
   const { label } = useTrainingOptions();
   const [plan, setPlan] = useState(null);
   const [staff, setStaff] = useState([]);
-  const [approvalStatus, setApprovalStatus] = useState(null); // trạng thái duyệt của chủ ngựa (MOCK)
+  const [approvalStatus, setApprovalStatus] = useState(null); // trạng thái duyệt của chủ ngựa
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);

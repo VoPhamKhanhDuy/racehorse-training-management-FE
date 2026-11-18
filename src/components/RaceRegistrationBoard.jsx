@@ -11,9 +11,7 @@ import { listRaceRegistrations, markRaceRegistrationSeen, subscribeRaceRegistrat
 import { getActiveTrainingLocks } from "../services/vetService";
 import { todayISO } from "../utils/date";
 import { hasResult } from "../utils/raceResult";
-import { ACTION_STATUS_BY_ROLE, RR_STATUS } from "../utils/raceRegistration";
-
-const lastActivityAt = (record) => record.history?.at(-1)?.at ?? record.createdAt;
+import { ACTION_STATUS_BY_ROLE, RR_STATUS, lastActivityAt } from "../utils/raceRegistration";
 
 // Trang danh sách đăng ký thi đấu (Trainer / Chủ ngựa / Quản lý) — API /approvals/races.
 // Chủ ngựa gộp thêm hạng/thưởng từ /api/races/registrations; SignalR ThiDau → tải lại.

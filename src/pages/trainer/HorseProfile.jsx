@@ -68,7 +68,6 @@ export default function HorseProfile() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null); // { id, ...dữ liệu } của lần tải gần nhất
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
   useEffect(() => {
     let ignore = false;
     loadProfile(id).then((data) => {

@@ -10,6 +10,7 @@ import { daysBetween, formatDate, formatDayMonth } from "../../utils/date";
 import { PLAN_APPROVAL } from "../../utils/planStatus";
 import { formatKm } from "../../utils/trainingFormat";
 import OwnerPlanApprovalStatus from "./OwnerPlanApprovalStatus";
+import { capitalizeFirst } from "../../utils/text";
 
 const SESSION_PREVIEW_LIMIT = 8;
 const GENERIC_OBJECTIVES = ["huấn luyện", "tập luyện", "luyện tập", "giáo án", "kế hoạch"];
@@ -20,7 +21,6 @@ const OUTLINE_BUTTON =
   "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-ink transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
 
 // Tên giai đoạn do HLV nhập tay ("nền tảng thể lực") → viết hoa chữ đầu khi hiển thị
-const capitalizeFirst = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 
 function InfoRow({ label, children }) {
   return (
@@ -40,7 +40,7 @@ function PhaseStat({ label, children }) {
   );
 }
 
-// Chi tiết kế hoạch huấn luyện của Chủ ngựa: MODAL giữa màn hình (MOCK — services/planApprovalApi.js). Chỉ đọc, ẩn ghi chú nội bộ của Trainer.
+// Chi tiết kế hoạch huấn luyện của Chủ ngựa: MODAL giữa màn hình (API — services/planApprovalApi.js). Chỉ đọc, ẩn ghi chú nội bộ của Trainer.
 // Đầu + chân cố định, chỉ thân cuộn. Chờ duyệt: chân có "Yêu cầu chỉnh sửa" / "Đồng ý"; bấm Yêu cầu chỉnh sửa thì ô lý do
 // (bắt buộc, ≤ 300 ký tự) hiện ngay phía trên chân. Đã quyết định: chỉ có nút "Đóng".
 // onApprove(planId) / onRequestChanges(planId, note) / onReject(planId, note): async, trang cha lo đóng modal + toast; ném lỗi thì hiện trong modal.

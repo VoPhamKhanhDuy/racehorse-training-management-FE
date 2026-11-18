@@ -64,7 +64,7 @@ export default function GroomTasks() {
   const trainingSessions = (trainingResource.data ?? []).filter((s) => s.status !== "Cancelled");
   const todaySessions = trainingSessions.filter((s) => s.trainingDate === today).sort((a, b) => a.startTime.localeCompare(b.startTime));
   const nextSession = trainingSessions.filter((s) => s.trainingDate > today).sort((a, b) => `${a.trainingDate} ${a.startTime}`.localeCompare(`${b.trainingDate} ${b.startTime}`))[0] ?? null;
-  const sessionRecords = useSessionReviews(); // báo cáo của Groom (MOCK — services/sessionReviewMock.js)
+  const sessionRecords = useSessionReviews(); // báo cáo của Groom (hook cũ trả map rỗng; dữ liệu thật nằm trong session.report — xem hooks/useSessionReviews.js)
   const [reportSession, setReportSession] = useState(null);
   const [doneBacklogIds, setDoneBacklogIds] = useState([]); // việc tồn vừa hoàn thành: vẫn hiện ở mục "Đã hoàn thành" trong phiên này
 

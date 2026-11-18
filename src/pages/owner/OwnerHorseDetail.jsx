@@ -7,6 +7,7 @@ import { FEED_COMPONENTS, FEED_MEALS } from "../../data/feedingOptions";
 import { formatBirthDateWithAge } from "../../utils/date";
 import { genderLabel } from "../../utils/horseGender";
 import { OWNER_HEALTH_COLORS } from "../../utils/ownerHealthText";
+import { formatOneDecimal } from "../../utils/number";
 
 // Dòng sức khỏe cho chủ ngựa: chữ thường đậm 600, chỉ cụm trạng thái có màu (không pill/chấm/nền).
 // lead: chữ đứng trước; word: cụm tô màu. Trạng thái khác / chưa cập nhật → chữ nhạt.
@@ -20,7 +21,6 @@ const HEALTH_LINES = {
 };
 
 // Dấu phẩy thập phân, tối đa 1 chữ số (vd 2,5)
-const formatNumber = (value) => (Math.round(value * 10) / 10).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
 
 // Khẩu phần (FEEDINGPLAN): mỗi bữa 1 dòng "2,5 kg ngũ cốc · 3 kg cỏ · 20 g vitamin · Sáng" (đơn vị theo feedingOptions,
 // bỏ thành phần = 0); bữa theo thứ tự trong ngày. Không có bữa nào → "" (hiện "Chưa có").
@@ -29,7 +29,7 @@ function formatFeeding(feeding) {
     .filter(Boolean)
     .map((plan) => {
       const parts = FEED_COMPONENTS.filter((c) => Number(plan[c.field]) > 0).map(
-        (c) => `${formatNumber(Number(plan[c.field]))} ${c.unit} ${c.label.toLocaleLowerCase("vi")}`
+        (c) => `${formatOneDecimal(Number(plan[c.field]))} ${c.unit} ${c.label.toLocaleLowerCase("vi")}`
       );
       return [...parts, plan.Bua].join(" · ");
     })

@@ -53,7 +53,7 @@ export default function SessionDrawer({ sessionId, onClose, onChanged }) {
   const session = sessionResource.data ?? null;
   const sessionRecords = useSessionReviews();
   const awaitingReport = session ? sessionState(session, sessionRecords[session.sessionId]) === "AwaitingReport" : false;
-  // Trạng thái duyệt của kế hoạch chứa buổi tập (MOCK) — chưa Đã đồng ý thì không giao Groom
+  // Trạng thái duyệt của kế hoạch chứa buổi tập — chưa Đã đồng ý thì không giao Groom
   const approvalResource = useApiResource(() => getPlanApproval(session.planId), session?.planId ?? null);
   const groomLocked = !canAssignGroom(approvalResource.data?.status);
   const { loading, error: loadError } = sessionResource;

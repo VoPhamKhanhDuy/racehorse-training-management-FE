@@ -75,16 +75,6 @@ export function toISODateTime(date) {
   return `${toISODate(date)}T${hours}:${minutes}`;
 }
 
-// Thời điểm cách hiện tại n giờ (n âm = quá khứ), dạng "YYYY-MM-DDTHH:mm"
-export function hoursFromNow(n) {
-  return toISODateTime(new Date(Date.now() + n * 3600000));
-}
-
-// Thời điểm lúc "HH:mm" của ngày cách hôm nay n ngày, dạng "YYYY-MM-DDTHH:mm"
-export function dateTimeFromToday(n, time) {
-  return `${daysFromToday(n)}T${time}`;
-}
-
 // "YYYY-MM-DDTHH:mm" → Date theo giờ địa phương
 export function parseISODateTime(isoDateTime) {
   const [datePart, timePart = "00:00"] = isoDateTime.split("T");
@@ -155,4 +145,22 @@ export function yearsFromToday(n) {
 // Khoảng ngày sinh hợp lệ của ngựa tuổi [minAge, maxAge] tính theo hôm nay: min = sinh sớm nhất, max = sinh muộn nhất
 export function birthDateRangeForAge(minAge, maxAge) {
   return { min: yearsFromToday(-maxAge), max: yearsFromToday(-minAge) };
+}
+
+// "YYYY-MM" → "MM/YYYY"
+export const formatMonth = (month) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;
+
+// Các tháng "YYYY-MM" (không trùng) của danh sách ngày "YYYY-MM-DD", mới nhất trước
+export const monthsOf = (dates) => [...new Set(dates.map((date) => date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
+
+// Chuỗi thời điểm (ISO) → "HH:mm" theo giờ địa phương
+export const toHHmm = (iso) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+// Phần ngày "YYYY-MM-DD" của chuỗi ngày/giờ từ BE; rỗng → ""
+export function isoDatePart(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
 }

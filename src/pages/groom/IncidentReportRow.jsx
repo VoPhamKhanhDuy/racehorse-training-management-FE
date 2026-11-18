@@ -1,6 +1,6 @@
 import HorseAvatar from "../../components/HorseAvatar";
-import { HEALTH_INCIDENT_TYPES } from "../../data/incidentOptions";
 import { formatDate, formatDayMonth } from "../../utils/date";
+import { capitalizeFirst } from "../../utils/text";
 
 // Loại sự cố hiển thị bằng chữ màu (không nền/viền), đậm 600 — CHỈ còn dùng ở ngăn chi tiết (IncidentDetailDrawer). Bảng danh sách dùng chữ trung tính.
 const TYPE_COLOR = {
@@ -9,12 +9,10 @@ const TYPE_COLOR = {
   "Bỏ ăn": "text-[#c2570c]",
   "Chuồng/thiết bị hỏng": "text-[#6b5a45]",
 };
-export const isAnimalIncident = (loaiSuCo) => HEALTH_INCIDENT_TYPES.includes(loaiSuCo);
 export const getIncidentTypeText = (loaiSuCo) => `font-semibold ${TYPE_COLOR[loaiSuCo] ?? "text-[#6b6055]"}`;
 
 // Ô bảng: kẻ ô 1px #E3E3E3 (ngang + dọc, ô cuối không kẻ dọc), padding 12px 16px, căn giữa dọc
 const CELL = "border-r border-b border-[#E3E3E3] px-4 py-3 align-middle text-sm text-[#1f1f1f] last:border-r-0";
-const capitalizeFirst = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 
 // 1 báo cáo sự cố = 1 hàng bảng: Ngựa | Loại sự cố | Mô tả | Ngày báo. Cả hàng bấm được (Enter/Space) để mở ngăn chi tiết.
 // selected: hàng đang mở trong ngăn chi tiết. Bảng trung tính: hover / đang mở nền #FAFAFA, không zebra.

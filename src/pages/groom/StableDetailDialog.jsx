@@ -4,16 +4,12 @@ import HorseAvatar from "../../components/HorseAvatar";
 import { FEED_COMPONENTS, FEED_MEALS } from "../../data/feedingOptions";
 import { getCareLogs, subscribeCareLogs } from "../../services/careLogMock";
 import { generateDailyCareTasks } from "../../utils/careDailyTasks";
-import { todayISO } from "../../utils/date";
+import { todayISO, toHHmm } from "../../utils/date";
+import { formatOneDecimal } from "../../utils/number";
 
 const SECTION_TITLE = "font-serif text-base font-semibold text-[#2b2118]";
-const formatNumber = (value) => (Math.round(value * 10) / 10).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
 // 0 / không có → "—"
-const formatAmount = (value, unit) => (Number(value) > 0 ? `${formatNumber(Number(value))} ${unit}` : "—");
-const hhmm = (iso) => {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-};
+const formatAmount = (value, unit) => (Number(value) > 0 ? `${formatOneDecimal(Number(value))} ${unit}` : "—");
 
 // Chi tiết 1 chuồng (chỉ xem, modal giữa màn hình rộng ≤ 560px): đầu = ảnh + tên ngựa + "Chuồng A1 · Dãy A — Thi đấu"; "Ghi chú chuồng"
 // (nội dung LichSinhHoat của BE — thực chất là ghi chú); "Khẩu phần" theo bữa + "Cả ngày"; "Việc chăm sóc hôm nay" của ngựa này (chỉ đọc).
@@ -138,7 +134,7 @@ export default function StableDetailDialog({ stable, code, groupLabel, horse, fe
                     {task.detail && <span className="text-[#6b6055]"> · {task.detail}</span>}
                   </span>
                   <span className={`whitespace-nowrap ${log ? "font-semibold text-[#4d6b2a]" : "text-[#6b6055]"}`}>
-                    {log ? `Đã xong ${hhmm(log.completedAt)}` : "Chưa làm"}
+                    {log ? `Đã xong ${toHHmm(log.completedAt)}` : "Chưa làm"}
                   </span>
                 </li>
               );

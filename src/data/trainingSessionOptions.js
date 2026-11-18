@@ -4,9 +4,3 @@ export const SESSION_UNITS = {
   VanToc: "km/h",
 };
 
-export const SESSION_LIMITS = {
-  NhipTim: { min: 40, max: 260 },
-  VanToc: { min: 0, max: 80 },
-  ChiSoTap: { min: 0, max: 100 }, // chỉ số tập thang 0–100
-  NhanXetMaxLength: 300,
-};

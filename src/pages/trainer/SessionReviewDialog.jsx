@@ -32,7 +32,7 @@ function InfoRow({ label, children }) {
   );
 }
 
-// Khung chi tiết buổi tập của Trainer (MOCK — services/sessionReviewMock.js), nội dung theo tình trạng buổi (sessionStage):
+// Khung chi tiết buổi tập của Trainer (API qua services/sessionReviewMock.js), nội dung theo tình trạng buổi (sessionStage):
 // 1. Chưa diễn ra → thông tin buổi, chân "Đóng"
 // 2. Chờ báo cáo (đã qua giờ, Groom chưa báo cáo) → thông tin + "<Groom> chưa báo cáo buổi tập này.", chân "Đóng"
 // 3. Chờ đánh giá (Groom đã báo cáo) → thông tin + báo cáo của Groom + form đánh giá, chân "Hủy" / "Lưu đánh giá"

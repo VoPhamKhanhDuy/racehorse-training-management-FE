@@ -21,11 +21,12 @@ import {
 import { confirmPayment, getPaymentState, seedDemoPayments } from "../../services/paymentMock";
 import { addAuditLog } from "../../services/auditService";
 import { formatCurrency } from "../../utils/currency";
-import { formatDate, todayISO } from "../../utils/date";
+import { formatDate, todayISO, formatMonth, monthsOf } from "../../utils/date";
 import { getDueDate } from "../../utils/paymentDue";
 import { STATUS_VIEW as BASE_STATUS_VIEW, periodStatus } from "../../utils/paymentStatus";
 import { formatRankWord, NO_RANK } from "../../utils/raceResult";
 import { toUserID } from "../../utils/userId";
+import { sumOf } from "../../utils/number";
 
 const EXPENSE_LIMIT = 10;
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
@@ -38,10 +39,7 @@ const STATUS_VIEW = { ...BASE_STATUS_VIEW, received: { ...BASE_STATUS_VIEW.recei
 // Thứ tự kỳ thanh toán: chờ xác nhận lên đầu, rồi quá hạn, chưa thanh toán, đã thanh toán
 const PAYMENT_ORDER = { transferred: 0, overdue: 1, unpaid: 2, paid: 3 };
 
-const sumOf = (items, pick) => items.reduce((sum, item) => sum + pick(item), 0);
-const monthsOf = (dates) => [...new Set(dates.map((date) => date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
 // "2026-10" → "10/2026"
-const formatMonth = (month) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;
 
 // Nút phụ viền cam cao 32px (thao tác trong bảng)
 const OUTLINE_BUTTON = `h-8 cursor-pointer rounded-[4px] border border-[#c2570c] bg-white px-3 text-sm font-semibold whitespace-nowrap text-[#c2570c] transition-colors hover:bg-[#fbf3e6] ${FOCUS_RING}`;

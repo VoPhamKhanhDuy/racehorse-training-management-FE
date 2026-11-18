@@ -3,15 +3,9 @@ import { getFeedingPlans, getStableAssignments } from "./careService";
 import { getRaceRegistrations, getRaces, getSchedules, getTrainingPlans, getTrainingSessions } from "./trainerService";
 import { apiRequest } from "./apiClient";
 import { getHealthStatuses, mapHorseFromApi } from "./horseService";
+import { pick } from "../utils/object";
 
 export { getHealthStatuses, getRaceRegistrations, getRaces };
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  }
-  return undefined;
-}
 
 function formatScheduleLines(items) {
   if (!items?.length) return "";
