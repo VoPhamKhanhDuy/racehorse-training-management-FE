@@ -1,6 +1,7 @@
 import { useState } from "react";
 import FormField from "../../components/FormField";
 import Modal from "../../components/Modal";
+import { supplyDisplayName } from "../../config/supplyConfig";
 
 const MODES = {
   in: { title: "Nhập kho", confirmLabel: "Nhập kho", sign: 1 },
@@ -46,7 +47,7 @@ export default function StockAdjustModal({ supply, mode, onSubmit, onClose }) {
   };
 
   return (
-    <Modal open title={`${config.title}: ${supply.TenVatTu}`} onClose={handleClose} size="sm">
+    <Modal open title={`${config.title}: ${supplyDisplayName(supply)}`} onClose={handleClose} size="sm">
       <form onSubmit={handleSubmit} noValidate>
         <p className="text-sm text-stone">
           Tồn kho hiện tại:{" "}
