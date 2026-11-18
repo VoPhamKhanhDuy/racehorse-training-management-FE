@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { ImagePlus } from "lucide-react";
 import { INCIDENT_IMAGE } from "../../data/incidentOptions";
 
 // Khu chọn ảnh sự cố (không bắt buộc): chưa có ảnh → ô viền nét đứt bấm để chọn; có ảnh → xem trước + "Đổi ảnh" / "Xóa ảnh".
@@ -64,10 +65,11 @@ export default function IncidentImageField({ value, error, onChange, onError }) 
         <button
           type="button"
           onClick={openPicker}
-          className={`flex h-[120px] w-full cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed bg-[#faf8f4] px-4 text-center transition-colors hover:bg-[#f0efec] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
-            error ? "border-[#c0262d]" : "border-[#b9ab90]"
+          className={`flex h-[130px] w-full cursor-pointer flex-col items-center justify-center rounded-[6px] border-2 border-dashed bg-[#faf8f4] px-4 text-center transition-colors hover:border-[#c2570c]/60 hover:bg-[#fbf3e6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
+            error ? "border-[#c0262d]" : "border-[#cfc4ad]"
           }`}
         >
+          <ImagePlus className="mb-2 h-6 w-6 text-[#a08f74]" aria-hidden="true" />
           <span className="text-sm font-semibold text-[#2b2118]">Bấm để chọn ảnh</span>
           <span className="mt-1 text-[13px] text-[#6b6055]">JPG hoặc PNG, tối đa {INCIDENT_IMAGE.maxLabel}, không bắt buộc</span>
         </button>

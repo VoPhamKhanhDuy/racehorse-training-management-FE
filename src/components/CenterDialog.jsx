@@ -43,24 +43,24 @@ export default function CenterDialog({ label, header, footer, onClose, busy = fa
         aria-modal="true"
         aria-label={label}
         style={maxWidth ? { maxWidth } : undefined}
-        className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-md bg-white shadow-xl ${wide ? "max-w-[680px]" : narrow ? "max-w-[560px]" : "max-w-[640px]"}`}
+        className={`relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-[8px] border border-[#d6ccb8] bg-white shadow-2xl ${wide ? "max-w-[680px]" : narrow ? "max-w-[560px]" : "max-w-[640px]"}`}
       >
-        <div className="flex items-start gap-3 px-6 pt-6 pb-4 sm:px-8">
+        <div className="flex items-start gap-3 border-b border-[#ece5d8] bg-[#faf7f2]/70 px-6 py-4 sm:px-7">
           <div className="min-w-0 flex-1">{header}</div>
           <button
             ref={closeRef}
             type="button"
             onClick={handleClose}
             aria-label="Đóng"
-            className="-m-1 shrink-0 cursor-pointer rounded-[4px] p-1 text-stone outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-brass"
+            className="-m-1 shrink-0 cursor-pointer rounded-[4px] p-1.5 text-[#6b6055] outline-none transition-colors hover:bg-[#ece5d8]/60 hover:text-[#2b2118] focus-visible:outline-2 focus-visible:outline-brass"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 sm:px-8">
+        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-7">
           {children}
         </div>
-        {footer && <div className="border-t border-stone/15 px-6 pt-4 pb-6 sm:px-8">{footer}</div>}
+        {footer && <div className="border-t border-[#ece5d8] bg-[#faf7f2]/50 px-6 py-4 sm:px-7">{footer}</div>}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Plus, Search, TriangleAlert } from "lucide-react";
 import LoadingState from "../../components/LoadingState";
 import TablePager from "../../components/TablePager";
 import Toast from "../../components/Toast";
@@ -8,13 +8,13 @@ import useAuth from "../../hooks/useAuth";
 import IncidentDetailDrawer from "./IncidentDetailDrawer";
 import IncidentReportRow from "./IncidentReportRow";
 import { getHorses, getIncidentReports, getStableNumbers } from "../../services/careService";
+import { INCIDENT_STATUS } from "../../data/incidentOptions";
 import { toUserID } from "../../utils/userId";
 
-// Header bảng trung tính: nền #F5F5F5, chữ #1f1f1f weight 600 13px, kẻ ô dọc #E3E3E3 (ô cuối không kẻ)
-const HEAD = "border-r border-[#E3E3E3] px-4 text-[13px] font-semibold text-[#1f1f1f] last:border-r-0";
+const HEAD = "border-r border-[#dfd6c5] px-4 text-[13px] font-semibold text-[#2b2118] last:border-r-0";
 const PAGE_SIZE = 10;
 const FIELD =
-  "h-10 w-full rounded-[4px] border border-[#E3E3E3] bg-white text-sm text-[#1f1f1f] outline-none transition-colors focus:border-[#c2570c]";
+  "h-10 w-full rounded-[4px] border border-[#cfc4ad] bg-white text-sm text-[#2b2118] outline-none transition-colors focus:border-[#c2570c]";
 const PRIMARY_LINK =
   "inline-flex h-10 items-center rounded-[4px] bg-[#c2570c] px-5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-[#a8480a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
 
@@ -84,14 +84,23 @@ export default function IncidentReports() {
   const currentPage = Math.min(page, pageCount);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  const countBy = (status) => reports.filter((r) => (r.TrangThai || INCIDENT_STATUS.NEW) === status).length;
+  const stats = [
+    { label: "Tổng báo cáo đã gửi", value: reports.length, tone: "text-[#2b2118]" },
+    { label: "Chờ tiếp nhận", value: countBy(INCIDENT_STATUS.NEW), tone: "text-[#c0262d]" },
+    { label: "Đang xử lý", value: countBy(INCIDENT_STATUS.IN_PROGRESS), tone: "text-[#c2570c]" },
+    { label: "Đã xử lý", value: countBy(INCIDENT_STATUS.DONE), tone: "text-[#4d6b2a]" },
+  ];
+
   return (
     <div className="w-full">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
           <h1 className="font-serif text-[30px] leading-tight font-semibold tracking-tight text-[#2b2118]">Báo cáo sự cố</h1>
-          {!loading && reports.length > 0 && <p className="mt-1 text-sm text-[#4a3f33]">{reports.length} báo cáo đã gửi</p>}
+          <p className="mt-1 text-sm text-[#4a3f33]">Lịch sử các sự cố bạn đã báo cáo và tiến độ xử lý của từng sự cố.</p>
         </div>
         <Link to="/groom/incidents/new" className={PRIMARY_LINK}>
+          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
           Gửi báo cáo
         </Link>
       </div>
@@ -101,16 +110,29 @@ export default function IncidentReports() {
       ) : loadError ? (
         <p className="mt-6 border-l-2 border-rust bg-rust/5 px-4 py-3 text-sm text-rust">{loadError}</p>
       ) : reports.length === 0 ? (
-        <div className="mt-6 rounded-[4px] border border-[#E3E3E3] bg-white px-4 py-12 text-center">
-          <p className="text-sm text-[#4a3f33]">Bạn chưa gửi báo cáo sự cố nào.</p>
+        <div className="mt-6 flex flex-col items-center rounded-[6px] border border-[#cfc4ad] bg-white px-4 py-14 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#fbf3e6]">
+            <TriangleAlert className="h-6 w-6 text-[#c2570c]" aria-hidden="true" />
+          </span>
+          <p className="mt-3 text-sm font-semibold text-[#2b2118]">Bạn chưa gửi báo cáo sự cố nào</p>
+          <p className="mt-1 text-sm text-[#6b6055]">Khi phát hiện ngựa bị thương hoặc chuồng trại hư hỏng, hãy gửi báo cáo ngay.</p>
           <Link to="/groom/incidents/new" className={`mt-4 ${PRIMARY_LINK}`}>
             Gửi báo cáo
           </Link>
         </div>
       ) : (
         <>
+        <dl className="mt-6 grid grid-cols-2 divide-x divide-y divide-[#d4c8b0] rounded-[6px] border border-[#b9ab90] bg-white shadow-xs sm:grid-cols-4 sm:divide-y-0">
+          {stats.map((s) => (
+            <div key={s.label} className="px-4 py-3.5 sm:px-5">
+              <dt className="text-xs font-medium text-[#6b6055]">{s.label}</dt>
+              <dd className={`mt-1 font-serif text-2xl leading-none font-semibold tabular-nums ${s.value > 0 ? s.tone : "text-[#2b2118]"}`}>{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+
         {/* Một hàng: ô tìm kiếm + dropdown Loại sự cố */}
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <div className="relative w-full sm:w-72">
             <label htmlFor="incidentKeyword" className="sr-only">
               Tìm theo tên ngựa hoặc mô tả
@@ -153,23 +175,25 @@ export default function IncidentReports() {
         </div>
 
         {filtered.length === 0 ? (
-          <p className="mt-4 rounded-[4px] border border-[#E3E3E3] bg-white py-12 text-center text-sm text-[#6b6b6b]">Không tìm thấy báo cáo nào.</p>
+          <p className="mt-4 rounded-[6px] border border-[#cfc4ad] bg-white py-12 text-center text-sm text-[#6b6055]">Không tìm thấy báo cáo nào.</p>
         ) : (
-        <div className="mt-4 overflow-hidden rounded-[4px] border border-[#E3E3E3] bg-white">
+        <div className="mt-4 overflow-hidden rounded-[6px] border border-[#cfc4ad] bg-white shadow-xs">
           {/* table-layout: fixed, tổng 100%, không cuộn ngang; tiêu đề và hàng dùng chung một lưới cột */}
           <table className="w-full table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col style={{ width: "24%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "40%" }} />
-              <col style={{ width: "16%" }} />
+              <col style={{ width: "17%" }} />
+              <col />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "130px" }} />
             </colgroup>
             <thead>
-              <tr className="h-11 border-b border-[#E3E3E3] bg-[#F5F5F5]">
+              <tr className="h-11 border-b border-[#dfd6c5] bg-[#f7f3eb]">
                 <th className={HEAD}>Ngựa</th>
                 <th className={HEAD}>Loại sự cố</th>
                 <th className={HEAD}>Mô tả</th>
-                <th className={`${HEAD} text-right`}>Ngày báo</th>
+                <th className={HEAD}>Ngày báo</th>
+                <th className={HEAD}>Trạng thái</th>
               </tr>
             </thead>
             <tbody className="[&>tr:last-child>td]:border-b-0">

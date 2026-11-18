@@ -99,6 +99,12 @@
   --app-zoom: 1;
 }
 
+/* Viết hoa chữ cái đầu cho toàn bộ tiêu đề trang và tiêu đề mục của tất cả các role */
+main h1,
+main h2 {
+  text-transform: capitalize;
+}
+
 html {
   zoom: var(--app-zoom);
 }
