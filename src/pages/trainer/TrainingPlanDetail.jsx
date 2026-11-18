@@ -60,7 +60,7 @@ export default function TrainingPlanDetail() {
   const planResource = useApiResource(() => getTrainingPlan(id), id);
   const { data: plan, loading, error: loadError } = planResource;
   const fitnessState = useHorseFitness(plan?.horseId);
-  // Trạng thái duyệt của chủ ngựa (MOCK — services/planApprovalApi.js)
+  // Trạng thái duyệt của chủ ngựa (API — services/planApprovalApi.js)
   const approvalResource = useApiResource(() => getPlanApproval(id), id);
 
   // Mở kế hoạch = đã xem thông báo của kế hoạch này; chủ ngựa vừa quyết định (cùng trình duyệt) thì tải lại

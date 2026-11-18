@@ -32,7 +32,7 @@ export default function OwnerSchedule() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [approvedRaces, setApprovedRaces] = useState([]); // cuộc đua đã duyệt qua luồng đăng ký (MOCK — raceRegistrationApi.js)
+  const [approvedRaces, setApprovedRaces] = useState([]); // cuộc đua đã duyệt qua luồng đăng ký (raceRegistrationApi.js)
   const [reviews, setReviews] = useState([]); // đánh giá HLV đã gửi cho chủ ngựa (services/sessionReviewMock.js → API)
   const [plannedSessions, setPlannedSessions] = useState([]); // buổi tập của kế hoạch đã đồng ý (cùng nguồn với phía Trainer)
   const { label } = useTrainingOptions({ remote: false });

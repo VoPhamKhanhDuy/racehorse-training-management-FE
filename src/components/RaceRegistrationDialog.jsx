@@ -30,7 +30,7 @@ function InfoRow({ label, children }) {
   );
 }
 
-// Khung chi tiết đăng ký thi đấu DÙNG CHUNG mọi vai trò (MOCK — services/raceRegistrationApi.js): ngựa, cuộc đua, tình trạng ngựa,
+// Khung chi tiết đăng ký thi đấu DÙNG CHUNG mọi vai trò (API — services/raceRegistrationApi.js): ngựa, cuộc đua, tình trạng ngựa,
 // "Tiến trình duyệt" 2 bước (Chủ ngựa, Quản lý). Chân khung tùy vai trò + trạng thái:
 // - Trainer: Nháp → "Gửi duyệt" / "Rút đăng ký"; đang chờ → "Rút đăng ký"
 // - Chủ ngựa: chờ chủ ngựa → "Đồng ý" (có xác nhận) / "Từ chối" (lý do bắt buộc)

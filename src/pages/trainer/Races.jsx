@@ -45,10 +45,10 @@ export default function Races() {
   const [openRaceId, setOpenRaceId] = useState(null);
   const [infoRaceId, setInfoRaceId] = useState(null); // khung "Thông tin giải"
   const navigate = useNavigate();
-  const [allFlowRegs, setAllFlowRegs] = useState([]); // mọi bản ghi trong luồng duyệt của Trainer (MOCK) — để dựng chi tiết đăng ký của từng ngựa
+  const [allFlowRegs, setAllFlowRegs] = useState([]); // mọi bản ghi trong luồng duyệt của Trainer — để dựng chi tiết đăng ký của từng ngựa
   const [horseView, setHorseView] = useState(null); // { raceId, horseId, fromRace } — đang xem chi tiết đăng ký của 1 ngựa; fromRace: mở từ trong khung giải
   const { user } = useAuth();
-  const [pendingRegs, setPendingRegs] = useState([]); // đăng ký của Trainer chưa Approved (Nháp / chờ chủ ngựa / chờ quản lý) — MOCK, chỉ để biết
+  const [pendingRegs, setPendingRegs] = useState([]); // đăng ký của Trainer chưa Approved (Nháp / chờ chủ ngựa / chờ quản lý) — chỉ để biết
   const [toast, setToast] = useState(null); // { text, error }
   const closeToast = useCallback(() => setToast(null), []);
 

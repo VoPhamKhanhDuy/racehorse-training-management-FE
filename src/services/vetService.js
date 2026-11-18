@@ -3,18 +3,12 @@
 import { apiRequest } from "./apiClient";
 import { getHealthStatuses, getHorses } from "./horseService";
 import { INJURY_SEPARATOR, NO_INJURY, TREATMENT_STATE } from "../data/medicalRecordOptions";
+import { pick } from "../utils/object";
 
 export { getHealthStatuses, getHorses };
 
 const activeLockIds = new Set();
 let relatedRequest = null;
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  }
-  return undefined;
-}
 
 function asDate(value) {
   if (!value) return null;

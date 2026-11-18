@@ -1,15 +1,8 @@
 import { apiRequest, apiUploadForm } from "./apiClient";
 import { getHorseAge } from "../utils/date";
 import { DUPLICATE_HORSE_NAME, INVALID_BIRTH_DATE } from "../data/horseOptions";
-
-const collapseSpaces = (text) => text.trim().replace(/\s+/g, " ");
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  }
-  return undefined;
-}
+import { collapseSpaces } from "../utils/text";
+import { pick } from "../utils/object";
 
 export function extractHorseId(raw) {
   const id = pick(raw, "horseID", "horseId", "HorseID", "HorseId", "id");

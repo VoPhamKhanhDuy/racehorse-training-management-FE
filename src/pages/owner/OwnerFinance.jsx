@@ -10,7 +10,7 @@ import { getOwnerHorses, getRaceRegistrations, getRaces } from "../../services/o
 import { getPaymentState, seedDemoPayments } from "../../services/paymentMock";
 import { STATUS_VIEW, periodStatus } from "../../utils/paymentStatus";
 import { formatCurrency } from "../../utils/currency";
-import { daysBetween, formatDate, formatDayMonth, todayISO } from "../../utils/date";
+import { daysBetween, formatDate, formatDayMonth, todayISO, formatMonth, monthsOf } from "../../utils/date";
 import DocumentViewer from "./DocumentViewer";
 import MonthSelect from "./MonthSelect";
 // MOCK: số chứng từ (hóa đơn / biên nhận / phiếu chi) tính ở FE — cô lập trong services/documentMock.js
@@ -18,11 +18,11 @@ import { getInvoice, getInvoiceNumber, getPayoutVoucher, getReceipt } from "../.
 import { getDueDate } from "../../utils/paymentDue";
 import { getTransferContent } from "../../utils/paymentTransfer";
 import { toUserID } from "../../utils/userId";
+import { sumOf } from "../../utils/number";
+import { formatRankWord } from "../../utils/raceResult";
 
 const ROW_LIMIT = 8;
 const SOON_DAYS = 7; // còn 0–7 ngày: nhắc "sắp đến hạn"
-const RANK_WORDS = { 1: "Nhất", 2: "Nhì", 3: "Ba" };
-const rankWord = (rank) => RANK_WORDS[rank] ?? `Hạng ${rank}`;
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]";
 const TABS = [
@@ -30,10 +30,7 @@ const TABS = [
   { value: "prize", label: "Tiền thưởng" },
 ];
 
-const sumOf = (items, pick) => items.reduce((sum, item) => sum + pick(item), 0);
 // "2026-10" → "10/2026"
-const formatMonth = (month) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;
-const monthsOf = (dates) => [...new Set(dates.map((date) => date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
 
 // "Chi phí & tiền thưởng" của Chủ ngựa — CHỈ XEM (trừ bước báo "Tôi đã chuyển khoản"). Ngựa có HORSE.OwnerID = người đang đăng nhập.
 // Chi phí (chủ trả CLB) và tiền thưởng (CLB trả chủ) là hai khoản độc lập, KHÔNG bù trừ: tổng chỉ cộng trong cùng một loại.
@@ -179,7 +176,7 @@ export default function OwnerFinance() {
         : rows.map(({ registration, race }) => ({
             key: `${race.RaceID}-${registration.HorseID}`,
             date: race.Ngay,
-            content: registration.ThuHang >= 1 ? `${race.TenGiai} · hạng ${rankWord(registration.ThuHang)}` : race.TenGiai,
+            content: registration.ThuHang >= 1 ? `${race.TenGiai} · hạng ${formatRankWord(registration.ThuHang)}` : race.TenGiai,
             horse: horseName(registration.HorseID),
             amount: registration.TienThuong,
           })),
@@ -341,7 +338,7 @@ export default function OwnerFinance() {
                                 {" "}
                                 · hạng{" "}
                                 <span className={registration.ThuHang === 1 ? "font-semibold text-[#c2570c]" : "text-[#2b2118]"}>
-                                  {rankWord(registration.ThuHang)}
+                                  {formatRankWord(registration.ThuHang)}
                                 </span>
                               </>
                             )}

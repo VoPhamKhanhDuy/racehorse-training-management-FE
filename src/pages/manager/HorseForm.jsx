@@ -9,6 +9,7 @@ import { COAT_COLORS, DUPLICATE_HORSE_NAME, HORSE_GENDERS, HORSE_GENDER_LABELS, 
 import { birthDateRangeForAge, formatDate, getHorseAge } from "../../utils/date";
 import { HORSE_MAX_AGE, HORSE_MIN_AGE } from "../../config/horseAge";
 import GenderChips from "./GenderChips";
+import { collapseSpaces, sameText } from "../../utils/text";
 
 // "Ngựa phải từ 2 đến 20 tuổi (sinh từ dd/MM/yyyy đến dd/MM/yyyy)" — tính theo ngày hiện tại
 function birthRangeMessage() {
@@ -17,9 +18,6 @@ function birthRangeMessage() {
 }
 
 const emptyForm = { Ten: "", Giong: "", NgaySinh: "", GioiTinh: "", MauLong: "", CanNang: "", DongDoi: "", OwnerID: "", photo: null };
-
-const collapseSpaces = (text) => text.trim().replace(/\s+/g, " ");
-const sameText = (a, b) => a.toLocaleLowerCase("vi") === b.toLocaleLowerCase("vi");
 
 // Kiểm tra form theo HORSE_LIMITS; otherHorses = các ngựa khác (để bắt trùng tên). Trả { field: thông báo }
 function validateHorse(form, otherHorses) {

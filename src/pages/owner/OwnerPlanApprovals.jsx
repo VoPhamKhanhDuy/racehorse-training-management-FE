@@ -15,7 +15,7 @@ import OwnerPlanApprovalRow from "./OwnerPlanApprovalRow";
 // Lưới cột bảng (từ md), DÙNG CHUNG cho tiêu đề và mọi hàng: Ngựa | Giáo án | Huấn luyện viên | Thời gian | nút (120px). Dưới md mỗi hàng xếp dọc.
 const GRID_CLASS = "md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_136px] md:items-center";
 
-// Khối "Kế hoạch huấn luyện" đầu trang Lịch trình của Chủ ngựa (MOCK — services/planApprovalApi.js).
+// Khối "Kế hoạch huấn luyện" đầu trang Lịch trình của Chủ ngựa (API — services/planApprovalApi.js).
 // Bảng phẳng, mỗi kế hoạch MỘT hàng (chờ duyệt lên trên); bấm vào mở modal chi tiết ở giữa màn hình, duyệt ở đó.
 // Kế hoạch Nháp không bao giờ hiện (getOwnerPlanApprovals đã loại). Không có kế hoạch nào → không render gì.
 export default function OwnerPlanApprovals({ horses }) {

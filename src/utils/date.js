@@ -146,3 +146,21 @@ export function yearsFromToday(n) {
 export function birthDateRangeForAge(minAge, maxAge) {
   return { min: yearsFromToday(-maxAge), max: yearsFromToday(-minAge) };
 }
+
+// "YYYY-MM" → "MM/YYYY"
+export const formatMonth = (month) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;
+
+// Các tháng "YYYY-MM" (không trùng) của danh sách ngày "YYYY-MM-DD", mới nhất trước
+export const monthsOf = (dates) => [...new Set(dates.map((date) => date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
+
+// Chuỗi thời điểm (ISO) → "HH:mm" theo giờ địa phương
+export const toHHmm = (iso) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+// Phần ngày "YYYY-MM-DD" của chuỗi ngày/giờ từ BE; rỗng → ""
+export function isoDatePart(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}

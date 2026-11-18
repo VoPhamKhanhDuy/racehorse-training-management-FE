@@ -4,7 +4,7 @@ import { formatCurrency } from "../utils/currency";
 import { daysBetween, formatDate, todayISO } from "../utils/date";
 import { isReadyHealth } from "../utils/healthGroups";
 import { formatRank } from "../utils/raceResult";
-import { RR_STATUS, stepText } from "../utils/raceRegistration";
+import { RR_STATUS, stepText, lastActivityAt } from "../utils/raceRegistration";
 import { formatDateTime } from "../utils/trainingFormat";
 
 const PAGE_SIZE = 10;
@@ -13,7 +13,6 @@ const TD = "border-r border-b border-[#E3E3E3] px-[14px] py-3 align-middle text-
 const EMPTY = <span className="text-[#B5B5B5]">—</span>;
 
 const historyAt = (record, step, action) => record.history.filter((h) => h.step === step && h.action === action).at(-1)?.at;
-const lastActivityAt = (record) => record.history.at(-1)?.at ?? record.createdAt;
 // "từ 05/11 14:30": formatDateTime cho "dd/MM/yyyy HH:mm" → bỏ năm
 const shortDateTime = (iso) => formatDateTime(iso).replace(/\/\d{4}/, "");
 

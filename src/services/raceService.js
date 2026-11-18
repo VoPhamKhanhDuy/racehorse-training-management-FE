@@ -1,18 +1,7 @@
 // Flow 5: giải đua, đăng ký, thứ hạng và tiền thưởng trên /api/races.
 import { apiRequest } from "./apiClient";
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null)
-      return obj[key];
-  }
-  return undefined;
-}
-
-function asDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 10);
-}
+import { isoDatePart } from "../utils/date";
+import { pick } from "../utils/object";
 
 function asRank(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -30,9 +19,9 @@ function mapRace(raw) {
   return {
     RaceID: Number(pick(raw, "raceID", "RaceID")),
     TenGiai: pick(raw, "tenGiai", "TenGiai") ?? "",
-    Ngay: asDate(pick(raw, "ngay", "Ngay")),
+    Ngay: isoDatePart(pick(raw, "ngay", "Ngay")),
     DiaDiem: pick(raw, "diaDiem", "DiaDiem") ?? "",
-    registrationDeadline: asDate(pick(raw, "registrationDeadline", "RegistrationDeadline")),
+    registrationDeadline: isoDatePart(pick(raw, "registrationDeadline", "RegistrationDeadline")),
     entryFee: asMoney(pick(raw, "entryFee", "EntryFee")),
     // Tổng số ngựa tối đa của giải (nhiều CLB); null hoặc 0 = không giới hạn
     maxParticipants: asRank(pick(raw, "maxParticipants", "MaxParticipants")),
@@ -44,7 +33,7 @@ function mapRegistration(raw) {
   return {
     HorseID: Number(pick(raw, "horseID", "HorseID")),
     RaceID: Number(pick(raw, "raceID", "RaceID")),
-    NgayDangKy: asDate(pick(raw, "ngayDangKy", "NgayDangKy")),
+    NgayDangKy: isoDatePart(pick(raw, "ngayDangKy", "NgayDangKy")),
     ThuHang: asRank(pick(raw, "thuHang", "ThuHang")),
     TienThuong: asMoney(pick(raw, "tienThuong", "TienThuong")),
   };
@@ -97,7 +86,7 @@ export async function getPrizeAlerts() {
     AlertID: Number(pick(raw, "alertID", "AlertID")),
     HorseID: Number(pick(raw, "horseID", "HorseID")),
     RaceID: Number(pick(raw, "raceID", "RaceID")),
-    Ngay: asDate(pick(raw, "ngay", "Ngay")),
+    Ngay: isoDatePart(pick(raw, "ngay", "Ngay")),
   }));
 }
 

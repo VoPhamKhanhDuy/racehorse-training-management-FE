@@ -1,12 +1,7 @@
 import SectionTitle from "../../components/SectionTitle";
 import styles from "./OwnerHorseCard.module.css";
 import { formatDayMonth } from "../../utils/date";
-import { formatRank } from "../../utils/raceResult";
-
-const RANK_WORDS = { 1: "Nhất", 2: "Nhì", 3: "Ba" };
-
-// 1 → "Nhất", 2 → "Nhì", 3 → "Ba", 4 → "Hạng 4"
-const rankWord = (rank) => RANK_WORDS[rank] ?? formatRank(rank);
+import { formatRankWord } from "../../utils/raceResult";
 
 // Kết quả khi chưa có thứ hạng (chữ nhạt, nghiêng)
 const STATE_TEXT = { upcoming: "Sắp diễn ra", pending: "Chưa có kết quả", unranked: "Không xếp hạng" };
@@ -31,7 +26,7 @@ export default function OwnerHorseAchievements({ achievements }) {
               </span>
               {state === "ranked" && registration.ThuHang ? (
                 <span className={`${styles.raceRank} ${registration.ThuHang === 1 ? styles.raceRankFirst : ""}`}>
-                  {rankWord(registration.ThuHang)}
+                  {formatRankWord(registration.ThuHang)}
                 </span>
               ) : (
                 <span className={styles.raceState}>{resultLabel ?? STATE_TEXT[state]}</span>

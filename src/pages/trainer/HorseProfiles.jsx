@@ -30,7 +30,6 @@ export default function HorseProfiles() {
   const [page, setPage] = useState(1); // phân trang phía FE trên mảng đã lọc
   const [pageSize, setPageSize] = useState(10);
 
-  // TODO: thay bằng gọi API thật khi BE xong (hiện đọc từ mock trainerService)
   useEffect(() => {
     let ignore = false;
     Promise.all([getHorses(), getHealthStatuses(), getActiveTrainingLocks(), getUsers()]).then(

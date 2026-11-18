@@ -35,7 +35,7 @@ export default function TrainingPlans() {
     () => getTrainingPlans({ horseId: horseFilter || undefined, status: statusFilter || undefined }),
     `${horseFilter}|${statusFilter}`
   );
-  // Trạng thái duyệt của chủ ngựa theo planId (MOCK) — giáo án Nháp hiện trạng thái duyệt thay vì "Nháp"
+  // Trạng thái duyệt của chủ ngựa theo planId — giáo án Nháp hiện trạng thái duyệt thay vì "Nháp"
   const approvalsResource = useApiResource(getPlanApprovalMap, "approvals");
   const approvalMap = approvalsResource.data ?? {};
   const refreshApprovals = approvalsResource.refresh;

@@ -3,15 +3,13 @@ import { ChevronDown } from "lucide-react";
 import CenterDialog from "../../components/CenterDialog";
 import TextAreaField from "../../components/TextAreaField";
 import { REQUEST_NOTE_MAX, REQUEST_STATUS } from "../../services/supplyRequestMock";
-import { SUPPLY_STATES, getSupplyState, supplyDisplayName, supplyMinimum, supplyUnit } from "../../config/supplyConfig";
+import { SUPPLY_STATES, getSupplyState, supplyDisplayName, supplyMinimum, supplyUnit, compareSuppliesByName } from "../../config/supplyConfig";
 
 const LABEL = "mb-1.5 block text-[13px] font-semibold text-[#1f1f1f]";
 const FIELD =
   "h-10 w-full rounded-[4px] border bg-white px-3.5 text-sm text-[#1f1f1f] outline-none transition-colors focus:border-[#c2570c]";
 const OUTLINE_BUTTON =
   "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-ink transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
-
-const byName = (a, b) => supplyDisplayName(a).localeCompare(supplyDisplayName(b), "vi");
 
 // Khung "Yêu cầu bổ sung vật tư" (modal giữa, ≤460px) — mở từ nút ở đầu trang. Chọn vật tư (nhóm "Cần bổ sung" lên trước) + Số lượng đề nghị
 // (số nguyên > 0, kèm đơn vị) + Ghi chú (≤300 ký tự). Vật tư đang có yêu cầu "Chờ xử lý" → lỗi dưới ô chọn và không gửi trùng.
@@ -25,8 +23,8 @@ export default function SupplyRestockDialog({ supplies, requests, onSubmit, onCl
 
   const supply = supplies.find((s) => String(s.SupplyID) === supplyId);
   const unit = supply ? supplyUnit(supply) : "";
-  const low = supplies.filter((s) => getSupplyState(s) !== SUPPLY_STATES.OK).sort(byName);
-  const enough = supplies.filter((s) => getSupplyState(s) === SUPPLY_STATES.OK).sort(byName);
+  const low = supplies.filter((s) => getSupplyState(s) !== SUPPLY_STATES.OK).sort(compareSuppliesByName);
+  const enough = supplies.filter((s) => getSupplyState(s) === SUPPLY_STATES.OK).sort(compareSuppliesByName);
   const hasPending = supply ? requests.some((r) => r.supplyId === supply.SupplyID && r.status === REQUEST_STATUS.PENDING) : false;
   const quantityValue = Number(quantity);
   const quantityValid = quantity !== "" && Number.isInteger(quantityValue) && quantityValue > 0;

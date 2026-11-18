@@ -2,20 +2,10 @@
 import { apiRequest } from "./apiClient";
 import { getHorses } from "./horseService";
 import { FACILITY_INCIDENT_TYPES, HEALTH_INCIDENT_TYPES, INCIDENT_STATUS } from "../data/incidentOptions";
+import { isoDatePart } from "../utils/date";
+import { pick } from "../utils/object";
 
 export { getHorses };
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  }
-  return undefined;
-}
-
-function asDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 10);
-}
 
 function mapTask(raw) {
   return {
@@ -24,7 +14,7 @@ function mapTask(raw) {
     GroomID: Number(pick(raw, "groomID", "GroomID")),
     LoaiViec: pick(raw, "loaiViec", "LoaiViec") ?? "",
     TrangThai: Boolean(pick(raw, "trangThai", "TrangThai")),
-    Ngay: asDate(pick(raw, "ngay", "Ngay")),
+    Ngay: isoDatePart(pick(raw, "ngay", "Ngay")),
     Gio: pick(raw, "gio", "Gio") ?? "",
   };
 }
@@ -62,7 +52,7 @@ function mapReport(raw) {
     LoaiSuCo: pick(raw, "loaiSuCo", "LoaiSuCo") ?? "",
     MoTa: pick(raw, "moTa", "MoTa") ?? "",
     HinhAnh: pick(raw, "hinhAnh", "HinhAnh") ?? "",
-    Ngay: asDate(pick(raw, "ngay", "Ngay")),
+    Ngay: isoDatePart(pick(raw, "ngay", "Ngay")),
     TrangThai: pick(raw, "trangThai", "TrangThai") ?? INCIDENT_STATUS.NEW,
     GhiChuXuLy: pick(raw, "ghiChuXuLy", "GhiChuXuLy") ?? "",
     HandledBy: handledBy == null || handledBy === "" ? null : Number(handledBy),

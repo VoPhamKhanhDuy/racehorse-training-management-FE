@@ -5,6 +5,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import HorseAvatar from "./HorseAvatar";
 import { HEALTH_INCIDENT_TYPES, INCIDENT_STATUS } from "../data/incidentOptions";
 import { formatDate, formatDayMonth } from "../utils/date";
+import { capitalizeFirst } from "../utils/text";
 
 const OUTLINE_BUTTON =
   "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-[#1f1f1f] transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
@@ -19,7 +20,6 @@ const NEXT_ACTION = {
   [INCIDENT_STATUS.IN_PROGRESS]: { status: INCIDENT_STATUS.DONE, label: "Hoàn tất xử lý" },
 };
 
-const capitalizeFirst = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 // "YYYY-MM-DDTHH:mm" → "dd/MM HH:mm" (không có thì "")
 const formatHandledAt = (isoDateTime) => (isoDateTime ? `${formatDayMonth(isoDateTime.slice(0, 10))} ${isoDateTime.slice(11, 16)}` : "");
 

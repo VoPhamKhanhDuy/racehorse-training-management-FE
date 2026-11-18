@@ -6,7 +6,7 @@ import { formatKm, formatMinutes } from "../../utils/trainingFormat";
 const INTENSITY_BORDER = { Recovery: "border-l-[#7a9a52]", Low: "border-l-[#b9ab90]", Medium: "border-l-[#c2570c]", High: "border-l-[#c0262d]" };
 
 // 1 buổi tập trong ô ngày của lưới tuần (chỉ xem). label(group, code): nhãn tiếng Việt từ useTrainingOptions.
-// record: báo cáo / đánh giá của buổi (MOCK); onOpen: bấm thẻ → khung "Báo cáo buổi tập" (chưa báo cáo: form; đã báo cáo: xem).
+// record: báo cáo / đánh giá của buổi; onOpen: bấm thẻ → khung "Báo cáo buổi tập" (chưa báo cáo: form; đã báo cáo: xem).
 export default function TrainingSessionCard({ session, record, label, onOpen }) {
   const state = sessionState(session, record);
   return (

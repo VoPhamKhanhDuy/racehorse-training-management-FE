@@ -1,12 +1,6 @@
 // Flow 4 gọi API /api/supplies. Nhân viên chăm sóc chỉ xem; Quản lý CLB thêm, sửa, nhập và xuất kho.
 import { apiRequest } from "./apiClient";
-
-function pick(obj, ...keys) {
-  for (const key of keys) {
-    if (obj != null && obj[key] !== undefined && obj[key] !== null) return obj[key];
-  }
-  return undefined;
-}
+import { pick } from "../utils/object";
 
 function mapSupply(raw) {
   return {

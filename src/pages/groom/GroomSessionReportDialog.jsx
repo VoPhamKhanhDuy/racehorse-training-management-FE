@@ -23,7 +23,7 @@ function InfoRow({ label, children }) {
   );
 }
 
-// "Báo cáo buổi tập" của nhân viên chăm sóc (MOCK — services/sessionReviewMock.js): thông tin buổi chỉ đọc + kết quả, quãng đường thực tế,
+// "Báo cáo buổi tập" của nhân viên chăm sóc (API — services/trainingApi.js): thông tin buổi chỉ đọc + kết quả, quãng đường thực tế,
 // phản ứng của ngựa, ghi chú. Groom chỉ báo cáo sự thật, KHÔNG đánh giá — đánh giá là việc của Trainer.
 // record?.report đã có → chế độ XEM (chỉ đọc, chân chỉ có "Đóng"). Chọn "Có dấu hiệu bất thường" → gợi ý gửi báo cáo sự cố (không chặn lưu).
 export default function GroomSessionReportDialog({ session, record, onClose, onSaved }) {

@@ -28,7 +28,7 @@ export default function TrainingAssignments() {
   const weekStart = weekParam && DATE_PATTERN.test(weekParam) ? startOfWeek(weekParam) : currentWeekStart;
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const records = useSessionReviews(); // báo cáo của Groom (MOCK — services/sessionReviewMock.js)
+  const records = useSessionReviews(); // báo cáo của Groom (hook cũ trả map rỗng; dữ liệu thật nằm trong session.report — xem hooks/useSessionReviews.js)
   const [reportSession, setReportSession] = useState(null);
   const [toast, setToast] = useState(null);
   const closeToast = useCallback(() => setToast(null), []);
