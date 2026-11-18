@@ -8,15 +8,12 @@ import RaceListTable from "../trainer/RaceListTable";
 import RaceResultDialog from "./RaceResultDialog";
 import { addAuditLog } from "../../services/auditService";
 import { getHorses } from "../../services/horseService";
-import { ApiError } from "../../services/apiClient";
 import {
   getRaceRegistrations,
   getRaces,
   setRaceRegistrationPrize,
-  syncLocalRaceResults,
   updateRaceResult,
 } from "../../services/raceService";
-import { saveLocalResult } from "../../services/raceResultMock";
 import { formatCurrency } from "../../utils/currency";
 import { todayISO } from "../../utils/date";
 import { formatRank } from "../../utils/raceResult";
@@ -25,10 +22,7 @@ import { toUserID } from "../../utils/userId";
 // Quản lý CLB > Kết quả thi đấu: NƠI DUY NHẤT nhập / sửa thứ hạng + tiền thưởng của giải đã diễn ra (HLV chỉ xem ở /trainer/races).
 // Bảng giải đã diễn ra (mới nhất trước) dùng chung RaceListTable với phía HLV; "Nhập kết quả" mở RaceResultDialog.
 // Cột Kết quả "Đã nhập a/b" chỉ tính ngựa có hạng đã lưu đủ (hạng 1–3 phải kèm tiền thưởng). Mỗi lần lưu ghi nhật ký (AUDITLOG).
-// Dùng API thật /api/races (updateRaceResult, setRaceRegistrationPrize).
-// TODO(BE): Tạm thời, chờ BE cấp quyền cho endpoint lưu kết quả; xóa fallback khi xong. Hiện PUT .../result và .../prize trả 403 với cả Trainer lẫn Manager
-// → kết quả được lưu cục bộ (services/raceResultMock.js, syncedToBE:false), coi như lưu thành công và tự thử đồng bộ lại mỗi lần mở trang.
-// Lỗi khác 403 (400, 500…) vẫn báo như cũ.
+// Dùng API thật /api/races (updateRaceResult, setRaceRegistrationPrize). Lỗi khi lưu được ném ra cho RaceResultDialog hiển thị, không lưu cục bộ.
 export default function RaceResults() {
   const { user } = useAuth();
   const managerId = toUserID(user.id);
@@ -46,12 +40,7 @@ export default function RaceResults() {
 
   useEffect(() => {
     let ignore = false;
-    // Đồng bộ lại kết quả đã lưu cục bộ (do 403) trước khi tải
-    syncLocalRaceResults()
-      .catch(() => null)
-      .then(() =>
-        Promise.all([getRaces(), getRaceRegistrations(), getHorses()]),
-      )
+    Promise.all([getRaces(), getRaceRegistrations(), getHorses()])
       .then(([raceList, regList, horseList]) => {
         if (ignore) return;
         setRaces(raceList);
@@ -92,29 +81,6 @@ export default function RaceResults() {
 
   // Lưu kết quả 1 ngựa: hạng rồi tiền thưởng (hạng 1–3). Hạng đã lưu mà tiền thưởng lỗi → ném lỗi kèm partial để bảng cập nhật đúng thực tế.
   const saveResult = async (race, reg, rank, prize) => {
-    try {
-      return await saveResultToBE(race, reg, rank, prize);
-    } catch (err) {
-      if (!(err instanceof ApiError && err.status === 403) && !err.forbidden)
-        throw err;
-      saveLocalResult({
-        raceId: race.RaceID,
-        horseId: reg.HorseID,
-        thuHang: rank,
-        tienThuong: prize,
-      });
-      addAuditLog({
-        UserID: managerId,
-        HanhDong: `Lưu cục bộ kết quả thi đấu: ${race.TenGiai} – ${horseName(reg.HorseID)} ${formatRank(rank) || "chưa có kết quả"}`,
-        TargetTable: "RACEREGISTRATION",
-        TargetID: race.RaceID,
-        targetLabel: horseName(reg.HorseID),
-      });
-      return { ...reg, ThuHang: rank, TienThuong: prize, localOnly: true };
-    }
-  };
-
-  const saveResultToBE = async (race, reg, rank, prize) => {
     const { registration } = await updateRaceResult(
       race.RaceID,
       reg.HorseID,
@@ -143,11 +109,6 @@ export default function RaceResults() {
       });
       return saved;
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
-        const forbidden = new Error(err.message);
-        forbidden.forbidden = true;
-        throw forbidden;
-      }
       const failure = new Error(
         `Đã lưu hạng của ${horseName(reg.HorseID)} nhưng chưa lưu được tiền thưởng: ${err.message || "lỗi không rõ"}. Bấm Lưu để thử lại.`,
       );

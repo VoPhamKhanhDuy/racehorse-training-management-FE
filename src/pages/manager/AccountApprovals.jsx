@@ -4,6 +4,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingState from "../../components/LoadingState";
 import ApprovalRow from "./ApprovalRow";
 import roles from "../../data/roles";
+import { addAuditLog } from "../../services/auditService";
 import { approveAccountApi, fetchOwnerApprovals, rejectAccountApi } from "../../services/authApi";
 
 // Chỉ tài khoản Chủ ngựa tự đăng ký mới cần duyệt; nhân sự nội bộ do Quản lý CLB tạo sẵn ở trạng thái "approved"
@@ -89,6 +90,12 @@ export default function AccountApprovals() {
     try {
       const userId = account.userId ?? Number(String(account.id).replace(/\D/g, ""));
       const updated = type === "reject" ? await rejectAccountApi(userId) : await approveAccountApi(userId);
+      addAuditLog({
+        HanhDong: type === "reject" ? "Từ chối tài khoản chủ ngựa" : "Duyệt tài khoản chủ ngựa",
+        TargetTable: "USER",
+        TargetID: userId,
+        targetLabel: account.fullName,
+      });
       setAccounts((prev) =>
         prev.map((a) => (a.id === account.id ? { ...a, status: updated?.status ?? action.status } : a))
       );

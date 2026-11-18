@@ -1,11 +1,5 @@
 // Flow 5: giải đua, đăng ký, thứ hạng và tiền thưởng trên /api/races.
 import { apiRequest } from "./apiClient";
-// TODO(BE): Tạm thời, chờ BE cấp quyền cho endpoint lưu kết quả; xóa fallback (raceResultMock) khi xong.
-import {
-  applyLocalResults,
-  listUnsyncedResults,
-  markResultSynced,
-} from "./raceResultMock";
 
 function pick(obj, ...keys) {
   for (const key of keys) {
@@ -40,6 +34,8 @@ function mapRace(raw) {
     DiaDiem: pick(raw, "diaDiem", "DiaDiem") ?? "",
     registrationDeadline: asDate(pick(raw, "registrationDeadline", "RegistrationDeadline")),
     entryFee: asMoney(pick(raw, "entryFee", "EntryFee")),
+    // Tổng số ngựa tối đa của giải (nhiều CLB); null hoặc 0 = không giới hạn
+    maxParticipants: asRank(pick(raw, "maxParticipants", "MaxParticipants")),
     status: pick(raw, "status", "Status"),
   };
 }
@@ -61,15 +57,7 @@ export async function getRaces() {
 
 export async function getRaceRegistrations() {
   const rows = await apiRequest("/races/registrations");
-  return applyLocalResults((rows ?? []).map(mapRegistration));
-}
-
-export async function registerHorseForRace(raceId, horseId) {
-  const saved = await apiRequest(`/races/${raceId}/registrations`, {
-    method: "POST",
-    body: { horseID: Number(horseId) },
-  });
-  return mapRegistration(saved);
+  return (rows ?? []).map(mapRegistration);
 }
 
 export async function cancelRaceRegistration(raceId, horseId) {
@@ -101,24 +89,6 @@ export async function setRaceRegistrationPrize(raceId, horseId, amount) {
     },
   );
   return mapRegistration(saved);
-}
-
-// Thử đẩy lại các kết quả đã lưu cục bộ (do 403) lên BE; trả { synced, pending }. Lỗi 403 tiếp tục thì giữ nguyên bản cục bộ.
-export async function syncLocalRaceResults() {
-  let synced = 0;
-  for (const r of listUnsyncedResults()) {
-    try {
-      if (r.thuHang !== null && r.thuHang !== undefined)
-        await updateRaceResult(r.raceId, r.horseId, r.thuHang);
-      if (r.tienThuong !== null && r.tienThuong !== undefined)
-        await setRaceRegistrationPrize(r.raceId, r.horseId, r.tienThuong);
-      markResultSynced(r.raceId, r.horseId);
-      synced += 1;
-    } catch {
-      // vẫn bị chặn / lỗi mạng: để lần mở trang sau
-    }
-  }
-  return { synced, pending: listUnsyncedResults().length };
 }
 
 export async function getPrizeAlerts() {

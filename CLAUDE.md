@@ -11,85 +11,69 @@ cd racehorse-app
 npm install
 npm run dev
 ```
-Mở link hiện ra (thường `http://localhost:5173`) trên trình duyệt.
+Mở link hiện ra (thường `http://localhost:5173`) trên trình duyệt. Backend nằm ở `../racehorse_BE`.
 
 ## Tech stack
-- React 18 + Vite
+- React 19 + Vite, JavaScript thường (`.jsx`), chưa dùng TypeScript
 - React Router (`react-router-dom`) cho điều hướng
-- Tailwind CSS cho styling — KHÔNG viết CSS thuần trong file `.css` riêng trừ khi thật cần thiết
-- Chưa có backend thật — dùng mock data (JSON/array) trong `src/data/`
-- Chưa cần TypeScript, dùng JavaScript thường (`.jsx`)
+- Tailwind CSS cho styling — KHÔNG viết CSS thuần / `.module.css` trừ khi thật cần thiết
+- Đã có backend thật, gọi qua `src/services/apiClient.js` (kèm SignalR cho realtime)
+- Một số tính năng BE chưa có vẫn dùng mock lưu localStorage (xem mục Mock)
 
 ## Cấu trúc thư mục (bắt buộc theo đúng, không tự đổi tên folder)
 
 ```
 src/
-  components/       # Component dùng chung nhiều nơi (Button, Table, Sidebar, Header, Modal...)
-  pages/
-    auth/           # Login, Register, PendingApproval
-    trainer/        # Các trang của Head Trainer
-    vet/            # Các trang của Veterinarian
-    groom/          # Các trang của Groom/Stable Hand
-    owner/          # Các trang của Horse Owner
-    manager/        # Các trang của Club Manager
+  components/       # Component dùng chung từ 2 role trở lên (Modal, Drawer, DataTable, HorseCard...)
+  pages/<role>/     # auth, trainer, vet, groom, owner, manager — trang và component riêng của role đó
   routes/           # Cấu hình route + ProtectedRoute (chặn theo role)
-  hooks/            # Custom hook dùng chung (vd useAuth)
-  context/          # AuthContext (lưu user + role đang đăng nhập)
-  services/         # (Để trống trước) Chỗ gọi API khi nối backend thật sau này
-  utils/            # Hàm tiện ích (format ngày tháng, validate form...)
-  data/             # Mock data (horses.js, users.js, schedules.js...)
-  assets/
-    images/         # Ảnh
-    fonts/          # Font chữ
-  styles/           # CSS global, cấu hình theme
-  App.jsx           # Component gốc, khai báo layout/route
-  main.jsx          # Entry point, render App vào DOM
-public/             # File tĩnh phục vụ trực tiếp (favicon, robots.txt)
+  hooks/            # Custom hook dùng chung (useAuth, useApiResource...)
+  context/          # AuthContext (user + role đang đăng nhập)
+  services/         # Gọi API BE (qua apiClient) và các lớp mock còn lại
+  utils/            # Hàm thuần dùng chung (format ngày/số/tiền, trạng thái, validate...)
+  config/           # Hằng số cấu hình (ngưỡng sức khỏe, thông tin CLB...)
+  data/             # Hằng số/enum/lựa chọn cho form (*Options.js, roles.js...)
+  assets/           # Ảnh, font
+  styles/           # CSS global, theme
+  App.jsx, main.jsx
+public/             # File tĩnh (favicon, robots.txt)
 ```
 
-File nào đặt sai vị trí (vd component dùng chung mà để trong `pages/`, hoặc mock data để lẫn trong `components/`) coi như sai cấu trúc, phải sửa lại trước khi merge.
+Mỗi thành viên code role nào thì CHỈ tạo file trong `pages/<role>/` đó, không import file từ folder role khác. Cần dùng chung → chuyển vào `components/` (hoặc `utils/`, `hooks/`). File đặt sai vị trí coi như sai cấu trúc, phải sửa trước khi merge.
 
-**Quy tắc:** mỗi thành viên code role nào thì CHỈ tạo file trong đúng folder role đó (`pages/<role>/`). Component dùng chung mới cho vào `components/`. Việc này để tránh conflict khi merge code trên GitHub.
+Ngoại lệ: `*FormContext.jsx` giữ cạnh form trong `pages/<role>/`, không chuyển sang `context/`.
+
+## Quy ước code
+
+**Phân tầng:** page → hook → service → apiClient. Page/component KHÔNG gọi `apiRequest`/`fetch` trực tiếp, chỉ gọi hàm trong `services/`. Component trong `components/` nhận dữ liệu qua props, không import `services/`.
+
+**Gọi dữ liệu:** đọc dữ liệu bằng `useApiResource`, hiển thị lỗi bằng `ApiErrorNotice`. Không tự viết lại `useState(loading)` + `useEffect` + `try/catch` ở từng trang.
+
+**Dùng chung:** helper dùng từ 2 nơi trở lên → `utils/` (số, ngày: `utils/date.js`, tiền: `utils/currency.js`). Không copy-paste `formatNumber`, `capitalizeFirst`... vào từng file. Ngày hiển thị dùng `formatDate`, không gọi `toLocaleDateString` trực tiếp. Màu/nhãn trạng thái lấy từ `utils/*Status`, không viết lại trong component.
+
+**Kích thước:** mỗi file tối đa khoảng 250 dòng, 1 component chính/file. Vượt thì tách component con hoặc hook; logic không có JSX (tính toán, validate) đặt ở `utils/`.
+
+**Component:** function component + hook, không dùng class component.
+
+**Form:** dùng `createEmptyForm` cho state ban đầu; state/validate phức tạp đặt ở hook hoặc `*FormContext` cạnh form.
 
 ## Quy tắc đặt tên
-- Tên component: PascalCase — `TrainingPlanForm.jsx`, `HorseCard.jsx`
-- Tên file không phải component (data, util, hook): camelCase — `mockHorses.js`, `useAuth.js`
-- Tên biến/hàm: camelCase tiếng Anh, KHÔNG dùng tiếng Việt không dấu trong code (vd viết `injuryStatus` chứ không viết `tinhtrangchanthuong`)
+- Component: PascalCase — `TrainingPlanForm.jsx`, `HorseCard.jsx`
+- File không phải component (util, hook, service): camelCase — `useAuth.js`, `horseService.js`
+- Code MỚI: biến, hàm, tham số, field dữ liệu đều camelCase tiếng Anh theo BE (`birthDate`, `injuryStatus`), KHÔNG dùng tiếng Việt không dấu
+- Code CŨ còn field tiếng Việt (`NgaySinh`, `CanNang`, `NhipTim`...): giữ nguyên, CHƯA đổi hàng loạt
+- File service MỚI đặt `<domain>Service.js`. Các `*Api.js` hiện có (`authApi`, `trainingApi`...) giữ nguyên, không đổi tên hàng loạt
 - Text hiển thị trên giao diện (UI): tiếng Việt có dấu đầy đủ
 
-## Quy tắc code component
-- Ưu tiên function component + hook, KHÔNG dùng class component
-- Mỗi file chỉ nên chứa 1 component chính
-- Nếu 1 trang có logic phức tạp, tách nhỏ thành nhiều component con thay vì viết 1 file dài
-- Dữ liệu giả (mock) luôn để trong `src/data/`, KHÔNG hard-code mảng dữ liệu trực tiếp trong file trang
-
-## Cấu trúc mock data (bắt buộc theo đúng field, khớp ERD — để tránh mỗi người đặt tên field khác nhau)
-
-```js
-// data/horses.js — khớp bảng HORSE (KHÔNG lưu tuổi — tính từ NgaySinh bằng getHorseAge trong utils/date.js)
-// GioiTinh chỉ nhận: "Ngựa đực" | "Ngựa cái" | "Ngựa thiến"
-{ HorseID: 1, Ten: "Thunder", Giong: "Thoroughbred", NgaySinh: "2022-07-11", GioiTinh: "Ngựa thiến", MauLong: "Hạt dẻ", CanNang: 450, DongDoi: "Northern Dancer", OwnerID: 4 }
-
-// data/trainingPlans.js — khớp bảng TRAININGPLAN
-{ PlanID: 1, HorseID: 1, CuLy: 1200, KhoiLuong: 80, MatSan: "Đường đất", GiaiDoan: "Nền tảng", CreatedBy: 1 }
-
-// data/trainingSchedules.js — khớp bảng TRAININGSCHEDULE
-{ ScheduleID: 1, HorseID: 1, GroomID: 3, Ngay: "2026-10-08", Gio: "06:30" }
-
-// data/trainingSessions.js — khớp bảng TRAININGSESSION (đánh giá phong độ)
-{ SessionID: 1, HorseID: 1, NhipTim: 140, VanToc: 14.2, ChiSoTap: "Tốt", NhanXet: "Ổn định", Ngay: "2026-10-08" }
-
-// data/users.js — tài khoản đăng nhập phía FE (giữ format riêng, roleId là mã RBAC ở mục dưới)
-{ id: "U001", fullName: "Nguyễn Văn A", email: "...", password: "...", roleId: "head_trainer" }
-```
-TRAININGSCHEDULE gán theo GroomID (người thực hiện lịch), không phải TrainerID — HLV chỉ tạo TRAININGPLAN (CreatedBy), còn lịch tập hằng ngày do Groom thực hiện theo kế hoạch đó.
-
-Khi thêm entity mới (HealthRecord, Injury, Supply...), thêm file mới trong `data/` theo đúng field đã định nghĩa trong ERD — không tự đặt tên field khác đi.
+## Mock
+- Chỉ dùng mock khi BE chưa có endpoint. File mock đặt tên `*Mock.js` trong `services/`, lưu qua `persistedStore`, và có comment `// TODO(BE)` ghi endpoint dự kiến.
+- Nối BE xong thì xóa mock và mọi chỗ gọi nó; không để file không ai import.
+- Không hard-code mảng dữ liệu giả trực tiếp trong file trang.
 
 ## RBAC (phân quyền)
 - Role hiện tại lưu trong `AuthContext` (`src/context/AuthContext.jsx`)
 - Mỗi route trong `src/routes/` phải bọc bằng `<ProtectedRoute allowedRoles={[...]}>` để chặn user vào nhầm trang không thuộc role của mình
-- 5 mã role hợp lệ (roleId), PHẢI khớp đúng với giá trị trong bảng ROLE của ERD — nếu ERD dùng tên khác thì sửa lại 5 mã dưới đây cho khớp trước khi code:
+- 5 mã role hợp lệ (roleId), khớp với bảng ROLE:
   - `"head_trainer"` — Head Trainer / HLV trưởng
   - `"veterinarian"` — Veterinarian / Bác sĩ thú y
   - `"groom"` — Groom/Stable Hand / Nhân viên chăm sóc

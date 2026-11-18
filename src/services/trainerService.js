@@ -6,7 +6,7 @@ export { getActiveTrainingLocks };
 export { getHealthStatuses, getHorseById, getHorses } from "./horseService";
 export {
   cancelRaceRegistration, dismissPrizeAlert, getPrizeAlerts, getRaceRegistrations,
-  getRaces, registerHorseForRace, setRaceRegistrationPrize, updateRaceResult,
+  getRaces, setRaceRegistrationPrize, updateRaceResult,
 } from "./raceService";
 
 const roleCode = (name) => ({ "Head Trainer": "head_trainer", "Horse Owner": "horse_owner", "Club Manager": "club_manager", "Groom": "groom", "Veterinarian": "veterinarian" })[name] ?? name;

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import CenterDialog from "../../components/CenterDialog";
+import ApiErrorNotice from "../../components/ApiErrorNotice";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { DEFAULT_SAMPLE_PAYOUTS, getRaceInfo } from "../../data/raceInfoMock";
 import { formatDate } from "../../utils/date";
@@ -18,7 +19,7 @@ const savedRank = (reg) => (hasResult(reg) ? String(reg.ThuHang) : "");
 const savedPrize = (reg) => (reg.TienThuong != null ? String(reg.TienThuong) : "");
 
 // Khung nhập / sửa kết quả 1 giải đã diễn ra — CHỈ Quản lý CLB. Thứ hạng + tiền thưởng của từng ngựa lưu CÙNG MỘT LẦN bấm "Lưu":
-// - Thứ hạng: để trống = chưa có kết quả, 0 = không xếp hạng, 1, 2, 3… không trùng nhau. Nhập hạng 1–3 → tự điền sẵn tiền thưởng theo cơ cấu giải
+// - Thứ hạng: để trống = chưa có kết quả, 0 = không xếp hạng, 1, 2, 3… không trùng nhau và không vượt maxParticipants của giải (giải có ngựa nhiều CLB, hạng có thể lớn hơn số ngựa của CLB). Nhập hạng 1–3 → tự điền sẵn tiền thưởng theo cơ cấu giải
 //   (DỮ LIỆU MẪU data/raceInfoMock.js, chờ BE; sửa tay thì không bị ghi đè).
 // - Hạng 1–3 BẮT BUỘC có tiền thưởng (chặn lưu nếu thiếu) để không bao giờ lưu nửa vời "có hạng, thiếu thưởng".
 // - Lưu tuần tự từng ngựa: hạng rồi tiền thưởng. Lỗi giữa chừng → dừng, báo rõ ngựa nào chưa lưu xong; dòng chưa đủ không tính "đã nhập".
@@ -28,10 +29,11 @@ export default function RaceResultDialog({ race, regs, horseName, saveResult, on
   const [prizes, setPrizes] = useState(() => Object.fromEntries(regs.map((r) => [r.HorseID, savedPrize(r)])));
   const [confirmEdit, setConfirmEdit] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [saveError, setSaveError] = useState(null);
   const [showErrors, setShowErrors] = useState(false);
 
   const payouts = getRaceInfo(race)?.payouts ?? DEFAULT_SAMPLE_PAYOUTS;
+  const maxRank = race.maxParticipants > 0 ? race.maxParticipants : null; // null = không giới hạn trên
   const prizeTouched = useRef(new Set(regs.filter((r) => r.TienThuong != null).map((r) => r.HorseID)));
 
   const rankOf = (horseId) => (ranks[horseId] === "" || ranks[horseId] === undefined ? null : Number(ranks[horseId]));
@@ -56,6 +58,10 @@ export default function RaceResultDialog({ race, regs, horseName, saveResult, on
       rankErrors[reg.HorseID] = "Nhập số nguyên từ 0";
       return;
     }
+    if (maxRank !== null && rank > maxRank) {
+      rankErrors[reg.HorseID] = `Hạng tối đa ${maxRank} (số ngựa tối đa của giải)`;
+      return;
+    }
     const clash = rank >= 1 ? regs.find((other) => other.HorseID !== reg.HorseID && rankOf(other.HorseID) === rank) : null;
     if (clash) rankErrors[reg.HorseID] = `Hạng ${rank} đã gán cho ${horseName(clash.HorseID)}`;
     else if (isPodiumRank(rank) && !(Number(prizes[reg.HorseID]) > 0)) prizeErrors[reg.HorseID] = "Nhập tiền thưởng cho hạng 1–3";
@@ -72,7 +78,7 @@ export default function RaceResultDialog({ race, regs, horseName, saveResult, on
 
   const doSave = async () => {
     setSaving(true);
-    setSaveError("");
+    setSaveError(null);
     const updated = [];
     try {
       for (const reg of changed) {
@@ -85,7 +91,7 @@ export default function RaceResultDialog({ race, regs, horseName, saveResult, on
     } catch (err) {
       if (err.partial) updated.push(err.partial); // đã lưu hạng nhưng lỗi ở tiền thưởng
       if (updated.length > 0) onSaved(updated, null); // dòng nào đã lưu xong thì cập nhật bảng bên ngoài, khung vẫn mở
-      setSaveError(err.message || "Không lưu được kết quả, vui lòng thử lại.");
+      setSaveError(err);
       setSaving(false);
       setConfirmEdit(false);
     }
@@ -113,7 +119,7 @@ export default function RaceResultDialog({ race, regs, horseName, saveResult, on
 
   const footer = (
     <div>
-      {saveError && <p className="mb-3 text-sm text-alert">{saveError}</p>}
+      {saveError && <div className="mb-3"><ApiErrorNotice error={saveError} /></div>}
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button type="button" onClick={onClose} disabled={saving} className={OUTLINE_BUTTON}>
           Hủy
