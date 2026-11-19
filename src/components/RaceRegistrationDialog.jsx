@@ -12,6 +12,7 @@ import {
 import { formatCurrency } from "../utils/currency";
 import { formatRank } from "../utils/raceResult";
 import { formatDate } from "../utils/date";
+import { isCancelledRace, rankPrizeText } from "../utils/raceStatus";
 import { RR_NOTE_MAX, RR_STATUS, stepProgress, stepText } from "../utils/raceRegistration";
 import { formatDateTime } from "../utils/trainingFormat";
 
@@ -40,7 +41,8 @@ function InfoRow({ label, children }) {
 // Dùng lại cho trang Kết quả thi đấu của Trainer (chi tiết đăng ký của 1 ngựa): readOnly ẩn mọi hành động duyệt / rút / gửi;
 // onBack ("Quay lại giải"), result (Thứ hạng + Tiền thưởng, chỉ đọc), onEditResult ("Nhập/Sửa kết quả" — giải đã diễn ra);
 // record.direct = đăng ký cũ không qua luồng duyệt.
-export default function RaceRegistrationDialog({ record, role, userName, onClose, onChanged, readOnly = false, onBack, result, onEditResult }) {
+// race (tùy chọn, từ /api/races): cho biết giải thưởng và giải đã hủy — giải đã hủy hiện nhãn đỏ và ẩn mọi nút duyệt / rút / gửi.
+export default function RaceRegistrationDialog({ record, race = null, role, userName, onClose, onChanged, readOnly = false, onBack, result, onEditResult }) {
   const [mode, setMode] = useState("view"); // "view" | "reject"
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState("");
@@ -50,11 +52,13 @@ export default function RaceRegistrationDialog({ record, role, userName, onClose
 
   const { status } = record;
   const isTrainer = role === "head_trainer";
+  const raceCancelled = isCancelledRace(race);
   const canDecide =
     !readOnly &&
+    !raceCancelled &&
     ((role === "horse_owner" && status === RR_STATUS.PENDING_OWNER) || (role === "club_manager" && status === RR_STATUS.PENDING_MANAGER));
-  const canWithdraw = !readOnly && isTrainer && [RR_STATUS.DRAFT, RR_STATUS.PENDING_OWNER, RR_STATUS.PENDING_MANAGER].includes(status);
-  const canSubmit = !readOnly && isTrainer && status === RR_STATUS.DRAFT;
+  const canWithdraw = !readOnly && !raceCancelled && isTrainer && [RR_STATUS.DRAFT, RR_STATUS.PENDING_OWNER, RR_STATUS.PENDING_MANAGER].includes(status);
+  const canSubmit = !readOnly && !raceCancelled && isTrainer && status === RR_STATUS.DRAFT;
   const approveLabel = role === "club_manager" ? "Duyệt" : "Đồng ý";
 
   const run = async (action, doneText) => {
@@ -90,6 +94,7 @@ export default function RaceRegistrationDialog({ record, role, userName, onClose
       <h2 className="font-serif text-xl leading-tight font-semibold text-[#2b2118]">{record.raceName}</h2>
       <p className="mt-1 text-sm text-[#6b6055]">
         {record.horseName} · {stepText(record)}
+        {raceCancelled && <span className="ml-2 font-semibold text-[#b3473f]">Giải đã hủy</span>}
       </p>
     </div>
   );
@@ -194,6 +199,12 @@ export default function RaceRegistrationDialog({ record, role, userName, onClose
             <InfoRow label="Địa điểm">{record.raceLocation || "—"}</InfoRow>
             <InfoRow label="Hạn đăng ký">{formatDate(record.registrationDeadline)}</InfoRow>
             <InfoRow label="Lệ phí">{record.entryFee != null ? formatCurrency(record.entryFee) : "Chưa cập nhật"}</InfoRow>
+            {race?.prizePool != null && (
+              <InfoRow label="Giải thưởng">
+                {formatCurrency(race.prizePool)}
+                {rankPrizeText(race) && <span className="block text-[13px] text-[#6b6055] tabular-nums">{rankPrizeText(race)}</span>}
+              </InfoRow>
+            )}
             <InfoRow label="Huấn luyện viên">{record.trainerName || "—"}</InfoRow>
             {record.note && (
               <InfoRow label="Ghi chú">

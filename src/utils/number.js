@@ -2,6 +2,9 @@
 export const formatOneDecimal = (value) =>
   (Math.round(value * 10) / 10).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
 
+// Chuỗi chữ số → có dấu chấm phân cách hàng nghìn khi đang nhập: "200000000" → "200.000.000" (rỗng giữ rỗng)
+export const formatDigitsVi = (digits) => String(digits ?? "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
 // Phần trăm 2 số lẻ theo kiểu Việt Nam: 84.615 → "84,62%"
 export const formatPercent = (value) =>
   `${value.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
