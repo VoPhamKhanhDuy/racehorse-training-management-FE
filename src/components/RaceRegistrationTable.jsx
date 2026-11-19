@@ -4,6 +4,7 @@ import { formatCurrency } from "../utils/currency";
 import { daysBetween, formatDate, todayISO } from "../utils/date";
 import { isReadyHealth } from "../utils/healthGroups";
 import { formatRank } from "../utils/raceResult";
+import { isCancelledRace } from "../utils/raceStatus";
 import { RR_STATUS, stepText, lastActivityAt } from "../utils/raceRegistration";
 import { formatDateTime } from "../utils/trainingFormat";
 
@@ -33,7 +34,7 @@ function Stacked({ main, sub, mainClass = "" }) {
 // - Quản lý / Chủ ngựa, tab "done" (đã xử lý): cùng cột, cuối là "Kết quả" (chữ trung tính, không tô màu) + "Xem"
 // - Trainer: cột "Trạng thái" đủ nghĩa + dòng phụ thời điểm; chấm cam khi cần Trainer làm gì (Nháp chưa gửi, bị từ chối chưa xem lý do)
 // context: { lockedHorseIds: Set, healthByHorse: {horseId: trạng thái}, ownerNameByHorse: {horseId: tên chủ ngựa} }
-export default function RaceRegistrationTable({ records, role, tab = "pending", context, onSelect, emptyText }) {
+export default function RaceRegistrationTable({ records, role, tab = "pending", context, raceById = {}, onSelect, emptyText }) {
   const [page, setPage] = useState(1);
   const today = todayISO();
   const isTrainer = role === "head_trainer";
@@ -83,8 +84,13 @@ export default function RaceRegistrationTable({ records, role, tab = "pending", 
     }
   };
 
+  // Giải đã hủy (BE giữ nguyên đăng ký đã duyệt): hiện nhãn đỏ bên cạnh trạng thái đăng ký, bỏ các nút thao tác
+  const raceCancelled = (r) => isCancelledRace(raceById[r.raceId]);
+  const cancelledTag = <span className="block text-xs font-semibold text-[#b3473f]">Giải đã hủy</span>;
+
   // Trainer: chấm cam khi cần làm gì
-  const trainerNeedsAction = (r) => r.status === RR_STATUS.DRAFT || (r.status === RR_STATUS.REJECTED && r.trainerSeen === false);
+  const trainerNeedsAction = (r) =>
+    !raceCancelled(r) && (r.status === RR_STATUS.DRAFT || (r.status === RR_STATUS.REJECTED && r.trainerSeen === false));
 
   const viewButton = (r, label, strong) => (
     <button
@@ -130,6 +136,7 @@ export default function RaceRegistrationTable({ records, role, tab = "pending", 
               {trainerNeedsAction(r) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c2570c]" aria-hidden="true" />}
               {stepText(r)}
             </span>
+            {raceCancelled(r) && cancelledTag}
             <span className="block truncate text-xs text-[#6b6b6b]">từ {shortDateTime(lastActivityAt(r))}</span>
           </>
         ),
@@ -149,8 +156,18 @@ export default function RaceRegistrationTable({ records, role, tab = "pending", 
       { key: "fee", label: "Lệ phí", width: 10, render: feeCell },
       { key: "condition", label: "Tình trạng ngựa", width: 12, render: conditionCell },
       isPending
-        ? { key: "action", label: "Hành động", width: 12, center: true, render: reviewButton }
-        : { key: "result", label: "Kết quả", width: 12, render: (r) => <span className="font-medium">{resultText(r)}</span> },
+        ? { key: "action", label: "Hành động", width: 12, center: true, render: (r) => (raceCancelled(r) ? cancelledTag : reviewButton(r)) }
+        : {
+            key: "result",
+            label: "Kết quả",
+            width: 12,
+            render: (r) => (
+              <>
+                <span className="font-medium">{resultText(r)}</span>
+                {raceCancelled(r) && cancelledTag}
+              </>
+            ),
+          },
       ...(isPending ? [] : [{ key: "detail", label: "Chi tiết", width: 6, center: true, render: (r) => viewButton(r, "Xem", false) }]),
     ];
     // Tab "Chờ duyệt" không có cột Chi tiết riêng → chia lại độ rộng cho đủ 100%

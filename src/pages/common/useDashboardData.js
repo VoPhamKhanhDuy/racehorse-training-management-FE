@@ -39,7 +39,7 @@ async function loadManager() {
   return {
     stats: [
       { label: "Tài khoản chờ duyệt", value: pendingAccounts, to: "/manager/approvals", warn: true },
-      { label: "Giải đua chờ duyệt", value: pendingRaces, to: "/manager/race-registrations", warn: true },
+      { label: "Đăng ký thi đấu chờ duyệt", value: pendingRaces, to: "/manager/race-registrations", warn: true },
       { label: "Sự cố mới", value: newIncidents, to: "/manager/incidents", warn: true },
       { label: "Vật tư sắp hết", value: lowSupplies, to: "/manager/supplies", warn: true },
       { label: "Nhân sự", value: activeStaff, to: "/manager/staff" },

@@ -8,6 +8,7 @@ import useHorseRealtime from "../hooks/useHorseRealtime";
 import { getHealthStatuses, getHorseOwners, getHorses } from "../services/horseService";
 import { getOwnerHorses } from "../services/ownerService";
 import { listRaceRegistrations, markRaceRegistrationSeen, subscribeRaceRegistrations } from "../services/raceRegistrationApi";
+import { getRaces } from "../services/raceService";
 import { getActiveTrainingLocks } from "../services/vetService";
 import { todayISO } from "../utils/date";
 import { hasResult } from "../utils/raceResult";
@@ -20,6 +21,7 @@ export default function RaceRegistrationBoard({ title, description, headerAction
   const role = user.roleId;
   const isTrainer = role === "head_trainer";
   const [records, setRecords] = useState([]);
+  const [raceById, setRaceById] = useState({});
   const [context, setContext] = useState({ lockedHorseIds: new Set(), healthByHorse: {}, ownerNameByHorse: {} });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -36,7 +38,13 @@ export default function RaceRegistrationBoard({ title, description, headerAction
         horseIds = horses.map((h) => h.HorseID);
         horseNameById = Object.fromEntries(horses.map((h) => [h.HorseID, h.Ten]));
       }
-      setRecords(await listRaceRegistrations(role, { horseIds, horseNameById }));
+      // Giải đi kèm để biết giải đã hủy / giải thưởng (không tải được thì chỉ thiếu phần đó)
+      const [list, raceList] = await Promise.all([
+        listRaceRegistrations(role, { horseIds, horseNameById }),
+        getRaces().catch(() => []),
+      ]);
+      setRecords(list);
+      setRaceById(Object.fromEntries(raceList.map((r) => [r.RaceID, r])));
       setLoadError("");
     } catch (err) {
       if (!silent) setLoadError(err.message || "Không tải được danh sách đăng ký.");
@@ -136,7 +144,7 @@ export default function RaceRegistrationBoard({ title, description, headerAction
       ) : (
         <>
           <div role="tablist" aria-label="Đăng ký thi đấu" className="mb-4 flex gap-6 border-b border-[#E3E3E3]">
-            {(isTrainer ? [{ code: "pending", label: "Đăng ký của tôi" }, ...(extraTab ? [{ code: extraTab.code, label: extraTab.label }] : [])] : tabs).map((item) => (
+            {[...(isTrainer ? [{ code: "pending", label: "Đăng ký của tôi" }] : tabs), ...(extraTab ? [{ code: extraTab.code, label: extraTab.label }] : [])].map((item) => (
               <button
                 key={item.code}
                 type="button"
@@ -160,6 +168,7 @@ export default function RaceRegistrationBoard({ title, description, headerAction
             role={role}
             tab={tab}
             context={context}
+            raceById={raceById}
             onSelect={(record) => setOpenId(record.id)}
             emptyText={emptyText}
           />
@@ -171,6 +180,7 @@ export default function RaceRegistrationBoard({ title, description, headerAction
         <RaceRegistrationDialog
           key={`${openRecord.id}-${openRecord.status}-${openRecord.thuHang ?? "x"}-${openRecord.tienThuong ?? "x"}`}
           record={openRecord}
+          race={raceById[openRecord.raceId] ?? null}
           role={role}
           userName={user.fullName}
           result={openResult}

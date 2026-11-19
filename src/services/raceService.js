@@ -1,5 +1,6 @@
 // Flow 5: giải đua, đăng ký, thứ hạng và tiền thưởng trên /api/races.
 import { apiRequest } from "./apiClient";
+import { notifyApprovalUpdate } from "./approvalUpdates";
 import { isoDatePart } from "../utils/date";
 import { pick } from "../utils/object";
 
@@ -26,6 +27,13 @@ function mapRace(raw) {
     // Tổng số ngựa tối đa của giải (nhiều CLB); null hoặc 0 = không giới hạn
     maxParticipants: asRank(pick(raw, "maxParticipants", "MaxParticipants")),
     status: pick(raw, "status", "Status"),
+    distanceMeters: asRank(pick(raw, "distanceMeters", "DistanceMeters")),
+    prizePool: asMoney(pick(raw, "prizePool", "PrizePool")),
+    // Giải thưởng theo hạng; giải cũ để null
+    prizeFirst: asMoney(pick(raw, "prizeFirst", "PrizeFirst")),
+    prizeSecond: asMoney(pick(raw, "prizeSecond", "PrizeSecond")),
+    prizeThird: asMoney(pick(raw, "prizeThird", "PrizeThird")),
+    description: pick(raw, "description", "Description") ?? "",
   };
 }
 
@@ -42,6 +50,18 @@ function mapRegistration(raw) {
 export async function getRaces() {
   const rows = await apiRequest("/races");
   return (rows ?? []).map(mapRace).sort((a, b) => a.Ngay.localeCompare(b.Ngay));
+}
+
+// Quản lý CLB tạo giải: POST /api/races (BE kiểm tra lại các điều kiện; lỗi 400 ném ra kèm message tiếng Việt).
+export async function createRace(payload) {
+  return mapRace(await apiRequest("/races", { method: "POST", body: payload }));
+}
+
+// Quản lý CLB hủy giải (không xóa): POST /api/races/{id}/cancel. Đăng ký đang chờ duyệt của giải bị BE đóng nên báo bảng đăng ký tải lại.
+export async function cancelRace(raceId, reason) {
+  const race = mapRace(await apiRequest(`/races/${raceId}/cancel`, { method: "POST", body: { reason } }));
+  notifyApprovalUpdate("races");
+  return race;
 }
 
 export async function getRaceRegistrations() {

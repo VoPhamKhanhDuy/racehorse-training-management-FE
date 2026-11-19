@@ -51,7 +51,8 @@ const variantStyles = {
 // Ô nhập liệu có nhãn + thông báo lỗi. type="password" sẽ có nút ẩn/hiện mật khẩu.
 // leadingIcon: icon hiển thị bên trái ô (vd kính lúp cho ô tìm kiếm)
 // suffix: chữ đơn vị nằm bên phải TRONG ô (vd "m", "km/tuần")
-export default function FormField({ label, id, type = "text", error, leadingIcon, suffix, variant = "filled", ...inputProps }) {
+// requiredMark: thêm dấu * đỏ sau nhãn để báo ô bắt buộc (chỉ là dấu hiệu, không tự kiểm tra gì)
+export default function FormField({ label, id, type = "text", error, leadingIcon, suffix, requiredMark = false, variant = "filled", ...inputProps }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
   const styles = variantStyles[variant] ?? variantStyles.filled;
@@ -60,6 +61,11 @@ export default function FormField({ label, id, type = "text", error, leadingIcon
     <div>
       <label htmlFor={id} className={styles.label}>
         {label}
+        {requiredMark && (
+          <span className="ml-0.5 text-red-600" aria-hidden="true">
+            *
+          </span>
+        )}
       </label>
       <div className="relative">
         {leadingIcon && (

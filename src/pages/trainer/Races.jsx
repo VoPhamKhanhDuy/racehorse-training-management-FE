@@ -19,6 +19,7 @@ import { buildDirectRegistration, listRaceRegistrations, subscribeRaceRegistrati
 import { formatDayMonth, todayISO } from "../../utils/date";
 import { RR_STATUS } from "../../utils/raceRegistration";
 import { isResultComplete } from "../../utils/raceResult";
+import { isCancelledRace } from "../../utils/raceStatus";
 import useAuth from "../../hooks/useAuth";
 
 const TABS = [
@@ -95,7 +96,7 @@ export default function Races() {
   // Sắp tới: ngày tăng dần; đã diễn ra: mới nhất trước. Tìm theo tên giải hoặc tên ngựa đã đăng ký.
   const normalizedKeyword = keyword.trim().toLowerCase();
   const rows = races
-    .filter((race) => (tab === "upcoming" ? race.Ngay >= today : race.Ngay < today))
+    .filter((race) => (tab === "upcoming" ? race.Ngay >= today && !isCancelledRace(race) : race.Ngay < today))
     .sort((a, b) => (tab === "upcoming" ? a.Ngay.localeCompare(b.Ngay) : b.Ngay.localeCompare(a.Ngay)))
     .map((race) => ({ race, regs: regsOfRace(race.RaceID), pendingCount: pendingOfRace(race.RaceID).length }))
     .filter(
@@ -262,6 +263,7 @@ export default function Races() {
         <RaceRegistrationDialog
           key={`${horseView.raceId}-${horseView.horseId}`}
           record={horseViewRecord}
+          race={horseViewRace ?? null}
           role="head_trainer"
           userName={user.fullName}
           readOnly

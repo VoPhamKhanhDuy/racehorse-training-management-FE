@@ -3,6 +3,7 @@ import { getRaceInfo } from "../../data/raceInfoMock";
 import { raceRegistrationDeadline } from "../../services/raceRegistrationApi";
 import { formatCurrency } from "../../utils/currency";
 import { daysBetween, formatDate, todayISO } from "../../utils/date";
+import { isCancelledRace, rankPrizeText } from "../../utils/raceStatus";
 
 const SECTION_TITLE = "font-serif text-base font-semibold text-[#2b2118]";
 const OUTLINE_BUTTON =
@@ -28,11 +29,15 @@ export default function RaceInfoDialog({ race, horseCount, onRegister, onClose }
   const info = getRaceInfo(race);
   const isPast = race.Ngay < today;
   const deadline = raceRegistrationDeadline(race);
-  const open = !isPast && deadline >= today;
+  const open = !isCancelledRace(race) && !isPast && deadline >= today;
   const daysToDeadline = daysBetween(today, deadline);
   const fee = race.entryFee;
 
-  const statusNode = isPast ? (
+  const cancelled = isCancelledRace(race);
+
+  const statusNode = cancelled ? (
+    "Đã hủy"
+  ) : isPast ? (
     "Đã diễn ra"
   ) : open ? (
     <span className="inline-flex items-center gap-1.5">
@@ -103,12 +108,23 @@ export default function RaceInfoDialog({ race, horseCount, onRegister, onClose }
         <>
           <section>
             <dl className="space-y-2">
+              {race.distanceMeters > 0 && <Row label="Cự ly">{race.distanceMeters.toLocaleString("vi-VN")} m</Row>}
               <Row label="Hạn đăng ký">{formatDate(deadline)}</Row>
               <Row label="Lệ phí">{fee != null ? formatCurrency(fee) : "Chưa cập nhật"}</Row>
+              {race.maxParticipants > 0 && <Row label="Số ngựa tối đa">{race.maxParticipants}</Row>}
+              {race.prizePool != null && (
+                <Row label="Tổng giải thưởng" sub={rankPrizeText(race)}>
+                  {formatCurrency(race.prizePool)}
+                </Row>
+              )}
               {horseCount != null && <Row label="Ngựa CLB đã đăng ký">{horseCount}</Row>}
             </dl>
           </section>
-          <p className="mt-6 text-sm text-[#6b6055]">Chưa có mô tả chi tiết.</p>
+          {race.description ? (
+            <p className="mt-6 text-sm leading-relaxed whitespace-pre-line text-[#2b2118]">{race.description}</p>
+          ) : (
+            <p className="mt-6 text-sm text-[#6b6055]">Chưa có mô tả chi tiết.</p>
+          )}
         </>
       )}
     </CenterDialog>

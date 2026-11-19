@@ -8,25 +8,43 @@ import { createRaceRegistration, getRaceOptions, submitRaceRegistration } from "
 import { getHorses } from "../../services/trainingApi";
 import { formatCurrency } from "../../utils/currency";
 import { formatDate, todayISO } from "../../utils/date";
-import { isReadyHealth } from "../../utils/healthGroups";
+import { isBlockingHealth, isReadyHealth } from "../../utils/healthGroups";
 import { RR_NOTE_MAX } from "../../utils/raceRegistration";
 
 const OUTLINE_BUTTON =
   "inline-flex h-10 cursor-pointer items-center rounded-[4px] border border-stone/25 bg-white px-5 text-sm font-semibold text-ink transition-colors hover:border-stone/50 disabled:cursor-not-allowed disabled:opacity-60";
 
-// Cảnh báo (không chặn gửi) khi ngựa đang khóa tập / sức khỏe chưa đủ điều kiện
-function ConditionWarning({ horseId }) {
-  const { loading, health, lock } = useHorseCondition(horseId);
-  if (loading) return null;
-  const notReady = health && !isReadyHealth(health.TrangThai);
-  if (!lock && !notReady) return null;
-  return (
-    <div className="space-y-0.5 text-sm font-semibold text-[#c2570c]">
-      {lock && <p>Ngựa đang bị khóa tập</p>}
-      {notReady && <p>Sức khỏe chưa đủ điều kiện</p>}
-      <p className="font-normal text-[#6b6055]">Vẫn có thể gửi, chủ ngựa và quản lý sẽ thấy thông tin này khi duyệt.</p>
-    </div>
-  );
+// Lý do chặn đăng ký: ngựa đang khóa tập, hoặc sức khỏe thuộc nhóm chặn (chấn thương / cách ly / đang điều trị) — giống BE.
+function blockReasons({ health, lock }) {
+  const reasons = [];
+  if (lock) reasons.push(lock.LyDo ? `Ngựa đang bị khóa tập: ${lock.LyDo}` : "Ngựa đang bị khóa tập");
+  if (health && isBlockingHealth(health.TrangThai)) reasons.push(`Ngựa đang ${health.TrangThai.toLowerCase()}`);
+  return reasons;
+}
+
+// Dưới ô chọn ngựa: lý do chặn (khóa nút lưu / gửi), hoặc cảnh báo mềm khi sức khỏe chưa đủ điều kiện nhưng không bị chặn
+function ConditionNotice({ condition }) {
+  if (condition.loading) return null;
+  const reasons = blockReasons(condition);
+  if (reasons.length > 0) {
+    return (
+      <div role="alert" className="space-y-0.5 text-sm font-semibold text-alert">
+        {reasons.map((reason) => (
+          <p key={reason}>{reason}</p>
+        ))}
+        <p className="font-normal text-[#6b6055]">Không thể lưu hoặc gửi đăng ký cho ngựa này.</p>
+      </div>
+    );
+  }
+  if (condition.health && !isReadyHealth(condition.health.TrangThai)) {
+    return (
+      <div className="space-y-0.5 text-sm font-semibold text-[#c2570c]">
+        <p>Sức khỏe chưa đủ điều kiện</p>
+        <p className="font-normal text-[#6b6055]">Vẫn có thể gửi, chủ ngựa và quản lý sẽ thấy thông tin này khi duyệt.</p>
+      </div>
+    );
+  }
+  return null;
 }
 
 // Tạo đăng ký thi đấu (Trainer): chọn ngựa, cuộc đua (còn hạn đăng ký), ghi chú → "Lưu nháp" hoặc "Gửi duyệt" (gửi thẳng cho chủ ngựa).
@@ -70,7 +88,14 @@ export default function RaceRegistrationCreateDialog({ onClose, onCreated, initi
   const race = races.find((r) => String(r.RaceID) === form.raceId);
   const horse = horses.find((h) => String(h.horseId) === form.horseId);
 
+  // Ngựa đã chọn: chờ biết tình trạng rồi mới cho lưu; khóa tập / chấn thương / cách ly / đang điều trị thì khóa nút lưu và gửi
+  const condition = useHorseCondition(form.horseId);
+  const conditionPending = Boolean(form.horseId) && condition.loading;
+  const blocked = Boolean(form.horseId) && !condition.loading && blockReasons(condition).length > 0;
+  const saveDisabled = busy || loading || conditionPending || blocked;
+
   const save = async (andSubmit) => {
+    if (saveDisabled) return;
     const nextErrors = {};
     if (!form.horseId) nextErrors.horseId = "Vui lòng chọn ngựa";
     if (!form.raceId) nextErrors.raceId = "Vui lòng chọn cuộc đua";
@@ -99,10 +124,10 @@ export default function RaceRegistrationCreateDialog({ onClose, onCreated, initi
         <button type="button" onClick={onClose} disabled={busy} className={OUTLINE_BUTTON}>
           Hủy
         </button>
-        <button type="button" onClick={() => save(false)} disabled={busy || loading} className={OUTLINE_BUTTON}>
+        <button type="button" onClick={() => save(false)} disabled={saveDisabled} className={OUTLINE_BUTTON}>
           Lưu nháp
         </button>
-        <button type="button" onClick={() => save(true)} disabled={busy || loading} className="btn-primary">
+        <button type="button" onClick={() => save(true)} disabled={saveDisabled} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
           {busy ? "Đang lưu..." : "Gửi duyệt"}
         </button>
       </div>
@@ -132,7 +157,7 @@ export default function RaceRegistrationCreateDialog({ onClose, onCreated, initi
               </option>
             ))}
           </SelectField>
-          {form.horseId && <ConditionWarning horseId={form.horseId} />}
+          {form.horseId && <ConditionNotice condition={condition} />}
           <SelectField
             variant="outline"
             label="Cuộc đua"
